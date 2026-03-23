@@ -1,0 +1,40 @@
+## Python / venv / caches
+.venv/
+venv/
+ENV/
+env/
+
+__pycache__/
+pytest_cache/
+*.py[cod]
+*.pyd
+*.so
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+## Local data & runtime output
+data/
+logs/
+*.log
+*.sqlite
+*.db
+
+## Secrets / local config
+.env
+.env.*
+!.env.example
+
+## OS / IDE files / Support files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+dev_support/
+.cursor/
+.vscode/
+.idea/
