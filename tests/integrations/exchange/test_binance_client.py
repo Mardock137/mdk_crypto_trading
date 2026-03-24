@@ -22,6 +22,7 @@ def _make_settings(**overrides: Any) -> AppSettings:
         "binance_demo_api_key": "demo-key",
         "binance_demo_secret_key": "demo-secret",
         "binance_demo_base_url": "https://demo-api.binance.com/api",
+        "log_level": "INFO",
     }
     defaults.update(overrides)
     return AppSettings(**defaults)

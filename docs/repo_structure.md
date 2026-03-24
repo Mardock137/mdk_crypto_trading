@@ -27,11 +27,14 @@
  │    ├── 📄 config.md                                       #
  │    ├── 📄 decision_logic.md                               # Descrive la logica decisionale di MDK Crypto Trading.
  │    ├── 📄 hierarchy_and_roles.md                          #
- │    ├── 📄 observability.md                                #
+ │    ├── 📄 observability.md                                # Sistema di logging: log testuale e log eventi JSON.
  │    ├── 📄 operational_functions.md                        # Descrive le funzioni operative di MDK Crypto Trading.
  │    └── 📄 repo_structure.md                               # Struttura e spiegazione della repo.
  │
- ├── 📁 logs/
+ ├── 📁 logs/                                                # Log operativi (ignorata da git).
+ │    ├── 📄 mdk_crypto_trading.log                          # Log testuale con rotazione automatica (5 MB, 5 backup).
+ │    └── 📁 events/                                         # Log JSON strutturati per ciclo operativo.
+ │         └── 📄 YYYY-MM-DD.jsonl                           # Un file al giorno, una riga JSON per ciclo.
  │
  ├── 📁 src/                                                 # Cartella contenente il codice sorgente di MDK Crypto Trading.
  │    ├── 📁 agents/                                         # Agenti del workflow multi-agente.
@@ -53,7 +56,8 @@
  │    │         └── 📄 binance_client.py                     # Client Binance con supporto DEMO/REAL.
  │    ├── 📁 utils/                                          # Utility comuni e configurazione tecnica.
  │    │    ├── 📄 config.py                                  # Caricamento e validazione delle variabili d'ambiente.
- │    │    └── 📄 logging_config.py                          # Configurazione centralizzata del logging.
+ │    │    ├── 📄 event_logger.py                            # Logger JSON strutturato per le decisioni di ogni ciclo.
+ │    │    └── 📄 logging_config.py                          # Configurazione centralizzata del logging (console + file).
  │    └── 📄 main.py                                         #
  │
  ├── 📁 tests/                                               # Test automatici per tutte le funzioni e i moduli.
@@ -71,6 +75,7 @@
  │    │         └── 📄 test_binance_client.py
  │    ├── 📁 utils/                                          # Test delle utility.
  │    │    ├── 📄 test_config.py
+ │    │    ├── 📄 test_event_logger.py
  │    │    └── 📄 test_logging_config.py
  │    └── 📄 test_main.py
  │

@@ -60,7 +60,13 @@ Contiene le integrazioni verso LLM ed exchange.
 
 ### `src/utils/`
 
-Contiene utility tecniche comuni, come caricamento configurazione e logging.
+Contiene utility tecniche comuni: configurazione, logging e logging eventi.
+
+- `config.py`: caricamento delle variabili d'ambiente (incluso `LOG_LEVEL`)
+- `logging_config.py`: logging su console (Rich) e su file con rotazione automatica (5 MB, 5 backup)
+- `event_logger.py`: log JSON strutturato che registra le decisioni di ogni ciclo operativo in file `.jsonl` giornalieri
+
+Per i dettagli completi sul sistema di logging, vedi `docs/observability.md`.
 
 ## Contratti condivisi
 
