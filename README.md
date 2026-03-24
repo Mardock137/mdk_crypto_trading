@@ -1,6 +1,7 @@
 # MDK Crypto Trading
 
 - **Versione Python utilizzata**: `3.12.10`
+- **Versione MDK Crypto Trading**: `1.0.0`
 
 ## 📋 Indice
 
@@ -20,8 +21,21 @@
 
 ## 📄 Descrizione
 
-[Scrivi qui la descrizione]
+MDK Crypto Trading è un sistema multi-agente per il trading spot di criptovalute, pensato per essere strutturato come una vera e propria società di investimenti.
+L'MVP separa il workflow in 4 ruoli distinti:
+
+- `Market Analyst`: analizza il mercato e produce un segnale strutturato
+- `Decision Maker`: formula una proposta operativa
+- `Risk Manager`: approva, blocca o richiede modifiche
+- `Execution Trader`: esegue solo proposte approvate
+
+Il flusso operativo dell'MVP e' lineare:
+`Market Analyst` -> `Decision Maker` -> `Risk Manager` -> `Execution Trader`
 
 ## 🤖 API Integrate
 
-[Scrivi qui le api integrate]
+Il progetto integra tre famiglie principali di API:
+
+- **OpenAI API**: usata per le risposte testuali strutturate dei modelli GPT
+- **Gemini API**: usata come provider LLM alternativo per analisi e decisioni
+- **Binance API**: usata per dati di mercato, stato account, ordini aperti, storico trade ed esecuzione ordini

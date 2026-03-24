@@ -21,7 +21,6 @@ from src.core.contracts import (
     TradingCycleInput,
     TradingCycleResult,
 )
-from src.core.workflow import TradingWorkflow
 
 __all__ = [
     "MarketBias",
@@ -45,6 +44,5 @@ __all__ = [
     "ExecutionInput",
     "TradingCycleInput",
     "TradingCycleResult",
-    "TradingWorkflow",
 ]
 

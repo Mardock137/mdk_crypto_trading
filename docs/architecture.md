@@ -1,8 +1,6 @@
 # 🏗️ Architettura
 
-## Obiettivo
-
-MDK Crypto Trading e' progettato come un sistema multi-agente per il trading crypto spot.
+MDK Crypto Trading è progettato come un sistema multi-agente per il trading crypto spot.
 L'MVP separa chiaramente analisi, decisione, controllo del rischio ed esecuzione, in modo da evitare che un singolo componente faccia tutto da solo.
 
 ## Flusso operativo MVP
@@ -56,7 +54,9 @@ Qui vive la sequenza ufficiale del ciclo operativo.
 ### `src/integrations/`
 
 Contiene le integrazioni verso LLM ed exchange.
-In Fase 1 si definiscono solo le basi astratte, senza chiamate reali.
+
+- `llm_interfaces/`: interfaccia astratta (`BaseLlmInterface`) e implementazioni concrete per OpenAI (`OpenAiInterface`) e Gemini (`GeminiInterface`), con retry automatico via `tenacity`.
+- `exchange/`: interfaccia astratta (`BaseExchangeClient`) e implementazione concreta per Binance (`BinanceClient`), con supporto per modalità DEMO e REAL.
 
 ### `src/utils/`
 
@@ -65,7 +65,7 @@ Contiene utility tecniche comuni, come caricamento configurazione e logging.
 ## Contratti condivisi
 
 Per l'MVP ogni passaggio tra agenti usa strutture dati esplicite.
-Questo evita JSON incoerenti sparsi nel codice e rende piu' facili test, logging e manutenzione.
+Questo evita JSON incoerenti sparsi nel codice e rende più facili test, logging e manutenzione.
 
 I contratti minimi previsti sono:
 
@@ -77,7 +77,7 @@ I contratti minimi previsti sono:
 ## Orchestrazione
 
 Un orchestratore centrale governa il ciclo operativo.
-Nel workflow MVP la sequenza e' fissa:
+Nel workflow MVP la sequenza è fissa:
 
 1. raccolta dei dati necessari
 2. esecuzione del `Market Analyst`
@@ -90,19 +90,3 @@ Nel workflow MVP la sequenza e' fissa:
 - I prompt di lavoro degli agenti vivranno in `config/prompts/`.
 - I file in `dev_support/prompts/` restano la base di progettazione e riferimento umano.
 - Le regole operative del sistema vivranno in `config/`, separate dai segreti presenti nel file `.env`.
-
-## Confini della Fase 1
-
-In questa fase vengono definiti:
-
-- struttura dei moduli
-- interfacce e classi base
-- contratti condivisi
-- orchestratore minimo
-
-In questa fase non vengono ancora implementati:
-
-- chiamate reali a Binance
-- chiamate reali ai provider LLM
-- logica completa di trading
-- gestione completa della configurazione runtime
