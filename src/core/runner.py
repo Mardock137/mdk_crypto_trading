@@ -1,0 +1,82 @@
+from __future__ import annotations
+
+import logging
+import time
+
+from src.core.contracts import TradingCycleInput
+from src.core.workflow import TradingWorkflow
+from src.utils.config import AppSettings
+from src.utils.event_logger import EventLogger
+
+
+class TradingRunner:
+    """Loop operativo che esegue TradingWorkflow in modo ciclico."""
+
+    def __init__(
+        self,
+        workflow: TradingWorkflow,
+        event_logger: EventLogger,
+        logger: logging.Logger,
+        settings: AppSettings,
+        symbol: str,
+    ) -> None:
+        self._workflow = workflow
+        self._event_logger = event_logger
+        self._logger = logger
+        self._settings = settings
+        self._symbol = symbol
+
+    def run(self) -> None:
+        """Avvia il loop operativo. Esce solo su KeyboardInterrupt."""
+        self._logger.info(
+            "Avvio loop operativo — symbol=%s, mode=%s, intervallo=%ds",
+            self._symbol,
+            self._settings.trading_mode.value,
+            self._settings.cycle_interval_seconds,
+        )
+
+        if self._settings.kill_switch:
+            self._logger.warning(
+                "Kill switch attivo: le operazioni saranno forzate a HOLD"
+            )
+
+        try:
+            while True:
+                self._run_single_cycle()
+                self._logger.info(
+                    "Prossimo ciclo tra %d secondi",
+                    self._settings.cycle_interval_seconds,
+                )
+                time.sleep(self._settings.cycle_interval_seconds)
+        except KeyboardInterrupt:
+            self._logger.info("Shutdown richiesto. Arresto pulito del runner.")
+
+    def _run_single_cycle(self) -> None:
+        """Esegue un singolo ciclo operativo con gestione degli errori."""
+        self._logger.info("Inizio ciclo operativo")
+        try:
+            cycle_input = self._build_cycle_input()
+            result = self._workflow.run_cycle(cycle_input)
+            self._event_logger.log_cycle(
+                symbol=self._symbol,
+                trading_mode=self._settings.trading_mode.value,
+                market_analysis=result.market_analysis,
+                trade_proposal=result.trade_proposal,
+                risk_assessment=result.risk_assessment,
+                execution_report=result.execution_report,
+            )
+            self._logger.info("Ciclo completato con successo")
+        except Exception as exc:
+            self._logger.error("Errore durante il ciclo: %s", exc)
+            self._event_logger.log_error(
+                symbol=self._symbol,
+                trading_mode=self._settings.trading_mode.value,
+                error=str(exc),
+            )
+
+    def _build_cycle_input(self) -> TradingCycleInput:
+        """Costruisce l'input per il ciclo. Implementato nella Fase 5."""
+        raise NotImplementedError(
+            "_build_cycle_input() sarà implementato nella Fase 5 "
+            "quando saranno disponibili i dati reali da Binance."
+        )

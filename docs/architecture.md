@@ -82,14 +82,19 @@ I contratti minimi previsti sono:
 
 ## Orchestrazione
 
-Un orchestratore centrale governa il ciclo operativo.
-Nel workflow MVP la sequenza è fissa:
+Il ciclo operativo è gestito da due componenti complementari:
 
-1. raccolta dei dati necessari
-2. esecuzione del `Market Analyst`
-3. esecuzione del `Decision Maker`
-4. esecuzione del `Risk Manager`
-5. esecuzione del `Execution Trader`
+- **`TradingWorkflow`** (`workflow.py`): esegue la catena di agenti in sequenza (Market Analyst → Decision Maker → Risk Manager → Execution Trader)
+- **`TradingRunner`** (`runner.py`): loop infinito che chiama `TradingWorkflow.run_cycle()` ogni N secondi, gestisce errori e shutdown pulito
+
+Il runner:
+
+1. Logga l'avvio e lo stato del kill switch
+2. Ad ogni iterazione: costruisce l'input → esegue il workflow → logga il risultato
+3. In caso di errore: logga l'eccezione, registra l'evento e continua
+4. Su `Ctrl+C`: termina in modo pulito
+
+Il punto di ingresso è `src/main.py`, che fa il bootstrap di tutti i componenti e avvia il runner.
 
 ## Configurazione e prompt
 

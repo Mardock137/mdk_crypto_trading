@@ -45,7 +45,8 @@
  │    │    └── 📄 execution_trader.py                        # Agente che esegue la proposta approvata.
  │    ├── 📁 core/                                           # Contratti condivisi e orchestrazione del workflow.
  │    │    ├── 📄 contracts.py                               # Schemi condivisi per input/output degli agenti.
- │    │    └── 📄 workflow.py                                # Orchestratore minimale del ciclo operativo.
+ │    │    ├── 📄 runner.py                                  # Loop operativo ciclico (TradingRunner).
+ │    │    └── 📄 workflow.py                                # Orchestratore della catena di agenti.
  │    ├── 📁 integrations/                                   # Integrazione delle API esterne.
  │    │    ├── 📁 llm_interfaces/                            # Interfaccia verso i modelli LLM.
  │    │    │    ├── 📄 base_llm_interface.py                 # Base interface per i provider LLM.
@@ -58,13 +59,14 @@
  │    │    ├── 📄 config.py                                  # Caricamento e validazione delle variabili d'ambiente.
  │    │    ├── 📄 event_logger.py                            # Logger JSON strutturato per le decisioni di ogni ciclo.
  │    │    └── 📄 logging_config.py                          # Configurazione centralizzata del logging (console + file).
- │    └── 📄 main.py                                         #
+ │    └── 📄 main.py                                         # Entry point del sistema: bootstrap e avvio del runner.
  │
  ├── 📁 tests/                                               # Test automatici per tutte le funzioni e i moduli.
  │    ├── 📁 agents/                                         # Test delle interfacce degli agenti.
  │    │    └── 📄 test_agent_interfaces.py
- │    ├── 📁 core/                                           # Test dei contratti e del workflow.
+ │    ├── 📁 core/                                           # Test dei contratti, workflow e runner.
  │    │    ├── 📄 test_contracts.py
+ │    │    ├── 📄 test_runner.py
  │    │    └── 📄 test_workflow.py
  │    ├── 📁 integrations/                                   # Test delle integrazioni.
  │    │    ├── 📁 llm_interfaces/
