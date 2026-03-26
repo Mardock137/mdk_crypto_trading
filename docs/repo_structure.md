@@ -6,9 +6,12 @@
  │
  ├── 📁 config/                                              # Configurazioni statiche del sistema.
  │    ├── 📁 llm_models/                                     # Configurazione dei modelli IA (model, temperature, max token, ecc.).
+ │    │    ├── 📄 market_analyst.yaml                        # Configurazione LLM per il Market Analyst (GPT-5.4).
  │    │    └── 📄 README.md
  │    ├── 📁 prompts/                                        # Prompt runtime usati dagli agenti.
+ │    │    ├── 📄 market_analyst.md                          # Prompt operativo del Market Analyst.
  │    │    └── 📄 README.md
+ │    ├── 📄 symbols.yaml                                    # Simbolo di trading attivo (es. BTCUSDC).
  │    └── 📄 trading.yaml                                    # Regole operative statiche del sistema (es. min_order_usdc).
  │
  ├── 📁 dev_support/                                         # Materiale di supporto per Chief Mardock e Cursor.
@@ -56,8 +59,9 @@
  │    │         ├── 📄 base_exchange_client.py               # Base interface per i client exchange.
  │    │         └── 📄 binance_client.py                     # Client Binance con supporto DEMO/REAL.
  │    ├── 📁 utils/                                          # Utility comuni e configurazione tecnica.
- │    │    ├── 📄 config.py                                  # Caricamento e validazione delle variabili d'ambiente.
+ │    │    ├── 📄 config.py                                  # Caricamento variabili d'ambiente, YAML e configurazioni.
  │    │    ├── 📄 event_logger.py                            # Logger JSON strutturato per le decisioni di ogni ciclo.
+ │    │    ├── 📄 indicators.py                              # Indicatori tecnici: RSI, EMA, SMA, MACD.
  │    │    └── 📄 logging_config.py                          # Configurazione centralizzata del logging (console + file).
  │    └── 📄 main.py                                         # Entry point del sistema: bootstrap e avvio del runner.
  │
@@ -78,6 +82,7 @@
  │    ├── 📁 utils/                                          # Test delle utility.
  │    │    ├── 📄 test_config.py
  │    │    ├── 📄 test_event_logger.py
+ │    │    ├── 📄 test_indicators.py
  │    │    └── 📄 test_logging_config.py
  │    └── 📄 test_main.py
  │

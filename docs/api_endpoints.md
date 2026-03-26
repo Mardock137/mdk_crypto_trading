@@ -10,7 +10,7 @@ Documentazioni ufficiali:
 
 ## OpenAI
 
-- `POST https://api.openai.com/v1/responses` → Genera una risposta testuale da GPT (Responses API).
+- `POST https://api.openai.com/v1/chat/completions` → Genera una risposta testuale o JSON da GPT (Chat Completions API). Usato da `OpenAiInterface` con supporto per `response_format: json_object`.
 
 ## Gemini
 

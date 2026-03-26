@@ -19,8 +19,16 @@ from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
 class GeminiInterface(BaseLlmInterface):
     """Implementazione di BaseLlmInterface per il provider Google Gemini."""
 
-    def __init__(self, api_key: str, model: str) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        model: str,
+        temperature: float = 0.7,
+        max_tokens: int | None = None,
+    ) -> None:
         self._model = model
+        self._temperature = temperature
+        self._max_tokens = max_tokens
         self._client = genai.Client(api_key=api_key)
 
     @property
@@ -40,6 +48,8 @@ class GeminiInterface(BaseLlmInterface):
                 contents=user_prompt,
                 config=genai_types.GenerateContentConfig(
                     system_instruction=system_prompt,
+                    temperature=self._temperature,
+                    max_output_tokens=self._max_tokens,
                 ),
             )
             return response.text or ""
@@ -66,6 +76,8 @@ class GeminiInterface(BaseLlmInterface):
                 config=genai_types.GenerateContentConfig(
                     system_instruction=system_prompt,
                     response_mime_type="application/json",
+                    temperature=self._temperature,
+                    max_output_tokens=self._max_tokens,
                 ),
             )
             raw = response.text or "{}"

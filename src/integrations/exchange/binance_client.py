@@ -4,8 +4,10 @@ from typing import Any
 
 from binance.client import Client as BinanceApiClient
 
+from src.core.contracts import MarketDataSnapshot, PortfolioState
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
 from src.utils.config import AppSettings, TradingMode
+from src.utils import indicators
 
 
 class BinanceClient(BaseExchangeClient):
@@ -38,6 +40,8 @@ class BinanceClient(BaseExchangeClient):
                 api_secret=settings.binance_secret_key,
             )
 
+    # ---- Metodi base ----
+
     def ping(self) -> bool:
         self._client.ping()
         return True
@@ -45,3 +49,144 @@ class BinanceClient(BaseExchangeClient):
     def get_account_info(self) -> dict[str, Any]:
         result: dict[str, Any] = self._client.get_account()
         return result
+
+    # ---- Dati di mercato ----
+
+    def get_market_snapshot(self, symbol: str) -> MarketDataSnapshot:
+        price = float(self._client.get_symbol_ticker(symbol=symbol)["price"])
+        avg_price = float(self._client.get_avg_price(symbol=symbol)["price"])
+        ticker_24h = self._client.get_ticker(symbol=symbol)
+        volume_24h = float(ticker_24h["volume"])
+
+        recent_trades = self._client.get_recent_trades(symbol=symbol, limit=10)
+        order_book = self._client.get_order_book(symbol=symbol, limit=10)
+
+        candles = self._fetch_candles(symbol)
+
+        # Indicatori calcolati sulle kline 1h (almeno 60 candele)
+        closes_1h = self._get_hourly_closes(symbol)
+        indicator_values = self._compute_indicators(closes_1h)
+
+        return MarketDataSnapshot(
+            symbol=symbol,
+            price=price,
+            avg_price=avg_price,
+            volume_24h=volume_24h,
+            recent_public_trades=recent_trades,
+            order_book_top_10_bids=order_book.get("bids", []),
+            order_book_top_10_asks=order_book.get("asks", []),
+            indicators=indicator_values,
+            candles=candles,
+        )
+
+    def get_portfolio_state(self, symbol: str) -> PortfolioState:
+        account = self._client.get_account()
+        balances = {b["asset"]: b for b in account.get("balances", [])}
+
+        # Estrae la coin dal simbolo (es. "BTCUSDC" → "BTC")
+        coin = symbol.replace("USDC", "")
+
+        usdc = balances.get("USDC", {})
+        usdc_free = float(usdc.get("free", 0))
+        usdc_locked = float(usdc.get("locked", 0))
+
+        coin_balance = balances.get(coin, {})
+        coin_free = float(coin_balance.get("free", 0))
+        coin_locked = float(coin_balance.get("locked", 0))
+
+        # Stima del controvalore in USDC della coin posseduta
+        try:
+            coin_price = float(
+                self._client.get_symbol_ticker(symbol=symbol)["price"]
+            )
+        except Exception:
+            coin_price = 0.0
+        usdc_value = (coin_free + coin_locked) * coin_price
+
+        open_orders = self._client.get_open_orders(symbol=symbol)
+        last_trades = self._client.get_my_trades(symbol=symbol, limit=10)
+
+        snapshot = (
+            f"USDC: {usdc_free:.2f} free / {usdc_free + usdc_locked:.2f} total | "
+            f"{coin}: {coin_free} free / {coin_free + coin_locked} total"
+        )
+
+        return PortfolioState(
+            usdc_balance=usdc_free,
+            usdc_balance_total=usdc_free + usdc_locked,
+            usdc_value=usdc_value,
+            portfolio_qty_free=coin_free,
+            portfolio_qty_total=coin_free + coin_locked,
+            portfolio_snapshot=snapshot,
+            open_orders=open_orders,
+            last_trades=last_trades,
+        )
+
+    # ---- Helper privati ----
+
+    def _fetch_candles(self, symbol: str) -> dict[str, Any]:
+        """Recupera le candele per i timeframe richiesti dal Market Analyst."""
+        intervals: dict[str, tuple[str, int]] = {
+            "last_2_candles_2h": ("2h", 2),
+            "last_2_candles_4h": ("4h", 2),
+            "last_1_candle_1d": ("1d", 1),
+            "last_candle_1w": ("1w", 1),
+            "last_candle_1M": ("1M", 1),
+        }
+        candles: dict[str, Any] = {}
+        for key, (interval, limit) in intervals.items():
+            raw = self._client.get_klines(
+                symbol=symbol, interval=interval, limit=limit,
+            )
+            candles[key] = [
+                {
+                    "open": float(k[1]),
+                    "high": float(k[2]),
+                    "low": float(k[3]),
+                    "close": float(k[4]),
+                    "volume": float(k[5]),
+                }
+                for k in raw
+            ]
+        return candles
+
+    def _get_hourly_closes(self, symbol: str) -> list[float]:
+        """Recupera i prezzi di chiusura delle ultime 60 candele 1h."""
+        raw = self._client.get_klines(
+            symbol=symbol, interval="1h", limit=60,
+        )
+        return [float(k[4]) for k in raw]
+
+    def _compute_indicators(
+        self, closes: list[float],
+    ) -> dict[str, float | None]:
+        """Calcola tutti gli indicatori tecnici e i valori precedenti."""
+        # Valori attuali (su tutta la serie) e precedenti (serie senza l'ultimo valore)
+        closes_prev = closes[:-1] if len(closes) > 1 else closes
+
+        rsi_val = indicators.rsi(closes, period=14)
+        rsi_prev = indicators.rsi(closes_prev, period=14)
+
+        ema_val = indicators.ema(closes, period=21)
+        ema_prev = indicators.ema(closes_prev, period=21)
+
+        sma_val = indicators.sma(closes, period=50)
+        sma_prev = indicators.sma(closes_prev, period=50)
+
+        macd_val = indicators.macd(closes)
+        macd_prev = indicators.macd(closes_prev)
+
+        return {
+            "rsi_14": rsi_val,
+            "rsi_14_prev": rsi_prev,
+            "ema_21": ema_val,
+            "ema_21_prev": ema_prev,
+            "sma_50": sma_val,
+            "sma_50_prev": sma_prev,
+            "macd": macd_val[0] if macd_val else None,
+            "macd_prev": macd_prev[0] if macd_prev else None,
+            "macd_signal": macd_val[1] if macd_val else None,
+            "macd_signal_prev": macd_prev[1] if macd_prev else None,
+            "macd_hist": macd_val[2] if macd_val else None,
+            "macd_hist_prev": macd_prev[2] if macd_prev else None,
+        }

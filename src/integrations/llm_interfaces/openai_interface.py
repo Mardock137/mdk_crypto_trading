@@ -26,8 +26,16 @@ _RETRYABLE_ERRORS = (RateLimitError, APIConnectionError, APITimeoutError)
 class OpenAiInterface(BaseLlmInterface):
     """Implementazione di BaseLlmInterface per il provider OpenAI."""
 
-    def __init__(self, api_key: str, model: str) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        model: str,
+        temperature: float = 0.7,
+        max_tokens: int | None = None,
+    ) -> None:
         self._model = model
+        self._temperature = temperature
+        self._max_tokens = max_tokens
         self._client = OpenAI(api_key=api_key)
 
     @property
@@ -48,6 +56,8 @@ class OpenAiInterface(BaseLlmInterface):
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
+                temperature=self._temperature,
+                max_tokens=self._max_tokens,
             )
             content = (
                 response.choices[0].message.content if response.choices else None
@@ -77,6 +87,8 @@ class OpenAiInterface(BaseLlmInterface):
                     {"role": "user", "content": json.dumps(dict(user_payload))},
                 ],
                 response_format={"type": "json_object"},
+                temperature=self._temperature,
+                max_tokens=self._max_tokens,
             )
             raw = (
                 response.choices[0].message.content if response.choices else None

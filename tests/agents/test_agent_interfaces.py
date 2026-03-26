@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import MagicMock
 
 from src.agents import (
     BaseAgent,
@@ -18,7 +19,7 @@ def test_all_agents_inherit_from_base_agent() -> None:
 
 def test_agents_expose_expected_prompt_paths() -> None:
     agents = [
-        (MarketAnalystAgent(), "market_analyst.md"),
+        (MarketAnalystAgent(llm=MagicMock()), "market_analyst.md"),
         (DecisionMakerAgent(), "decision_maker.md"),
         (RiskManagerAgent(), "risk_manager.md"),
         (ExecutionTraderAgent(), "execution_trader.md"),

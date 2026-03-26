@@ -4,8 +4,9 @@ import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Mapping
+from typing import Any, Mapping
 
+import yaml
 from dotenv import load_dotenv
 
 
@@ -57,6 +58,45 @@ def load_settings(
         binance_demo_base_url=env.get("BINANCE_DEMO_BASE_URL"),
         log_level=env.get("LOG_LEVEL", "INFO"),
     )
+
+
+def load_trading_config(
+    config_path: str | Path = "config/trading.yaml",
+) -> dict[str, Any]:
+    """Carica le regole operative dal file YAML di configurazione."""
+    path = Path(config_path)
+    if not path.exists():
+        raise FileNotFoundError(f"File di configurazione non trovato: {path}")
+    with open(path, encoding="utf-8") as f:
+        data: dict[str, Any] = yaml.safe_load(f) or {}
+    return data
+
+
+def load_symbol_config(
+    config_path: str | Path = "config/symbols.yaml",
+) -> str:
+    """Carica il simbolo di trading dal file YAML di configurazione."""
+    path = Path(config_path)
+    if not path.exists():
+        raise FileNotFoundError(f"File di configurazione non trovato: {path}")
+    with open(path, encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    symbol = data.get("symbol")
+    if not symbol:
+        raise ValueError("Campo 'symbol' mancante in symbols.yaml")
+    return str(symbol)
+
+
+def load_llm_model_config(
+    config_path: str | Path,
+) -> dict[str, Any]:
+    """Carica la configurazione di un modello LLM dal file YAML."""
+    path = Path(config_path)
+    if not path.exists():
+        raise FileNotFoundError(f"File di configurazione non trovato: {path}")
+    with open(path, encoding="utf-8") as f:
+        data: dict[str, Any] = yaml.safe_load(f) or {}
+    return data
 
 
 def _require_value(env: Mapping[str, str], key: str) -> str:

@@ -3,9 +3,10 @@ from __future__ import annotations
 import logging
 import time
 
-from src.core.contracts import TradingCycleInput
+from src.core.contracts import OperationConstraints, TradingCycleInput
 from src.core.workflow import TradingWorkflow
-from src.utils.config import AppSettings
+from src.integrations.exchange.base_exchange_client import BaseExchangeClient
+from src.utils.config import AppSettings, load_trading_config
 from src.utils.event_logger import EventLogger
 
 
@@ -19,12 +20,15 @@ class TradingRunner:
         logger: logging.Logger,
         settings: AppSettings,
         symbol: str,
+        exchange_client: BaseExchangeClient,
     ) -> None:
         self._workflow = workflow
         self._event_logger = event_logger
         self._logger = logger
         self._settings = settings
         self._symbol = symbol
+        self._exchange_client = exchange_client
+        self._trading_config = load_trading_config()
 
     def run(self) -> None:
         """Avvia il loop operativo. Esce solo su KeyboardInterrupt."""
@@ -75,8 +79,16 @@ class TradingRunner:
             )
 
     def _build_cycle_input(self) -> TradingCycleInput:
-        """Costruisce l'input per il ciclo. Implementato nella Fase 5."""
-        raise NotImplementedError(
-            "_build_cycle_input() sarà implementato nella Fase 5 "
-            "quando saranno disponibili i dati reali da Binance."
+        """Raccoglie dati di mercato e portafoglio dall'exchange e costruisce l'input."""
+        market_data = self._exchange_client.get_market_snapshot(self._symbol)
+        portfolio = self._exchange_client.get_portfolio_state(self._symbol)
+        constraints = OperationConstraints(
+            cycle_interval_seconds=self._settings.cycle_interval_seconds,
+            min_order_usdc=float(self._trading_config.get("min_order_usdc", 10.0)),
+        )
+        return TradingCycleInput(
+            symbol=self._symbol,
+            market_data=market_data,
+            portfolio=portfolio,
+            constraints=constraints,
         )

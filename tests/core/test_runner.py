@@ -9,6 +9,8 @@ import pytest
 from src.core.runner import TradingRunner
 from src.utils.config import AppSettings, TradingMode
 
+_MOCK_TRADING_CONFIG = {"min_order_usdc": 10.0}
+
 
 def _make_settings(**overrides: Any) -> AppSettings:
     defaults: dict[str, Any] = {
@@ -32,14 +34,17 @@ def _make_runner(
     settings: AppSettings | None = None,
     workflow: MagicMock | None = None,
     event_logger: MagicMock | None = None,
+    exchange_client: MagicMock | None = None,
 ) -> TradingRunner:
-    return TradingRunner(
-        workflow=workflow or MagicMock(),
-        event_logger=event_logger or MagicMock(),
-        logger=logging.getLogger("mdk_crypto_trading.test_runner"),
-        settings=settings or _make_settings(),
-        symbol="BTCUSDC",
-    )
+    with patch("src.core.runner.load_trading_config", return_value=_MOCK_TRADING_CONFIG):
+        return TradingRunner(
+            workflow=workflow or MagicMock(),
+            event_logger=event_logger or MagicMock(),
+            logger=logging.getLogger("mdk_crypto_trading.test_runner"),
+            settings=settings or _make_settings(),
+            symbol="BTCUSDC",
+            exchange_client=exchange_client or MagicMock(),
+        )
 
 
 # ---------- Ciclo singolo ----------
@@ -62,16 +67,17 @@ def test_run_sleeps_even_after_cycle_error(mock_sleep: MagicMock) -> None:
 def test_run_logs_error_on_exception(mock_sleep: MagicMock) -> None:
     """Se il ciclo fallisce, il runner logga l'errore e non crasha."""
     mock_event_logger = MagicMock()
-    runner = _make_runner(event_logger=mock_event_logger)
+    mock_workflow = MagicMock()
+    mock_workflow.run_cycle.side_effect = RuntimeError("errore di test")
+    runner = _make_runner(event_logger=mock_event_logger, workflow=mock_workflow)
 
-    # _build_cycle_input solleva NotImplementedError → viene gestita
     runner.run()
 
     mock_event_logger.log_error.assert_called_once()
     call_kwargs = mock_event_logger.log_error.call_args.kwargs
     assert call_kwargs["symbol"] == "BTCUSDC"
     assert call_kwargs["trading_mode"] == "DEMO"
-    assert "NotImplementedError" in call_kwargs["error"] or "_build_cycle_input" in call_kwargs["error"]
+    assert "errore di test" in call_kwargs["error"]
 
 
 # ---------- Kill switch ----------
@@ -94,9 +100,14 @@ def test_run_logs_warning_when_kill_switch_active(
 # ---------- _build_cycle_input ----------
 
 
-def test_build_cycle_input_raises_not_implemented() -> None:
-    """_build_cycle_input deve sollevare NotImplementedError (stub Fase 5)."""
-    runner = _make_runner()
+@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
+def test_build_cycle_input_calls_exchange_client(mock_sleep: MagicMock) -> None:
+    """_build_cycle_input deve chiamare get_market_snapshot e get_portfolio_state."""
+    mock_exchange = MagicMock()
+    mock_workflow = MagicMock()
+    runner = _make_runner(exchange_client=mock_exchange, workflow=mock_workflow)
 
-    with pytest.raises(NotImplementedError):
-        runner._build_cycle_input()
+    runner.run()
+
+    mock_exchange.get_market_snapshot.assert_called_with("BTCUSDC")
+    mock_exchange.get_portfolio_state.assert_called_with("BTCUSDC")

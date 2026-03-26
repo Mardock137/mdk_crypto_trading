@@ -125,3 +125,71 @@ def test_get_account_info_calls_sdk_get_account(mock_client_cls: MagicMock) -> N
 
     mock_instance.get_account.assert_called_once()
     assert result == {"balances": []}
+
+
+# ---------- Verifica get_market_snapshot ----------
+
+
+def _setup_market_mocks(mock_instance: MagicMock) -> None:
+    """Configura i mock per tutte le chiamate usate da get_market_snapshot."""
+    mock_instance.get_symbol_ticker.return_value = {"price": "50000.0"}
+    mock_instance.get_avg_price.return_value = {"price": "49950.0"}
+    mock_instance.get_ticker.return_value = {"volume": "1234.5"}
+    mock_instance.get_recent_trades.return_value = [{"price": "50000.0"}]
+    mock_instance.get_order_book.return_value = {
+        "bids": [["49999", "0.1"]],
+        "asks": [["50001", "0.2"]],
+    }
+    # Klines: lista di liste (formato Binance); indice 4 = close
+    fake_kline = [0, "50000", "50100", "49900", "50050", "100", 0, 0, 0, 0, 0, 0]
+    mock_instance.get_klines.return_value = [fake_kline] * 60
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_get_market_snapshot_returns_populated_snapshot(
+    mock_client_cls: MagicMock,
+) -> None:
+    """get_market_snapshot deve restituire un MarketDataSnapshot con i campi popolati."""
+    mock_instance = mock_client_cls.return_value
+    _setup_market_mocks(mock_instance)
+
+    client = BinanceClient(_make_settings())
+    snapshot = client.get_market_snapshot("BTCUSDC")
+
+    assert snapshot.symbol == "BTCUSDC"
+    assert snapshot.price == 50000.0
+    assert snapshot.avg_price == 49950.0
+    assert snapshot.volume_24h == 1234.5
+    assert len(snapshot.recent_public_trades) == 1
+    assert len(snapshot.order_book_top_10_bids) == 1
+    assert "rsi_14" in snapshot.indicators
+
+
+# ---------- Verifica get_portfolio_state ----------
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_get_portfolio_state_returns_populated_state(
+    mock_client_cls: MagicMock,
+) -> None:
+    """get_portfolio_state deve restituire un PortfolioState con i campi popolati."""
+    mock_instance = mock_client_cls.return_value
+    mock_instance.get_account.return_value = {
+        "balances": [
+            {"asset": "USDC", "free": "500.0", "locked": "100.0"},
+            {"asset": "BTC", "free": "0.01", "locked": "0.0"},
+        ],
+    }
+    mock_instance.get_symbol_ticker.return_value = {"price": "50000.0"}
+    mock_instance.get_open_orders.return_value = []
+    mock_instance.get_my_trades.return_value = [{"id": 1}]
+
+    client = BinanceClient(_make_settings())
+    state = client.get_portfolio_state("BTCUSDC")
+
+    assert state.usdc_balance == 500.0
+    assert state.usdc_balance_total == 600.0
+    assert state.portfolio_qty_free == 0.01
+    assert state.portfolio_qty_total == 0.01
+    assert state.usdc_value == 0.01 * 50000.0
+    assert state.last_trades == [{"id": 1}]
