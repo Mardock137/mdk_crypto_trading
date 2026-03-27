@@ -74,6 +74,7 @@
  │    │    ├── 📄 test_agent_interfaces.py
  │    │    ├── 📄 test_decision_maker.py
  │    │    ├── 📄 test_execution_trader.py
+ │    │    ├── 📄 test_market_analyst.py
  │    │    └── 📄 test_risk_manager.py
  │    ├── 📁 core/                                           # Test dei contratti, workflow e runner.
  │    │    ├── 📄 test_contracts.py
