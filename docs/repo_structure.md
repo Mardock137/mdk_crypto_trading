@@ -7,9 +7,11 @@
  ├── 📁 config/                                              # Configurazioni statiche del sistema.
  │    ├── 📁 llm_models/                                     # Configurazione dei modelli IA (model, temperature, max token, ecc.).
  │    │    ├── 📄 market_analyst.yaml                        # Configurazione LLM per il Market Analyst (GPT-5.4).
+ │    │    ├── 📄 decision_maker.yaml                        # Configurazione LLM per il Decision Maker (GPT-5.4).
  │    │    └── 📄 README.md
  │    ├── 📁 prompts/                                        # Prompt runtime usati dagli agenti.
  │    │    ├── 📄 market_analyst.md                          # Prompt operativo del Market Analyst.
+ │    │    ├── 📄 decision_maker.md                          # Prompt operativo del Decision Maker.
  │    │    └── 📄 README.md
  │    ├── 📄 symbols.yaml                                    # Simbolo di trading attivo (es. BTCUSDC).
  │    └── 📄 trading.yaml                                    # Regole operative statiche del sistema (es. min_order_usdc).
@@ -66,19 +68,20 @@
  │    └── 📄 main.py                                         # Entry point del sistema: bootstrap e avvio del runner.
  │
  ├── 📁 tests/                                               # Test automatici per tutte le funzioni e i moduli.
- │    ├── 📁 agents/                                         # Test delle interfacce degli agenti.
- │    │    └── 📄 test_agent_interfaces.py
+ │    ├── 📁 agents/                                         # Test degli agenti.
+ │    │    ├── 📄 test_agent_interfaces.py
+ │    │    └── 📄 test_decision_maker.py
  │    ├── 📁 core/                                           # Test dei contratti, workflow e runner.
  │    │    ├── 📄 test_contracts.py
  │    │    ├── 📄 test_runner.py
  │    │    └── 📄 test_workflow.py
  │    ├── 📁 integrations/                                   # Test delle integrazioni.
- │    │    ├── 📁 llm_interfaces/
- │    │    │    ├── 📄 test_base_llm_interface.py
- │    │    │    ├── 📄 test_openai_interface.py
- │    │    │    └── 📄 test_gemini_interface.py
- │    │    └── 📁 exchange/
- │    │         └── 📄 test_binance_client.py
+ │    │    ├── 📁 exchange/
+ │    │    │    └── 📄 test_binance_client.py
+ │    │    └── 📁 llm_interfaces/
+ │    │         ├── 📄 test_base_llm_interface.py
+ │    │         ├── 📄 test_openai_interface.py
+ │    │         └── 📄 test_gemini_interface.py
  │    ├── 📁 utils/                                          # Test delle utility.
  │    │    ├── 📄 test_config.py
  │    │    ├── 📄 test_event_logger.py

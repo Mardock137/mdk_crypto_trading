@@ -1,5 +1,5 @@
 provider: openai
 model: gpt-5.4
-reasoning_effort: low
+reasoning_effort: high
 temperature: 0.2
 max_tokens: 2048

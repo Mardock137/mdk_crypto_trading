@@ -24,21 +24,30 @@ def main() -> None:
 
     symbol = load_symbol_config()
     ma_config = load_llm_model_config("config/llm_models/market_analyst.yaml")
+    dm_config = load_llm_model_config("config/llm_models/decision_maker.yaml")
 
     # Client LLM per il Market Analyst
-    openai_llm = OpenAiInterface(
+    ma_llm = OpenAiInterface(
         api_key=settings.openai_api_key or "",
         model=ma_config["model"],
         temperature=float(ma_config.get("temperature", 0.7)),
         max_tokens=ma_config.get("max_tokens"),
     )
 
+    # Client LLM per il Decision Maker
+    dm_llm = OpenAiInterface(
+        api_key=settings.openai_api_key or "",
+        model=dm_config["model"],
+        temperature=float(dm_config.get("temperature", 0.2)),
+        max_tokens=dm_config.get("max_tokens"),
+    )
+
     # Client exchange
     exchange_client = BinanceClient(settings)
 
     workflow = TradingWorkflow(
-        market_analyst=MarketAnalystAgent(llm=openai_llm),
-        decision_maker=DecisionMakerAgent(),
+        market_analyst=MarketAnalystAgent(llm=ma_llm),
+        decision_maker=DecisionMakerAgent(llm=dm_llm),
         risk_manager=RiskManagerAgent(),
         execution_trader=ExecutionTraderAgent(),
     )

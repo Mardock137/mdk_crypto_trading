@@ -25,9 +25,12 @@ flowchart TD
 
 ### Decision Maker
 
-- Riceve l'analisi del `Market Analyst`.
-- Formula una proposta operativa.
+- Riceve l'analisi del `Market Analyst`, il portafoglio, i vincoli operativi, la memoria IA e le performance recenti.
+- Invia i dati a GPT-5.4 che produce una proposta operativa strutturata (`TradeProposal`).
+- Azioni possibili: `BUY`, `SELL`, `HOLD`, `CANCEL_AND_REPLACE_ORDER`.
 - Non esegue ordini reali.
+- Modello LLM e parametri configurati in `config/llm_models/decision_maker.yaml`.
+- Prompt operativo in `config/prompts/decision_maker.md`.
 
 ### Risk Manager
 
@@ -48,7 +51,7 @@ flowchart TD
 Contiene i 4 agenti dell'MVP e una base comune (`BaseAgent`).
 Ogni agente espone un input strutturato e un output strutturato.
 
-Il `MarketAnalystAgent` è implementato: riceve un `BaseLlmInterface`, legge il prompt da disco, invia i dati di mercato al modello e parsa la risposta JSON in `MarketAnalysis`. Gli altri agenti sono ancora stub (`NotImplementedError`).
+`MarketAnalystAgent` e `DecisionMakerAgent` sono implementati: ricevono un `BaseLlmInterface`, leggono il prompt da disco, inviano i dati al modello e parsano la risposta JSON nei rispettivi contratti (`MarketAnalysis` e `TradeProposal`). Gli altri agenti sono ancora stub (`NotImplementedError`).
 
 ### `src/core/`
 
