@@ -43,8 +43,12 @@ flowchart TD
 
 ### Execution Trader
 
-- Riceve proposta ed esito del rischio.
-- Esegue solo proposte approvate.
+- Riceve la proposta del `Decision Maker` e l'esito del `Risk Manager`.
+- Non usa LLM: esegue ordini direttamente su Binance tramite `BaseExchangeClient`.
+- Se la proposta non è approvata o è `HOLD` → `NOT_EXECUTED`.
+- Per `BUY`/`SELL` → chiama `place_market_order` o `place_limit_order`.
+- Per `CANCEL_AND_REPLACE_ORDER` → chiama `cancel_order` + `place_limit_order`.
+- Se l'exchange lancia un'eccezione → `FAILED`.
 - Non rivaluta strategia o rischio.
 
 ## Strati principali
@@ -54,7 +58,7 @@ flowchart TD
 Contiene i 4 agenti dell'MVP e una base comune (`BaseAgent`).
 Ogni agente espone un input strutturato e un output strutturato.
 
-`MarketAnalystAgent`, `DecisionMakerAgent` e `RiskManagerAgent` sono implementati: ricevono un `BaseLlmInterface`, leggono il prompt da disco, inviano i dati al modello e parsano la risposta JSON nei rispettivi contratti (`MarketAnalysis`, `TradeProposal` e `RiskAssessment`). L'`ExecutionTraderAgent` è ancora stub (`NotImplementedError`).
+Tutti e 4 gli agenti sono implementati. `MarketAnalystAgent`, `DecisionMakerAgent` e `RiskManagerAgent` ricevono un `BaseLlmInterface`, leggono il prompt da disco, inviano i dati al modello e parsano la risposta JSON nei rispettivi contratti (`MarketAnalysis`, `TradeProposal` e `RiskAssessment`). `ExecutionTraderAgent` non usa LLM: riceve un `BaseExchangeClient` e piazza gli ordini direttamente sull'exchange.
 
 ### `src/core/`
 
@@ -72,6 +76,9 @@ Ogni agente espone un input strutturato e un output strutturato.
 - `ping()` / `get_account_info()`: verifica connessione e autenticazione
 - `get_market_snapshot(symbol)`: raccoglie prezzo, volume, order book, trade recenti, candele multi-timeframe e calcola indicatori tecnici (RSI, EMA, SMA, MACD)
 - `get_portfolio_state(symbol)`: raccoglie saldi USDC e coin, ordini aperti, ultimi trade
+- `place_market_order(symbol, side, quantity)`: piazza un ordine a mercato
+- `place_limit_order(symbol, side, quantity, price)`: piazza un ordine limit GTC
+- `cancel_order(symbol, order_id)`: cancella un ordine aperto
 
 ### `src/utils/`
 

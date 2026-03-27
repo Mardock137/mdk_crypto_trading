@@ -59,7 +59,7 @@ def main() -> None:
         market_analyst=MarketAnalystAgent(llm=ma_llm),
         decision_maker=DecisionMakerAgent(llm=dm_llm),
         risk_manager=RiskManagerAgent(llm=rm_llm),
-        execution_trader=ExecutionTraderAgent(),
+        execution_trader=ExecutionTraderAgent(exchange_client=exchange_client),
     )
 
     runner = TradingRunner(

@@ -24,3 +24,19 @@ class BaseExchangeClient(ABC):
     @abstractmethod
     def get_portfolio_state(self, symbol: str) -> PortfolioState:
         """Raccoglie lo stato del portafoglio per il simbolo."""
+
+    @abstractmethod
+    def place_market_order(
+        self, symbol: str, side: str, quantity: float,
+    ) -> dict[str, Any]:
+        """Piazza un ordine a mercato (BUY o SELL)."""
+
+    @abstractmethod
+    def place_limit_order(
+        self, symbol: str, side: str, quantity: float, price: float,
+    ) -> dict[str, Any]:
+        """Piazza un ordine limit (BUY o SELL)."""
+
+    @abstractmethod
+    def cancel_order(self, symbol: str, order_id: str) -> dict[str, Any]:
+        """Cancella un ordine aperto tramite il suo ID."""

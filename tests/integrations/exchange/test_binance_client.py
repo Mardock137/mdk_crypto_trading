@@ -193,3 +193,81 @@ def test_get_portfolio_state_returns_populated_state(
     assert state.portfolio_qty_total == 0.01
     assert state.usdc_value == 0.01 * 50000.0
     assert state.last_trades == [{"id": 1}]
+
+
+# ---------- Verifica metodi ordini ----------
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_market_order_buy(mock_client_cls: MagicMock) -> None:
+    """place_market_order con side BUY chiama order_market_buy."""
+    mock_instance = mock_client_cls.return_value
+    mock_instance.order_market_buy.return_value = {"orderId": "100"}
+
+    client = BinanceClient(_make_settings())
+    result = client.place_market_order("BTCUSDC", "BUY", 0.001)
+
+    mock_instance.order_market_buy.assert_called_once_with(
+        symbol="BTCUSDC", quantity=0.001,
+    )
+    assert result == {"orderId": "100"}
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_market_order_sell(mock_client_cls: MagicMock) -> None:
+    """place_market_order con side SELL chiama order_market_sell."""
+    mock_instance = mock_client_cls.return_value
+    mock_instance.order_market_sell.return_value = {"orderId": "101"}
+
+    client = BinanceClient(_make_settings())
+    result = client.place_market_order("BTCUSDC", "SELL", 0.001)
+
+    mock_instance.order_market_sell.assert_called_once_with(
+        symbol="BTCUSDC", quantity=0.001,
+    )
+    assert result == {"orderId": "101"}
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_limit_order_buy(mock_client_cls: MagicMock) -> None:
+    """place_limit_order con side BUY chiama order_limit_buy con timeInForce GTC."""
+    mock_instance = mock_client_cls.return_value
+    mock_instance.order_limit_buy.return_value = {"orderId": "200"}
+
+    client = BinanceClient(_make_settings())
+    result = client.place_limit_order("BTCUSDC", "BUY", 0.001, 97000.0)
+
+    mock_instance.order_limit_buy.assert_called_once_with(
+        symbol="BTCUSDC", quantity=0.001, price="97000.0", timeInForce="GTC",
+    )
+    assert result == {"orderId": "200"}
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_limit_order_sell(mock_client_cls: MagicMock) -> None:
+    """place_limit_order con side SELL chiama order_limit_sell con timeInForce GTC."""
+    mock_instance = mock_client_cls.return_value
+    mock_instance.order_limit_sell.return_value = {"orderId": "201"}
+
+    client = BinanceClient(_make_settings())
+    result = client.place_limit_order("BTCUSDC", "SELL", 0.001, 99000.0)
+
+    mock_instance.order_limit_sell.assert_called_once_with(
+        symbol="BTCUSDC", quantity=0.001, price="99000.0", timeInForce="GTC",
+    )
+    assert result == {"orderId": "201"}
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_cancel_order(mock_client_cls: MagicMock) -> None:
+    """cancel_order chiama cancel_order dell'SDK con orderId."""
+    mock_instance = mock_client_cls.return_value
+    mock_instance.cancel_order.return_value = {"status": "CANCELED"}
+
+    client = BinanceClient(_make_settings())
+    result = client.cancel_order("BTCUSDC", "12345")
+
+    mock_instance.cancel_order.assert_called_once_with(
+        symbol="BTCUSDC", orderId="12345",
+    )
+    assert result == {"status": "CANCELED"}

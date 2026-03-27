@@ -122,6 +122,42 @@ class BinanceClient(BaseExchangeClient):
             last_trades=last_trades,
         )
 
+    # ---- Esecuzione ordini ----
+
+    def place_market_order(
+        self, symbol: str, side: str, quantity: float,
+    ) -> dict[str, Any]:
+        if side.upper() == "BUY":
+            result: dict[str, Any] = self._client.order_market_buy(
+                symbol=symbol, quantity=quantity,
+            )
+        else:
+            result = self._client.order_market_sell(
+                symbol=symbol, quantity=quantity,
+            )
+        return result
+
+    def place_limit_order(
+        self, symbol: str, side: str, quantity: float, price: float,
+    ) -> dict[str, Any]:
+        if side.upper() == "BUY":
+            result: dict[str, Any] = self._client.order_limit_buy(
+                symbol=symbol, quantity=quantity, price=str(price),
+                timeInForce="GTC",
+            )
+        else:
+            result = self._client.order_limit_sell(
+                symbol=symbol, quantity=quantity, price=str(price),
+                timeInForce="GTC",
+            )
+        return result
+
+    def cancel_order(self, symbol: str, order_id: str) -> dict[str, Any]:
+        result: dict[str, Any] = self._client.cancel_order(
+            symbol=symbol, orderId=order_id,
+        )
+        return result
+
     # ---- Helper privati ----
 
     def _fetch_candles(self, symbol: str) -> dict[str, Any]:
