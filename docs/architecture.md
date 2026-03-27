@@ -34,9 +34,12 @@ flowchart TD
 
 ### Risk Manager
 
-- Riceve la proposta del `Decision Maker`.
-- Verifica vincoli, coerenza e limiti di rischio.
-- Può approvare, bloccare o richiedere modifiche.
+- Riceve la proposta del `Decision Maker`, il portafoglio, un sottoinsieme dell'analisi di mercato (`market_bias`, `summary`, `risk_notes`), i vincoli operativi e il prezzo corrente.
+- Invia i dati a Gemini 3.1 Pro che produce una valutazione strutturata (`RiskAssessment`).
+- Decisioni possibili: `APPROVE`, `BLOCK`, `REQUEST_ADJUSTMENT`.
+- Non decide la strategia e non esegue ordini.
+- Modello LLM e parametri configurati in `config/llm_models/risk_manager.yaml`.
+- Prompt operativo in `config/prompts/risk_manager.md`.
 
 ### Execution Trader
 
@@ -51,7 +54,7 @@ flowchart TD
 Contiene i 4 agenti dell'MVP e una base comune (`BaseAgent`).
 Ogni agente espone un input strutturato e un output strutturato.
 
-`MarketAnalystAgent` e `DecisionMakerAgent` sono implementati: ricevono un `BaseLlmInterface`, leggono il prompt da disco, inviano i dati al modello e parsano la risposta JSON nei rispettivi contratti (`MarketAnalysis` e `TradeProposal`). Gli altri agenti sono ancora stub (`NotImplementedError`).
+`MarketAnalystAgent`, `DecisionMakerAgent` e `RiskManagerAgent` sono implementati: ricevono un `BaseLlmInterface`, leggono il prompt da disco, inviano i dati al modello e parsano la risposta JSON nei rispettivi contratti (`MarketAnalysis`, `TradeProposal` e `RiskAssessment`). L'`ExecutionTraderAgent` è ancora stub (`NotImplementedError`).
 
 ### `src/core/`
 

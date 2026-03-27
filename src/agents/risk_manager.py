@@ -1,13 +1,54 @@
 from __future__ import annotations
 
+import dataclasses
+from typing import Any
+
 from src.agents.base_agent import BaseAgent
-from src.core.contracts import RiskAssessment, RiskManagerInput
+from src.core.contracts import (
+    RiskAssessment,
+    RiskDecision,
+    RiskManagerInput,
+)
+from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
 
 
 class RiskManagerAgent(BaseAgent[RiskManagerInput, RiskAssessment]):
-    def __init__(self) -> None:
+    def __init__(self, llm: BaseLlmInterface) -> None:
         super().__init__(name="risk_manager", prompt_name="risk_manager.md")
+        self._llm = llm
 
     def run(self, agent_input: RiskManagerInput) -> RiskAssessment:
-        raise NotImplementedError("RiskManagerAgent.run() will be implemented in a later phase.")
+        system_prompt = self.prompt_path.read_text(encoding="utf-8")
 
+        market_analysis_subset = {
+            "market_bias": agent_input.market_analysis.market_bias.value,
+            "summary": agent_input.market_analysis.summary,
+            "risk_notes": agent_input.market_analysis.risk_notes,
+        }
+
+        user_payload: dict[str, Any] = {
+            "proposal": dataclasses.asdict(agent_input.proposal),
+            "portfolio": dataclasses.asdict(agent_input.portfolio),
+            "market_analysis": market_analysis_subset,
+            "constraints": dataclasses.asdict(agent_input.constraints),
+            "current_price": agent_input.current_price,
+        }
+
+        response = self._llm.generate_json(system_prompt, user_payload)
+        return _parse_risk_assessment(response)
+
+
+def _parse_risk_assessment(data: dict[str, Any]) -> RiskAssessment:
+    """Valida e converte la risposta JSON del LLM in RiskAssessment."""
+    required = ("risk_decision", "confidence", "reason")
+    missing = [k for k in required if k not in data]
+    if missing:
+        raise ValueError(f"Campi mancanti nella risposta LLM: {missing}")
+
+    return RiskAssessment(
+        risk_decision=RiskDecision(data["risk_decision"]),
+        confidence=float(data["confidence"]),
+        reason=str(data["reason"]),
+        checks=data.get("checks", []),
+        required_changes=data.get("required_changes", []),
+    )

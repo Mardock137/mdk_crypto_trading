@@ -6,13 +6,15 @@
  │
  ├── 📁 config/                                              # Configurazioni statiche del sistema.
  │    ├── 📁 llm_models/                                     # Configurazione dei modelli IA (model, temperature, max token, ecc.).
- │    │    ├── 📄 market_analyst.yaml                        # Configurazione LLM per il Market Analyst (GPT-5.4).
  │    │    ├── 📄 decision_maker.yaml                        # Configurazione LLM per il Decision Maker (GPT-5.4).
- │    │    └── 📄 README.md
+ │    │    ├── 📄 market_analyst.yaml                        # Configurazione LLM per il Market Analyst (GPT-5.4).
+ │    │    ├── 📄 README.md
+ │    │    └── 📄 risk_manager.yaml                          # Configurazione LLM per il Risk Manager (Gemini 3.1 Pro).
  │    ├── 📁 prompts/                                        # Prompt runtime usati dagli agenti.
- │    │    ├── 📄 market_analyst.md                          # Prompt operativo del Market Analyst.
  │    │    ├── 📄 decision_maker.md                          # Prompt operativo del Decision Maker.
- │    │    └── 📄 README.md
+ │    │    ├── 📄 market_analyst.md                          # Prompt operativo del Market Analyst.
+ │    │    ├── 📄 README.md
+ │    │    └── 📄 risk_manager.md                            # Prompt operativo del Risk Manager.
  │    ├── 📄 symbols.yaml                                    # Simbolo di trading attivo (es. BTCUSDC).
  │    └── 📄 trading.yaml                                    # Regole operative statiche del sistema (es. min_order_usdc).
  │
@@ -44,22 +46,22 @@
  ├── 📁 src/                                                 # Cartella contenente il codice sorgente di MDK Crypto Trading.
  │    ├── 📁 agents/                                         # Agenti del workflow multi-agente.
  │    │    ├── 📄 base_agent.py                              # Base class comune per tutti gli agenti.
- │    │    ├── 📄 market_analyst.py                          # Agente di analisi del mercato.
  │    │    ├── 📄 decision_maker.py                          # Agente che formula la proposta operativa.
- │    │    ├── 📄 risk_manager.py                            # Agente di controllo rischio.
- │    │    └── 📄 execution_trader.py                        # Agente che esegue la proposta approvata.
+ │    │    ├── 📄 execution_trader.py                        # Agente che esegue la proposta approvata.
+ │    │    ├── 📄 market_analyst.py                          # Agente di analisi del mercato.
+ │    │    └── 📄 risk_manager.py                            # Agente di controllo rischio.
  │    ├── 📁 core/                                           # Contratti condivisi e orchestrazione del workflow.
  │    │    ├── 📄 contracts.py                               # Schemi condivisi per input/output degli agenti.
  │    │    ├── 📄 runner.py                                  # Loop operativo ciclico (TradingRunner).
  │    │    └── 📄 workflow.py                                # Orchestratore della catena di agenti.
  │    ├── 📁 integrations/                                   # Integrazione delle API esterne.
- │    │    ├── 📁 llm_interfaces/                            # Interfaccia verso i modelli LLM.
- │    │    │    ├── 📄 base_llm_interface.py                 # Base interface per i provider LLM.
- │    │    │    ├── 📄 openai_interface.py                   # Client LLM per OpenAI (con retry automatico).
- │    │    │    └── 📄 gemini_interface.py                   # Client LLM per Google Gemini (con retry automatico).
- │    │    └── 📁 exchange/                                  # Interfaccia verso gli exchange crypto.
- │    │         ├── 📄 base_exchange_client.py               # Base interface per i client exchange.
- │    │         └── 📄 binance_client.py                     # Client Binance con supporto DEMO/REAL.
+ │    │    ├── 📁 exchange/                                  # Interfaccia verso gli exchange crypto.
+ │    │    │    ├── 📄 base_exchange_client.py               # Base interface per i client exchange.
+ │    │    │    └── 📄 binance_client.py                     # Client Binance con supporto DEMO/REAL.
+ │    │    └── 📁 llm_interfaces/                            # Interfaccia verso i modelli LLM.
+ │    │         ├── 📄 base_llm_interface.py                 # Base interface per i provider LLM.
+ │    │         ├── 📄 gemini_interface.py                   # Client LLM per Google Gemini (con retry automatico).
+ │    │         └── 📄 openai_interface.py                   # Client LLM per OpenAI (con retry automatico).
  │    ├── 📁 utils/                                          # Utility comuni e configurazione tecnica.
  │    │    ├── 📄 config.py                                  # Caricamento variabili d'ambiente, YAML e configurazioni.
  │    │    ├── 📄 event_logger.py                            # Logger JSON strutturato per le decisioni di ogni ciclo.
@@ -70,7 +72,8 @@
  ├── 📁 tests/                                               # Test automatici per tutte le funzioni e i moduli.
  │    ├── 📁 agents/                                         # Test degli agenti.
  │    │    ├── 📄 test_agent_interfaces.py
- │    │    └── 📄 test_decision_maker.py
+ │    │    ├── 📄 test_decision_maker.py
+ │    │    └── 📄 test_risk_manager.py
  │    ├── 📁 core/                                           # Test dei contratti, workflow e runner.
  │    │    ├── 📄 test_contracts.py
  │    │    ├── 📄 test_runner.py

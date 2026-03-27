@@ -44,13 +44,31 @@ symbol: BTCUSDC
 
 Configurazione dei modelli LLM usati dagli agenti. Un file YAML per agente.
 
-**`market_analyst.yaml`:**
+**`market_analyst.yaml`** (provider: OpenAI):
 
 ```yaml
 provider: openai
 model: gpt-5.4
 temperature: 0.2
 max_tokens: 512
+```
+
+**`decision_maker.yaml`** (provider: OpenAI):
+
+```yaml
+provider: openai
+model: gpt-5.4
+temperature: 0.2
+max_tokens: 512
+```
+
+**`risk_manager.yaml`** (provider: Gemini):
+
+```yaml
+provider: gemini
+model: gemini-3.1-pro-preview
+temperature: 0.2
+max_tokens: 2048
 ```
 
 I parametri `temperature` e `max_tokens` vengono passati direttamente al client LLM.
@@ -60,6 +78,8 @@ I parametri `temperature` e `max_tokens` vengono passati direttamente al client 
 Prompt runtime caricati dal codice durante l'esecuzione. Ogni agente ha il suo file markdown.
 
 - `market_analyst.md` — Prompt operativo del Market Analyst
+- `decision_maker.md` — Prompt operativo del Decision Maker
+- `risk_manager.md` — Prompt operativo del Risk Manager
 
 I file in `dev_support/prompts/` sono la versione di progettazione e riferimento umano. Quelli in `config/prompts/` sono la versione usata dal codice.
 

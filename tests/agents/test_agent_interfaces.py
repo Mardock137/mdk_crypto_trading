@@ -21,7 +21,7 @@ def test_agents_expose_expected_prompt_paths() -> None:
     agents = [
         (MarketAnalystAgent(llm=MagicMock()), "market_analyst.md"),
         (DecisionMakerAgent(llm=MagicMock()), "decision_maker.md"),
-        (RiskManagerAgent(), "risk_manager.md"),
+        (RiskManagerAgent(llm=MagicMock()), "risk_manager.md"),
         (ExecutionTraderAgent(), "execution_trader.md"),
     ]
 
