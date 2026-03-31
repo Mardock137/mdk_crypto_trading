@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
 from typing import Any
 
 from src.agents.base_agent import BaseAgent
@@ -19,6 +20,7 @@ class DecisionMakerAgent(BaseAgent[DecisionMakerInput, TradeProposal]):
     def __init__(self, llm: BaseLlmInterface) -> None:
         super().__init__(name="decision_maker", prompt_name="decision_maker.md")
         self._llm = llm
+        self._logger = logging.getLogger(f"mdk_crypto_trading.{self.name}")
 
     def run(self, agent_input: DecisionMakerInput) -> TradeProposal:
         system_prompt = self.prompt_path.read_text(encoding="utf-8")
@@ -32,8 +34,19 @@ class DecisionMakerAgent(BaseAgent[DecisionMakerInput, TradeProposal]):
             "recent_performance": agent_input.recent_performance,
         }
 
-        response = self._llm.generate_json(system_prompt, user_payload)
-        return _parse_trade_proposal(response)
+        max_attempts = 2
+        for attempt in range(1, max_attempts + 1):
+            response = self._llm.generate_json(system_prompt, user_payload)
+            self._logger.debug("Risposta raw LLM: %s", response)
+            try:
+                return _parse_trade_proposal(response)
+            except (ValueError, KeyError) as exc:
+                self._logger.warning(
+                    "Tentativo %d/%d — parsing fallito: %s | Risposta: %s",
+                    attempt, max_attempts, exc, response,
+                )
+                if attempt == max_attempts:
+                    raise
 
 
 def _parse_trade_proposal(data: dict[str, Any]) -> TradeProposal:

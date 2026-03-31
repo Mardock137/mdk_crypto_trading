@@ -8,40 +8,38 @@
  │    ├── 📁 llm_models/                                     # Configurazione dei modelli IA (model, temperature, max token, ecc.).
  │    │    ├── 📄 decision_maker.yaml                        # Configurazione LLM per il Decision Maker (GPT-5.4).
  │    │    ├── 📄 market_analyst.yaml                        # Configurazione LLM per il Market Analyst (GPT-5.4).
- │    │    ├── 📄 README.md
  │    │    └── 📄 risk_manager.yaml                          # Configurazione LLM per il Risk Manager (Gemini 3.1 Pro).
  │    ├── 📁 prompts/                                        # Prompt runtime usati dagli agenti.
  │    │    ├── 📄 decision_maker.md                          # Prompt operativo del Decision Maker.
  │    │    ├── 📄 market_analyst.md                          # Prompt operativo del Market Analyst.
- │    │    ├── 📄 README.md
  │    │    └── 📄 risk_manager.md                            # Prompt operativo del Risk Manager.
  │    ├── 📄 symbols.yaml                                    # Simbolo di trading attivo (es. BTCUSDC).
  │    └── 📄 trading.yaml                                    # Regole operative statiche del sistema (es. min_order_usdc).
  │
  ├── 📁 dev_support/                                         # Materiale di supporto per Chief Mardock e Cursor.
- │    ├── 📁 prompts/                                        # Prompt di progettazione e riferimento umano per gli agenti.
+ │    ├── 📁 prompts/                                        # Prompt di progettazione e riferimento.
  │    │    ├── 📄 market_analyst.md
  │    │    ├── 📄 decision_maker.md
  │    │    ├── 📄 risk_manager.md
  │    │    └── 📄 execution_trader.md
- │    ├── 📄 notes.md
+ │    ├── 📄 notes.md                                        # Appunti liberi di sviluppo.
  │    ├── 📄 to_do_list.md
- │    └── 📄 whiteboard.md
+ │    ├── 📄 verify_connections.py                           # Script di verifica connessioni API (Binance, OpenAI, Gemini).
+ │    └── 📄 whiteboard.md                                   # Lavagna per idee e brainstorming.
  │
  ├── 📁 docs/                                                # Documentazione operativa e tecnica.
  │    ├── 📄 api_endpoints.md                                # Contiene l'elenco degli endpoint API utilizzati.
  │    ├── 📄 architecture.md                                 # Architettura sistema e tech stack.
- │    ├── 📄 config.md                                       #
+ │    ├── 📄 config.md                                       # Guida alla configurazione (.env e config/).
  │    ├── 📄 decision_logic.md                               # Descrive la logica decisionale di MDK Crypto Trading.
- │    ├── 📄 hierarchy_and_roles.md                          #
+ │    ├── 📄 hierarchy_and_roles.md                          # Gerarchia e ruoli dei 4 agenti.
  │    ├── 📄 observability.md                                # Sistema di logging: log testuale e log eventi JSON.
- │    ├── 📄 operational_functions.md                        # Descrive le funzioni operative di MDK Crypto Trading.
  │    └── 📄 repo_structure.md                               # Struttura e spiegazione della repo.
  │
  ├── 📁 logs/                                                # Log operativi (ignorata da git).
- │    ├── 📄 mdk_crypto_trading.log                          # Log testuale con rotazione automatica (5 MB, 5 backup).
- │    └── 📁 events/                                         # Log JSON strutturati per ciclo operativo.
- │         └── 📄 YYYY-MM-DD.jsonl                           # Un file al giorno, una riga JSON per ciclo.
+ │    ├── 📁 events/                                         # Log JSON strutturati per ciclo operativo.
+ │    │    └── 📄 YYYY-MM-DD.jsonl                           # Un file al giorno, una riga JSON per ciclo.
+ │    └── 📄 mdk_crypto_trading.log                          # Log testuale con rotazione automatica (5 MB, 5 backup).
  │
  ├── 📁 src/                                                 # Cartella contenente il codice sorgente di MDK Crypto Trading.
  │    ├── 📁 agents/                                         # Agenti del workflow multi-agente.

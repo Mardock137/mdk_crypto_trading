@@ -14,13 +14,26 @@ from src.integrations.exchange.base_exchange_client import BaseExchangeClient
 
 
 class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
-    def __init__(self, exchange_client: BaseExchangeClient) -> None:
+    def __init__(
+        self,
+        exchange_client: BaseExchangeClient,
+        kill_switch: bool = False,
+    ) -> None:
         super().__init__(name="execution_trader", prompt_name="execution_trader.md")
         self._exchange = exchange_client
+        self._kill_switch = kill_switch
 
     def run(self, agent_input: ExecutionInput) -> ExecutionReport:
         proposal = agent_input.proposal
         risk = agent_input.risk_assessment
+
+        if self._kill_switch:
+            return ExecutionReport(
+                execution_status=ExecutionStatus.NOT_EXECUTED,
+                executed_action=proposal.action,
+                order_type=proposal.order_type,
+                reason="Kill switch attivo: operazione bloccata.",
+            )
 
         if not risk.is_approved:
             return ExecutionReport(

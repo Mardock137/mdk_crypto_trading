@@ -61,6 +61,25 @@ BLOCKED = RiskAssessment(
 )
 
 
+# --- Kill switch attivo ---
+
+def test_kill_switch_blocks_approved_buy() -> None:
+    mock_exchange = MagicMock()
+    proposal = TradeProposal(
+        action=TradeAction.BUY,
+        order_type=OrderType.MARKET,
+        confidence=0.85,
+        reason="segnale forte",
+        details=TradeProposalDetails(quantity=0.001),
+    )
+    agent = ExecutionTraderAgent(exchange_client=mock_exchange, kill_switch=True)
+    report = agent.run(_make_input(proposal, APPROVED))
+
+    assert report.execution_status is ExecutionStatus.NOT_EXECUTED
+    assert "Kill switch" in report.reason
+    mock_exchange.place_market_order.assert_not_called()
+
+
 # --- Proposta non approvata ---
 
 def test_not_approved_returns_not_executed() -> None:

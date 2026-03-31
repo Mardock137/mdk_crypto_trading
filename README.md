@@ -1,41 +1,68 @@
 # MDK Crypto Trading
 
-- **Versione Python utilizzata**: `3.12.10`
-- **Versione MDK Crypto Trading**: `1.0.0`
+- **Python**: `3.12.10`
+- **Versione**: `1.0.0`
 
 ## 📋 Indice
 
-- [ℹ️ Documentazione](#ℹ️-documentazione)
 - [📄 Descrizione](#-descrizione)
-- [🤖 API Integrate](#-api-integrate)
-
-## ℹ️ Documentazione
-
-- Per la **struttura della repo** vedi [docs/repo_structure.md](docs/repo_structure.md)
-- Per la **configurazione (`config/`)** vedi [docs/config.md](docs/config.md)
-- Per l'**architettura** vedi [docs/architecture.md](docs/architecture.md)
-- Per la **lista degli endpoints** vedi [docs/api_endpoints.md](docs/api_endpoints.md)
-- Per la **logica decisionale** vedi [docs/decision_logic.md](docs/decision_logic.md)
-- Per la **lista delle funzioni** vedi [docs/operational_functions.md](docs/operational_functions.md)
-- Per il **sistema di logging eventi e metriche** vedi [docs/observability.md](docs/observability.md)
+- [👥 Agenti e modelli](#-agenti-e-modelli)
+- [🔄 Come funziona](#-come-funziona)
+- [🚀 Come si lancia](#-come-si-lancia)
+- [🤖 API integrate](#-api-integrate)
+- [ℹ️ Documentazione](#ℹ️-documentazione)
 
 ## 📄 Descrizione
 
-MDK Crypto Trading è un sistema multi-agente per il trading spot di criptovalute, pensato per essere strutturato come una vera e propria società di investimenti.
-L'MVP separa il workflow in 4 ruoli distinti:
+MDK Crypto Trading è un sistema autonomo di trading spot su criptovalute, strutturato come una società di investimenti gestita interamente da agenti IA.
 
-- `Market Analyst`: analizza il mercato e produce un segnale strutturato
-- `Decision Maker`: formula una proposta operativa
-- `Risk Manager`: approva, blocca o richiede modifiche
-- `Execution Trader`: esegue solo proposte approvate
+4 agenti collaborano in sequenza: uno analizza il mercato, uno decide l'operazione, uno controlla il rischio e l'ultimo esegue l'ordine su Binance. Il sistema gira in loop continuo a intervalli configurabili, opera in modalità DEMO (Binance Demo Trading) o REAL, e registra ogni decisione in log strutturati JSON.
 
-Il flusso operativo dell'MVP e' lineare:
-`Market Analyst` -> `Decision Maker` -> `Risk Manager` -> `Execution Trader`
+## 👥 Agenti e modelli
 
-## 🤖 API Integrate
+| Agente               | Ruolo                                                                 | Modello        |
+|----------------------|-----------------------------------------------------------------------|----------------|
+| **Market Analyst**   | Analizza indicatori tecnici e genera un segnale di mercato            | GPT-5.4        |
+| **Decision Maker**   | Valuta il segnale e formula una proposta operativa (BUY, SELL, HOLD)  | GPT-5.4        |
+| **Risk Manager**     | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche | Gemini 3.1 Pro |
+| **Execution Trader** | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)        | —              |
 
-Il progetto integra tre famiglie principali di API:
+## 🔄 Come funziona
 
-- **OpenAI API**: usata per le risposte testuali strutturate dei modelli GPT
-- **Gemini API**: usata come provider LLM alternativo per analisi e decisioni
-- **Binance API**: usata per dati di mercato, stato account, ordini aperti, storico trade ed esecuzione ordini
+Ogni ciclo operativo segue questa sequenza:
+
+1. Raccolta dati di mercato e portafoglio da Binance
+2. `Market Analyst` → analisi e segnale
+3. `Decision Maker` → proposta operativa
+4. `Risk Manager` → approvazione o blocco
+5. `Execution Trader` → esecuzione su Binance (solo se approvata)
+6. Log del ciclo completo in `logs/events/`
+
+L'intervallo tra i cicli è configurabile da `.env` (`CYCLE_INTERVAL_SECONDS`).
+
+## 🚀 Come si lancia
+
+```bash
+python -m src.main
+```
+
+Per verificare le connessioni API prima di lanciare:
+
+```bash
+python dev_support/verify_connections.py
+```
+
+## 🤖 API integrate
+
+- **OpenAI API** (`GPT-5.4`): Market Analyst e Decision Maker
+- **Gemini API** (`Gemini 3.1 Pro`): Risk Manager
+- **Binance API**: dati di mercato, portafoglio, ordini aperti, esecuzione ordini (DEMO e REAL)
+
+## ℹ️ Documentazione
+
+- [Struttura della repo](docs/repo_structure.md)
+- [Architettura](docs/architecture.md)
+- [Configurazione](docs/config.md)
+- [Endpoints API](docs/api_endpoints.md)
+- [Sistema di logging](docs/observability.md)
+- [Logica decisionale](docs/decision_logic.md)

@@ -34,6 +34,7 @@ def main() -> None:
         model=ma_config["model"],
         temperature=float(ma_config.get("temperature", 0.7)),
         max_tokens=ma_config.get("max_tokens"),
+        reasoning_effort=ma_config.get("reasoning_effort"),
     )
 
     # Client LLM per il Decision Maker
@@ -42,6 +43,7 @@ def main() -> None:
         model=dm_config["model"],
         temperature=float(dm_config.get("temperature", 0.2)),
         max_tokens=dm_config.get("max_tokens"),
+        reasoning_effort=dm_config.get("reasoning_effort"),
     )
 
     # Client LLM per il Risk Manager
@@ -59,7 +61,10 @@ def main() -> None:
         market_analyst=MarketAnalystAgent(llm=ma_llm),
         decision_maker=DecisionMakerAgent(llm=dm_llm),
         risk_manager=RiskManagerAgent(llm=rm_llm),
-        execution_trader=ExecutionTraderAgent(exchange_client=exchange_client),
+        execution_trader=ExecutionTraderAgent(
+            exchange_client=exchange_client,
+            kill_switch=settings.kill_switch,
+        ),
     )
 
     runner = TradingRunner(

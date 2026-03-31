@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
 from typing import Any
 
 from src.agents.base_agent import BaseAgent
@@ -16,6 +17,7 @@ class RiskManagerAgent(BaseAgent[RiskManagerInput, RiskAssessment]):
     def __init__(self, llm: BaseLlmInterface) -> None:
         super().__init__(name="risk_manager", prompt_name="risk_manager.md")
         self._llm = llm
+        self._logger = logging.getLogger(f"mdk_crypto_trading.{self.name}")
 
     def run(self, agent_input: RiskManagerInput) -> RiskAssessment:
         system_prompt = self.prompt_path.read_text(encoding="utf-8")
@@ -34,8 +36,19 @@ class RiskManagerAgent(BaseAgent[RiskManagerInput, RiskAssessment]):
             "current_price": agent_input.current_price,
         }
 
-        response = self._llm.generate_json(system_prompt, user_payload)
-        return _parse_risk_assessment(response)
+        max_attempts = 2
+        for attempt in range(1, max_attempts + 1):
+            response = self._llm.generate_json(system_prompt, user_payload)
+            self._logger.debug("Risposta raw LLM: %s", response)
+            try:
+                return _parse_risk_assessment(response)
+            except (ValueError, KeyError) as exc:
+                self._logger.warning(
+                    "Tentativo %d/%d — parsing fallito: %s | Risposta: %s",
+                    attempt, max_attempts, exc, response,
+                )
+                if attempt == max_attempts:
+                    raise
 
 
 def _parse_risk_assessment(data: dict[str, Any]) -> RiskAssessment:

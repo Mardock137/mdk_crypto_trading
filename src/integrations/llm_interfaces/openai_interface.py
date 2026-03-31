@@ -32,15 +32,33 @@ class OpenAiInterface(BaseLlmInterface):
         model: str,
         temperature: float = 0.7,
         max_tokens: int | None = None,
+        reasoning_effort: str | None = None,
     ) -> None:
         self._model = model
         self._temperature = temperature
         self._max_tokens = max_tokens
+        self._reasoning_effort = reasoning_effort
         self._client = OpenAI(api_key=api_key)
 
     @property
     def model_name(self) -> str:
         return self._model
+
+    def _build_kwargs(self) -> dict[str, Any]:
+        """Costruisce i kwargs dinamici per chat.completions.create().
+
+        Con reasoning_effort: include reasoning_effort, esclude temperature.
+        Senza reasoning_effort: include temperature, esclude reasoning_effort.
+        max_completion_tokens è sempre incluso se presente.
+        """
+        kwargs: dict[str, Any] = {}
+        if self._reasoning_effort is not None:
+            kwargs["reasoning_effort"] = self._reasoning_effort
+        else:
+            kwargs["temperature"] = self._temperature
+        if self._max_tokens is not None:
+            kwargs["max_completion_tokens"] = self._max_tokens
+        return kwargs
 
     @retry(
         retry=retry_if_exception_type(_RETRYABLE_ERRORS),
@@ -50,14 +68,14 @@ class OpenAiInterface(BaseLlmInterface):
     )
     def generate_text(self, system_prompt: str, user_prompt: str) -> str:
         try:
+            kwargs = self._build_kwargs()
             response = self._client.chat.completions.create(
                 model=self._model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                temperature=self._temperature,
-                max_tokens=self._max_tokens,
+                **kwargs,
             )
             content = (
                 response.choices[0].message.content if response.choices else None
@@ -80,6 +98,7 @@ class OpenAiInterface(BaseLlmInterface):
         user_payload: Mapping[str, Any],
     ) -> dict[str, Any]:
         try:
+            kwargs = self._build_kwargs()
             response = self._client.chat.completions.create(
                 model=self._model,
                 messages=[
@@ -87,8 +106,7 @@ class OpenAiInterface(BaseLlmInterface):
                     {"role": "user", "content": json.dumps(dict(user_payload))},
                 ],
                 response_format={"type": "json_object"},
-                temperature=self._temperature,
-                max_tokens=self._max_tokens,
+                **kwargs,
             )
             raw = (
                 response.choices[0].message.content if response.choices else None

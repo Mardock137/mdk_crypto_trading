@@ -33,7 +33,8 @@ def test_generate_text_calls_chat_completions(mock_openai_cls: MagicMock) -> Non
         {"role": "user", "content": "user prompt"},
     ]
     assert call_kwargs["temperature"] == 0.7
-    assert call_kwargs["max_tokens"] is None
+    assert "max_completion_tokens" not in call_kwargs
+    assert "reasoning_effort" not in call_kwargs
     assert result == "Risposta di test"
 
 
@@ -53,7 +54,8 @@ def test_generate_json_uses_json_response_format(mock_openai_cls: MagicMock) -> 
     call_kwargs = mock_client.chat.completions.create.call_args.kwargs
     assert call_kwargs["response_format"] == {"type": "json_object"}
     assert call_kwargs["temperature"] == 0.7
-    assert call_kwargs["max_tokens"] is None
+    assert "max_completion_tokens" not in call_kwargs
+    assert "reasoning_effort" not in call_kwargs
     assert result == {"risultato": "ok"}
 
 
@@ -72,4 +74,42 @@ def test_custom_temperature_and_max_tokens_are_forwarded(mock_openai_cls: MagicM
 
     call_kwargs = mock_client.chat.completions.create.call_args.kwargs
     assert call_kwargs["temperature"] == 0.2
-    assert call_kwargs["max_tokens"] == 512
+    assert call_kwargs["max_completion_tokens"] == 512
+    assert "reasoning_effort" not in call_kwargs
+
+
+@patch("src.integrations.llm_interfaces.openai_interface.OpenAI")
+def test_reasoning_effort_is_forwarded_when_set(mock_openai_cls: MagicMock) -> None:
+    """Verifica che reasoning_effort venga passato all'API quando configurato."""
+    mock_client = mock_openai_cls.return_value
+    mock_choice = MagicMock()
+    mock_choice.message.content = "ok"
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_client.chat.completions.create.return_value = mock_response
+
+    interface = OpenAiInterface(
+        api_key="fake-key", model="gpt-5.4", reasoning_effort="high",
+    )
+    interface.generate_text("s", "u")
+
+    call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+    assert call_kwargs["reasoning_effort"] == "high"
+    assert "temperature" not in call_kwargs
+
+
+@patch("src.integrations.llm_interfaces.openai_interface.OpenAI")
+def test_reasoning_effort_absent_when_none(mock_openai_cls: MagicMock) -> None:
+    """Verifica che reasoning_effort non venga passato all'API se non configurato."""
+    mock_client = mock_openai_cls.return_value
+    mock_choice = MagicMock()
+    mock_choice.message.content = "ok"
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_client.chat.completions.create.return_value = mock_response
+
+    interface = OpenAiInterface(api_key="fake-key", model="gpt-4o")
+    interface.generate_text("s", "u")
+
+    call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+    assert "reasoning_effort" not in call_kwargs

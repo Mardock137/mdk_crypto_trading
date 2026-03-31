@@ -49,8 +49,9 @@ Configurazione dei modelli LLM usati dagli agenti. Un file YAML per agente.
 ```yaml
 provider: openai
 model: gpt-5.4
+reasoning_effort: low
 temperature: 0.2
-max_tokens: 512
+max_tokens: 2048
 ```
 
 **`decision_maker.yaml`** (provider: OpenAI):
@@ -58,8 +59,9 @@ max_tokens: 512
 ```yaml
 provider: openai
 model: gpt-5.4
+reasoning_effort: high
 temperature: 0.2
-max_tokens: 512
+max_tokens: 2048
 ```
 
 **`risk_manager.yaml`** (provider: Gemini):
@@ -71,7 +73,10 @@ temperature: 0.2
 max_tokens: 2048
 ```
 
-I parametri `temperature` e `max_tokens` vengono passati direttamente al client LLM.
+Note:
+
+- Quando `reasoning_effort` è configurato (solo OpenAI), `temperature` viene ignorata perché GPT-5.4 non li accetta insieme.
+- `max_tokens` limita la lunghezza massima della risposta del modello.
 
 ### `config/prompts/`
 

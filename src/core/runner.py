@@ -61,6 +61,28 @@ class TradingRunner:
         try:
             cycle_input = self._build_cycle_input()
             result = self._workflow.run_cycle(cycle_input)
+            self._logger.info(
+                "Market Analyst → %s (strength: %.2f, confidence: %.2f)",
+                result.market_analysis.market_bias.value,
+                result.market_analysis.signal_strength,
+                result.market_analysis.confidence,
+            )
+            self._logger.info(
+                "Decision Maker → %s %s (confidence: %.2f)",
+                result.trade_proposal.action.value,
+                result.trade_proposal.order_type.value,
+                result.trade_proposal.confidence,
+            )
+            self._logger.info(
+                "Risk Manager → %s (confidence: %.2f)",
+                result.risk_assessment.risk_decision.value,
+                result.risk_assessment.confidence,
+            )
+            self._logger.info(
+                "Execution → %s (%s)",
+                result.execution_report.execution_status.value,
+                result.execution_report.executed_action.value,
+            )
             self._event_logger.log_cycle(
                 symbol=self._symbol,
                 trading_mode=self._settings.trading_mode.value,
