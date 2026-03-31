@@ -8,6 +8,7 @@ import pytest
 
 from src.core.runner import TradingRunner
 from src.utils.config import AppSettings, TradingMode
+from src.utils.memory_manager import MemoryManager
 
 _MOCK_TRADING_CONFIG = {"min_order_usdc": 10.0}
 
@@ -35,6 +36,7 @@ def _make_runner(
     workflow: MagicMock | None = None,
     event_logger: MagicMock | None = None,
     exchange_client: MagicMock | None = None,
+    memory_manager: MemoryManager | None = None,
 ) -> TradingRunner:
     with patch("src.core.runner.load_trading_config", return_value=_MOCK_TRADING_CONFIG):
         return TradingRunner(
@@ -44,6 +46,7 @@ def _make_runner(
             settings=settings or _make_settings(),
             symbol="BTCUSDC",
             exchange_client=exchange_client or MagicMock(),
+            memory_manager=memory_manager or MagicMock(spec=MemoryManager),
         )
 
 

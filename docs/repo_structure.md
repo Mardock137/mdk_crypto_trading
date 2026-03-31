@@ -4,6 +4,9 @@
  │
  ├── 📁 .venv/                                               # Ambiente virtuale con tutte le dipendenze installate.
  │
+ ├── 📁 data/                                                # Dati persistenti del sistema (ignorata da git).
+ │    └── 📁 memory/                                         # Memoria decisionale per simbolo (un file JSONL per coppia).
+ │
  ├── 📁 config/                                              # Configurazioni statiche del sistema.
  │    ├── 📁 llm_models/                                     # Configurazione dei modelli IA (model, temperature, max token, ecc.).
  │    │    ├── 📄 decision_maker.yaml                        # Configurazione LLM per il Decision Maker (GPT-5.4).
@@ -64,7 +67,8 @@
  │    │    ├── 📄 config.py                                  # Caricamento variabili d'ambiente, YAML e configurazioni.
  │    │    ├── 📄 event_logger.py                            # Logger JSON strutturato per le decisioni di ogni ciclo.
  │    │    ├── 📄 indicators.py                              # Indicatori tecnici: RSI, EMA, SMA, MACD.
- │    │    └── 📄 logging_config.py                          # Configurazione centralizzata del logging (console + file).
+ │    │    ├── 📄 logging_config.py                          # Configurazione centralizzata del logging (console + file).
+ │    │    └── 📄 memory_manager.py                          # Persistenza e recupero delle decisioni passate (JSONL) per la memoria del Decision Maker.
  │    └── 📄 main.py                                         # Entry point del sistema: bootstrap e avvio del runner.
  │
  ├── 📁 tests/                                               # Test automatici per tutte le funzioni e i moduli.
@@ -89,7 +93,8 @@
  │    │    ├── 📄 test_config.py
  │    │    ├── 📄 test_event_logger.py
  │    │    ├── 📄 test_indicators.py
- │    │    └── 📄 test_logging_config.py
+ │    │    ├── 📄 test_logging_config.py
+ │    │    └── 📄 test_memory_manager.py
  │    └── 📄 test_main.py
  │
  ├── 📄 .env                                                 # Contiene le chiavi API e variabili d'ambiente riservate.

@@ -16,6 +16,7 @@ from src.utils.config import (
 )
 from src.utils.event_logger import EventLogger
 from src.utils.logging_config import configure_logging
+from src.utils.memory_manager import MemoryManager
 
 
 def main() -> None:
@@ -67,6 +68,8 @@ def main() -> None:
         ),
     )
 
+    memory_manager = MemoryManager()
+
     runner = TradingRunner(
         workflow=workflow,
         event_logger=event_logger,
@@ -74,6 +77,7 @@ def main() -> None:
         settings=settings,
         symbol=symbol,
         exchange_client=exchange_client,
+        memory_manager=memory_manager,
     )
 
     runner.run()

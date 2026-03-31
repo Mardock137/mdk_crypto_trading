@@ -86,6 +86,7 @@ Tutti e 4 gli agenti sono implementati. `MarketAnalystAgent`, `DecisionMakerAgen
 - `indicators.py`: funzioni pure per il calcolo di RSI, EMA, SMA, MACD da una serie di prezzi di chiusura
 - `logging_config.py`: logging su console (Rich) e su file con rotazione automatica (5 MB, 5 backup)
 - `event_logger.py`: log JSON strutturato per le decisioni di ogni ciclo operativo
+- `memory_manager.py`: persistenza e recupero della memoria operativa del sistema (vedi sotto)
 
 Per i dettagli completi sul sistema di logging, vedi `docs/observability.md`.
 
@@ -114,11 +115,27 @@ Il ciclo operativo è gestito da due componenti complementari:
 Il runner:
 
 1. Logga l'avvio e lo stato del kill switch
-2. Ad ogni iterazione: raccoglie dati da Binance → costruisce `TradingCycleInput` → esegue il workflow → logga il risultato
+2. Ad ogni iterazione: raccoglie dati da Binance → legge la memoria storica → costruisce `TradingCycleInput` → esegue il workflow → logga il risultato → salva il ciclo in memoria
 3. In caso di errore: logga l'eccezione, registra l'evento e continua
 4. Su `Ctrl+C`: termina in modo pulito
 
-Il punto di ingresso è `src/main.py`, che fa il bootstrap di tutti i componenti (settings, LLM, exchange client, agenti, workflow, runner) e avvia il loop.
+Il punto di ingresso è `src/main.py`, che fa il bootstrap di tutti i componenti (settings, LLM, exchange client, agenti, workflow, memory manager, runner) e avvia il loop.
+
+## Memoria operativa (MemoryManager)
+
+`MemoryManager` (`src/utils/memory_manager.py`) permette al sistema di ricordare le decisioni passate e passarle al `Decision Maker` ad ogni ciclo.
+
+### Come funziona
+
+- Dopo ogni ciclo completato con successo, il runner salva un record JSONL in `data/memory/{symbol}.jsonl` con: timestamp, azione, tipo ordine, confidenza, motivazione, quantità, prezzo, stato esecuzione, decisione rischio, bias di mercato.
+- Prima di ogni ciclo, il runner legge gli ultimi record e popola tre campi di `TradingCycleInput`:
+  - `ia_memory`: ultime 10 decisioni complete
+  - `performance_summary`: riassunto testuale delle ultime 10 SELL eseguite (profitti/perdite vs BUY precedente)
+  - `recent_performance`: lista semplificata delle ultime 10 decisioni (action, price, execution_status)
+
+### Persistenza
+
+I file `data/memory/` sono esclusi da git (vedi `.gitignore`) e vengono creati automaticamente a runtime. Il `Decision Maker` riceve questi dati come contesto aggiuntivo per prendere decisioni più informate.
 
 ## Configurazione e prompt
 

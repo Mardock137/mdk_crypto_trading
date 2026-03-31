@@ -8,6 +8,7 @@ from src.core.workflow import TradingWorkflow
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
 from src.utils.config import AppSettings, load_trading_config
 from src.utils.event_logger import EventLogger
+from src.utils.memory_manager import MemoryManager
 
 
 class TradingRunner:
@@ -21,6 +22,7 @@ class TradingRunner:
         settings: AppSettings,
         symbol: str,
         exchange_client: BaseExchangeClient,
+        memory_manager: MemoryManager,
     ) -> None:
         self._workflow = workflow
         self._event_logger = event_logger
@@ -28,6 +30,7 @@ class TradingRunner:
         self._settings = settings
         self._symbol = symbol
         self._exchange_client = exchange_client
+        self._memory_manager = memory_manager
         self._trading_config = load_trading_config()
 
     def run(self) -> None:
@@ -91,6 +94,11 @@ class TradingRunner:
                 risk_assessment=result.risk_assessment,
                 execution_report=result.execution_report,
             )
+            self._memory_manager.save_cycle(
+                symbol=self._symbol,
+                result=result,
+                current_price=cycle_input.market_data.price,
+            )
             self._logger.info("Ciclo completato con successo")
         except Exception as exc:
             self._logger.error("Errore durante il ciclo: %s", exc)
@@ -113,4 +121,7 @@ class TradingRunner:
             market_data=market_data,
             portfolio=portfolio,
             constraints=constraints,
+            ia_memory=self._memory_manager.get_memory(self._symbol),
+            performance_summary=self._memory_manager.get_performance_summary(self._symbol),
+            recent_performance=self._memory_manager.get_recent_performance(self._symbol),
         )

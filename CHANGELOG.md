@@ -1,5 +1,16 @@
 # 📋 Changelog
 
+## 1.1.0 — 2026-03-31
+
+### Aggiunto
+
+- `MemoryManager`: nuovo componente che persiste le decisioni di ogni ciclo su file JSONL in `data/memory/{symbol}.jsonl`
+- Il `Decision Maker` riceve ora memoria storica ad ogni ciclo tramite i campi `ia_memory`, `performance_summary` e `recent_performance` di `TradingCycleInput`
+- `performance_summary`: calcola automaticamente profitti e perdite confrontando i prezzi di SELL con i BUY precedenti
+- 6 nuovi test unitari per `MemoryManager` in `tests/utils/test_memory_manager.py`
+
+---
+
 ## 1.0.0 — 2026-03-30
 
 Prima release: MVP completo.
