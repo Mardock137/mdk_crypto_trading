@@ -68,3 +68,4 @@ python dev_support/verify_connections.py
 - [Endpoints API](docs/api_endpoints.md)
 - [Gerarchia e ruoli](docs/hierarchy_and_roles.md)
 - [Logica decisionale](docs/decision_logic.md)
+- [Deploy su Google Compute Engine](docs/deploy.md)

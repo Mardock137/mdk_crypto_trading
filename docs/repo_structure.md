@@ -35,6 +35,7 @@
  │    ├── 📄 architecture.md                                 # Architettura sistema e tech stack.
  │    ├── 📄 config.md                                       # Guida alla configurazione (.env e config/).
  │    ├── 📄 decision_logic.md                               # Descrive la logica decisionale di MDK Crypto Trading.
+ │    ├── 📄 deploy.md                                       # Guida completa al deploy su Google Compute Engine con Docker.
  │    ├── 📄 hierarchy_and_roles.md                          # Gerarchia e ruoli dei 4 agenti.
  │    ├── 📄 observability.md                                # Sistema di logging: log testuale e log eventi JSON.
  │    └── 📄 repo_structure.md                               # Struttura e spiegazione della repo.
@@ -99,9 +100,12 @@
  │    │    └── 📄 test_memory_manager.py
  │    └── 📄 test_main.py
  │
+ ├── 📄 .dockerignore                                         # File e cartelle esclusi dal build context Docker.
  ├── 📄 .env                                                 # Contiene le chiavi API e variabili d'ambiente riservate.
- ├── 📄 .env.example                                         # Contiene un esempio delle variabili d’ambiente in uso.
+ ├── 📄 .env.example                                         # Contiene un esempio delle variabili d'ambiente in uso.
  ├── 📄 .gitignore                                           # Elenco dei file e delle cartelle esclusi dal controllo di versione.
  ├── 📄 CHANGELOG.md                                         # Storico versioni e modifiche del progetto.
+ ├── 📄 docker-compose.yaml                                  # Configurazione Docker Compose per il deploy su GCE.
+ ├── 📄 Dockerfile                                           # Immagine Docker per il container di produzione.
  ├── 📄 README.md                                            # Panoramica, istruzioni e info rapide sul progetto.
  └── 📄 requirements.txt                                     # Elenco delle dipendenze Python e relative versioni.

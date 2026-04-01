@@ -1,6 +1,22 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.3.0 — 2026-04-01
+
+### Aggiunto
+
+- `Dockerfile`: immagine Docker basata su `python:3.12-slim` per il deploy in produzione
+- `docker-compose.yaml`: configurazione del servizio `trading-bot` con volumi persistenti (`logs/`, `data/`) e `restart: unless-stopped`
+- `.dockerignore`: esclude dal build context venv, cache, test, dev_support, docs, log, dati e file sensibili
+- `docs/deploy.md`: guida completa al deploy su Google Compute Engine — creazione VM, installazione Docker, primo avvio, aggiornamenti, comandi utili e troubleshooting
+
+### Modificato
+
+- `docs/repo_structure.md`: aggiornato con i nuovi file (`Dockerfile`, `docker-compose.yaml`, `.dockerignore`, `docs/deploy.md`)
+- `README.md`: aggiunto link a `docs/deploy.md` nella sezione Documentazione
+
+---
+
 ## 1.2.0 — 2026-03-31
 
 ### Aggiunto
