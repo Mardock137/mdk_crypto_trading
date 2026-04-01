@@ -20,6 +20,7 @@ def _make_settings(**overrides: Any) -> AppSettings:
         "cycle_interval_seconds": 60,
         "openai_api_key": None,
         "gemini_api_key": None,
+        "claude_api_key": None,
         "binance_api_key": None,
         "binance_secret_key": None,
         "binance_demo_api_key": None,

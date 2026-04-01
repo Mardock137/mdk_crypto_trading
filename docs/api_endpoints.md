@@ -2,11 +2,16 @@
 
 Documentazioni ufficiali:
 
+- [Anthropic API](https://docs.anthropic.com/en/api)
 - [OpenAI API](https://platform.openai.com/docs/api-reference)
 - [Gemini API](https://ai.google.dev/api)
 - [Binance API](https://binance-docs.github.io/apidocs/spot/en/)
 
 ---
+
+## Anthropic
+
+- `POST https://api.anthropic.com/v1/messages` → Genera una risposta testuale o JSON strutturato da Claude (Messages API). Usato da `AnthropicInterface` con parametro `system` top-level e supporto `output_config` per JSON schema.
 
 ## OpenAI
 

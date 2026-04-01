@@ -10,7 +10,7 @@
  ├── 📁 config/                                              # Configurazioni statiche del sistema.
  │    ├── 📁 llm_models/                                     # Configurazione dei modelli IA (model, temperature, max token, ecc.).
  │    │    ├── 📄 decision_maker.yaml                        # Configurazione LLM per il Decision Maker (GPT-5.4).
- │    │    ├── 📄 market_analyst.yaml                        # Configurazione LLM per il Market Analyst (GPT-5.4).
+ │    │    ├── 📄 market_analyst.yaml                        # Configurazione LLM per il Market Analyst (Claude Sonnet 4.6).
  │    │    └── 📄 risk_manager.yaml                          # Configurazione LLM per il Risk Manager (Gemini 3.1 Pro).
  │    ├── 📁 prompts/                                        # Prompt runtime usati dagli agenti.
  │    │    ├── 📄 decision_maker.md                          # Prompt operativo del Decision Maker.
@@ -27,7 +27,7 @@
  │    │    └── 📄 execution_trader.md
  │    ├── 📄 notes.md                                        # Appunti liberi di sviluppo.
  │    ├── 📄 to_do_list.md
- │    ├── 📄 verify_connections.py                           # Script di verifica connessioni API (Binance, OpenAI, Gemini).
+ │    ├── 📄 verify_connections.py                           # Script di verifica connessioni API (Binance, OpenAI, Gemini, Claude).
  │    └── 📄 whiteboard.md                                   # Lavagna per idee e brainstorming.
  │
  ├── 📁 docs/                                                # Documentazione operativa e tecnica.
@@ -60,6 +60,7 @@
  │    │    │    ├── 📄 base_exchange_client.py               # Base interface per i client exchange.
  │    │    │    └── 📄 binance_client.py                     # Client Binance con supporto DEMO/REAL.
  │    │    └── 📁 llm_interfaces/                            # Interfaccia verso i modelli LLM.
+ │    │         ├── 📄 anthropic_interface.py                # Client LLM per Anthropic Claude (con retry automatico).
  │    │         ├── 📄 base_llm_interface.py                 # Base interface per i provider LLM.
  │    │         ├── 📄 gemini_interface.py                   # Client LLM per Google Gemini (con retry automatico).
  │    │         └── 📄 openai_interface.py                   # Client LLM per OpenAI (con retry automatico).
@@ -86,6 +87,7 @@
  │    │    ├── 📁 exchange/
  │    │    │    └── 📄 test_binance_client.py
  │    │    └── 📁 llm_interfaces/
+ │    │         ├── 📄 test_anthropic_interface.py
  │    │         ├── 📄 test_base_llm_interface.py
  │    │         ├── 📄 test_openai_interface.py
  │    │         └── 📄 test_gemini_interface.py

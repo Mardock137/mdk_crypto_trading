@@ -12,6 +12,7 @@ Contiene chiavi API, modalità di esecuzione e variabili riservate. Mai committa
 | `KILL_SWITCH`             | no           | `1`      | Se `1`, forza tutte le operazioni a HOLD          |
 | `CYCLE_INTERVAL_SECONDS`  | sì           | —        | Secondi tra un ciclo e l'altro                    |
 | `LOG_LEVEL`               | no           | `INFO`   | `DEBUG`, `INFO`, `WARNING`, `ERROR`               |
+| `CLAUDE_API_KEY`          | no           | —        | Chiave API Anthropic (Claude)                     |
 | `OPENAI_API_KEY`          | no           | —        | Chiave API OpenAI                                 |
 | `GEMINI_API_KEY`          | no           | —        | Chiave API Google Gemini                          |
 | `BINANCE_API_KEY`         | in REAL      | —        | Chiave API Binance produzione                     |
@@ -44,12 +45,11 @@ symbol: BTCUSDC
 
 Configurazione dei modelli LLM usati dagli agenti. Un file YAML per agente.
 
-**`market_analyst.yaml`** (provider: OpenAI):
+**`market_analyst.yaml`** (provider: Anthropic):
 
 ```yaml
-provider: openai
-model: gpt-5.4
-reasoning_effort: low
+provider: anthropic
+model: claude-sonnet-4-6
 temperature: 0.2
 max_tokens: 2048
 ```
@@ -75,7 +75,7 @@ max_tokens: 2048
 
 Note:
 
-- Quando `reasoning_effort` è configurato (solo OpenAI), `temperature` viene ignorata perché GPT-5.4 non li accetta insieme.
+- Quando `reasoning_effort` è configurato (solo OpenAI, Decision Maker), `temperature` viene ignorata perché GPT-5.4 non li accetta insieme.
 - `max_tokens` limita la lunghezza massima della risposta del modello.
 
 ### `config/prompts/`

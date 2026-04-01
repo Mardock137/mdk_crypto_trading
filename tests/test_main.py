@@ -14,6 +14,7 @@ _FAKE_SETTINGS = AppSettings(
     cycle_interval_seconds=60,
     openai_api_key="openai-test-key",
     gemini_api_key="gemini-test-key",
+    claude_api_key="claude-test-key",
     binance_api_key=None,
     binance_secret_key=None,
     binance_demo_api_key="demo-key",
@@ -28,6 +29,7 @@ _FAKE_LLM_CONFIG = {"model": "gpt-test", "temperature": 0.2, "max_tokens": 512}
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
 @patch("src.main.GeminiInterface")
+@patch("src.main.AnthropicInterface")
 @patch("src.main.OpenAiInterface")
 @patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
 @patch("src.main.load_symbol_config", return_value="BTCUSDC")
@@ -37,6 +39,7 @@ def test_main_calls_runner_run(
     mock_load_symbol: MagicMock,
     mock_load_llm: MagicMock,
     mock_openai_cls: MagicMock,
+    mock_anthropic_cls: MagicMock,
     mock_gemini_cls: MagicMock,
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
@@ -50,28 +53,55 @@ def test_main_calls_runner_run(
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
 @patch("src.main.GeminiInterface")
+@patch("src.main.AnthropicInterface")
 @patch("src.main.OpenAiInterface")
 @patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
 @patch("src.main.load_symbol_config", return_value="BTCUSDC")
 @patch("src.main.load_settings", return_value=_FAKE_SETTINGS)
-def test_main_creates_openai_interface_twice(
+def test_main_creates_openai_interface_once(
     mock_load_settings: MagicMock,
     mock_load_symbol: MagicMock,
     mock_load_llm: MagicMock,
     mock_openai_cls: MagicMock,
+    mock_anthropic_cls: MagicMock,
     mock_gemini_cls: MagicMock,
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
 ) -> None:
-    """OpenAiInterface deve essere istanziata 2 volte (Market Analyst + Decision Maker)."""
+    """OpenAiInterface deve essere istanziata 1 volta (solo Decision Maker)."""
     main()
 
-    assert mock_openai_cls.call_count == 2
+    mock_openai_cls.assert_called_once()
 
 
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
 @patch("src.main.GeminiInterface")
+@patch("src.main.AnthropicInterface")
+@patch("src.main.OpenAiInterface")
+@patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
+@patch("src.main.load_symbol_config", return_value="BTCUSDC")
+@patch("src.main.load_settings", return_value=_FAKE_SETTINGS)
+def test_main_creates_anthropic_interface_once(
+    mock_load_settings: MagicMock,
+    mock_load_symbol: MagicMock,
+    mock_load_llm: MagicMock,
+    mock_openai_cls: MagicMock,
+    mock_anthropic_cls: MagicMock,
+    mock_gemini_cls: MagicMock,
+    mock_binance_cls: MagicMock,
+    mock_runner_cls: MagicMock,
+) -> None:
+    """AnthropicInterface deve essere istanziata 1 volta (Market Analyst)."""
+    main()
+
+    mock_anthropic_cls.assert_called_once()
+
+
+@patch("src.main.TradingRunner")
+@patch("src.main.BinanceClient")
+@patch("src.main.GeminiInterface")
+@patch("src.main.AnthropicInterface")
 @patch("src.main.OpenAiInterface")
 @patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
 @patch("src.main.load_symbol_config", return_value="BTCUSDC")
@@ -81,6 +111,7 @@ def test_main_creates_gemini_interface_once(
     mock_load_symbol: MagicMock,
     mock_load_llm: MagicMock,
     mock_openai_cls: MagicMock,
+    mock_anthropic_cls: MagicMock,
     mock_gemini_cls: MagicMock,
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
@@ -94,6 +125,7 @@ def test_main_creates_gemini_interface_once(
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
 @patch("src.main.GeminiInterface")
+@patch("src.main.AnthropicInterface")
 @patch("src.main.OpenAiInterface")
 @patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
 @patch("src.main.load_symbol_config", return_value="BTCUSDC")
@@ -103,6 +135,7 @@ def test_main_loads_three_llm_configs(
     mock_load_symbol: MagicMock,
     mock_load_llm: MagicMock,
     mock_openai_cls: MagicMock,
+    mock_anthropic_cls: MagicMock,
     mock_gemini_cls: MagicMock,
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
@@ -120,6 +153,7 @@ def test_main_loads_three_llm_configs(
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
 @patch("src.main.GeminiInterface")
+@patch("src.main.AnthropicInterface")
 @patch("src.main.OpenAiInterface")
 @patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
 @patch("src.main.load_symbol_config", return_value="BTCUSDC")
@@ -129,6 +163,7 @@ def test_main_creates_binance_client_with_settings(
     mock_load_symbol: MagicMock,
     mock_load_llm: MagicMock,
     mock_openai_cls: MagicMock,
+    mock_anthropic_cls: MagicMock,
     mock_gemini_cls: MagicMock,
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,

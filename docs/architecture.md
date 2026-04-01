@@ -18,7 +18,7 @@ flowchart TD
 ### Market Analyst
 
 - Riceve lo snapshot di mercato completo (prezzo, volume, order book, candele, indicatori tecnici).
-- Invia i dati a GPT-5.4 che produce un'analisi strutturata (`MarketAnalysis`).
+- Invia i dati a Claude Sonnet 4.6 che produce un'analisi strutturata (`MarketAnalysis`).
 - Non decide direttamente l'operazione.
 - Modello LLM e parametri configurati in `config/llm_models/market_analyst.yaml`.
 - Prompt operativo in `config/prompts/market_analyst.md`.
@@ -68,7 +68,7 @@ Tutti e 4 gli agenti sono implementati. `MarketAnalystAgent`, `DecisionMakerAgen
 
 ### `src/integrations/`
 
-- `llm_interfaces/`: interfaccia astratta (`BaseLlmInterface`) e implementazioni per OpenAI (`OpenAiInterface`) e Gemini (`GeminiInterface`), con retry automatico via `tenacity`. Supportano `temperature` e `max_tokens` configurabili.
+- `llm_interfaces/`: interfaccia astratta (`BaseLlmInterface`) e implementazioni per Anthropic (`AnthropicInterface`), OpenAI (`OpenAiInterface`) e Gemini (`GeminiInterface`), con retry automatico via `tenacity`. Supportano `temperature` e `max_tokens` configurabili.
 - `exchange/`: interfaccia astratta (`BaseExchangeClient`) e implementazione per Binance (`BinanceClient`), con supporto modalità DEMO e REAL.
 
 `BinanceClient` espone:
@@ -144,6 +144,6 @@ I file `data/memory/` sono esclusi da git (vedi `.gitignore`) e vengono creati a
 - Le configurazioni dei modelli LLM (provider, model, temperature, max_tokens) vivono in `config/llm_models/`.
 - Il simbolo di trading attivo è in `config/symbols.yaml`.
 - Le regole operative (es. `min_order_usdc`) vivono in `config/trading.yaml`.
-- I segreti (API key, URL, modalità) vivono nel `.env`.
+- I segreti (API key, URL, modalità) vivono nel `.env`. Le chiavi attive sono `CLAUDE_API_KEY` (Market Analyst), `OPENAI_API_KEY` (Decision Maker) e `GEMINI_API_KEY` (Risk Manager).
 
 Per i dettagli, vedi `docs/config.md`.

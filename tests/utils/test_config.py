@@ -19,6 +19,7 @@ def test_load_settings_reads_required_values() -> None:
             "CYCLE_INTERVAL_SECONDS": "7200",
             "OPENAI_API_KEY": "openai-key",
             "GEMINI_API_KEY": "gemini-key",
+            "CLAUDE_API_KEY": "claude-key",
         }
     )
 
@@ -27,6 +28,7 @@ def test_load_settings_reads_required_values() -> None:
     assert settings.cycle_interval_seconds == 7200
     assert settings.openai_api_key == "openai-key"
     assert settings.gemini_api_key == "gemini-key"
+    assert settings.claude_api_key == "claude-key"
 
 
 def test_load_settings_requires_trading_mode() -> None:

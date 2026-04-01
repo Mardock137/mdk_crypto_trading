@@ -1,7 +1,7 @@
 # MDK Crypto Trading
 
 - **Python**: `3.12.10`
-- **Versione**: `1.1.0`
+- **Versione**: `1.2.0`
 
 ## 📋 Indice
 
@@ -20,12 +20,12 @@ MDK Crypto Trading è un sistema autonomo di trading spot su criptovalute, strut
 
 ## 👥 Agenti e modelli
 
-| Agente               | Ruolo                                                                 | Modello        |
-|----------------------|-----------------------------------------------------------------------|----------------|
-| **Market Analyst**   | Analizza indicatori tecnici e genera un segnale di mercato            | GPT-5.4        |
-| **Decision Maker**   | Valuta il segnale e formula una proposta operativa (BUY, SELL, HOLD)  | GPT-5.4        |
-| **Risk Manager**     | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche | Gemini 3.1 Pro |
-| **Execution Trader** | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)        | —              |
+| Agente               | Ruolo                                                                 | Modello           |
+|----------------------|-----------------------------------------------------------------------|-------------------|
+| **Market Analyst**   | Analizza indicatori tecnici e genera un segnale di mercato            | Claude Sonnet 4.6 |
+| **Decision Maker**   | Valuta il segnale e formula una proposta operativa (BUY, SELL, HOLD)  | GPT-5.4           |
+| **Risk Manager**     | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche | Gemini 3.1 Pro    |
+| **Execution Trader** | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)        | —                 |
 
 ## 🔄 Come funziona
 
@@ -54,7 +54,8 @@ python dev_support/verify_connections.py
 
 ## 🤖 API integrate
 
-- **OpenAI API** (`GPT-5.4`): Market Analyst e Decision Maker
+- **Anthropic API** (`Claude Sonnet 4.6`): Market Analyst
+- **OpenAI API** (`GPT-5.4`): Decision Maker
 - **Gemini API** (`Gemini 3.1 Pro`): Risk Manager
 - **Binance API**: dati di mercato, portafoglio, ordini aperti, esecuzione ordini (DEMO e REAL)
 
@@ -63,6 +64,7 @@ python dev_support/verify_connections.py
 - [Struttura della repo](docs/repo_structure.md)
 - [Architettura](docs/architecture.md)
 - [Configurazione](docs/config.md)
-- [Endpoints API](docs/api_endpoints.md)
 - [Sistema di logging](docs/observability.md)
+- [Endpoints API](docs/api_endpoints.md)
+- [Gerarchia e ruoli](docs/hierarchy_and_roles.md)
 - [Logica decisionale](docs/decision_logic.md)

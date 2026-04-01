@@ -22,6 +22,7 @@ class AppSettings:
     cycle_interval_seconds: int
     openai_api_key: str | None
     gemini_api_key: str | None
+    claude_api_key: str | None
     binance_api_key: str | None
     binance_secret_key: str | None
     binance_demo_api_key: str | None
@@ -51,6 +52,7 @@ def load_settings(
         cycle_interval_seconds=cycle_interval_seconds,
         openai_api_key=env.get("OPENAI_API_KEY"),
         gemini_api_key=env.get("GEMINI_API_KEY"),
+        claude_api_key=env.get("CLAUDE_API_KEY"),
         binance_api_key=env.get("BINANCE_API_KEY"),
         binance_secret_key=env.get("BINANCE_SECRET_KEY"),
         binance_demo_api_key=env.get("BINANCE_DEMO_API_KEY"),

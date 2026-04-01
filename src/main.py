@@ -7,6 +7,7 @@ from src.agents.risk_manager import RiskManagerAgent
 from src.core.runner import TradingRunner
 from src.core.workflow import TradingWorkflow
 from src.integrations.exchange.binance_client import BinanceClient
+from src.integrations.llm_interfaces.anthropic_interface import AnthropicInterface
 from src.integrations.llm_interfaces.gemini_interface import GeminiInterface
 from src.integrations.llm_interfaces.openai_interface import OpenAiInterface
 from src.utils.config import (
@@ -30,12 +31,11 @@ def main() -> None:
     rm_config = load_llm_model_config("config/llm_models/risk_manager.yaml")
 
     # Client LLM per il Market Analyst
-    ma_llm = OpenAiInterface(
-        api_key=settings.openai_api_key or "",
+    ma_llm = AnthropicInterface(
+        api_key=settings.claude_api_key or "",
         model=ma_config["model"],
         temperature=float(ma_config.get("temperature", 0.7)),
         max_tokens=ma_config.get("max_tokens"),
-        reasoning_effort=ma_config.get("reasoning_effort"),
     )
 
     # Client LLM per il Decision Maker
