@@ -1,13 +1,14 @@
 # Guida al Deploy su Google Compute Engine
 
 MDK Crypto Trading gira in loop continuo 24/7. La soluzione scelta è una VM Google Compute Engine con Docker Compose.
+Per connettersi via SSH: `gcloud compute ssh mdk-crypto-trading --zone=europe-west1-b`
 
 ---
 
 ## Prerequisiti
 
 - Account Google Cloud Platform con billing attivato
-- `gcloud` CLI installato sul PC locale ([scarica qui](https://cloud.google.com/sdk/docs/install))
+- `gcloud` CLI installato sul PC locale ([scarica qui](https://cloud.google.com/sdk/docs/install)) — dopo l'installazione, lanciare `gcloud init` per autenticarsi e selezionare il progetto
 - Repo GitHub aggiornata con tutti i file di produzione
 - Chiavi API pronte: Binance, OpenAI, Gemini, Anthropic
 
@@ -21,17 +22,16 @@ MDK Crypto Trading gira in loop continuo 24/7. La soluzione scelta è una VM Goo
 2. Menu → **Compute Engine** → **Istanze VM** → **Crea istanza**
 3. Configura:
    - Nome: `mdk-crypto-trading`
-   - Regione: `us-central1`, Zona: `us-central1-a` (free tier)
-   - Tipo di macchina: `e2-micro` (0.25 vCPU, 1 GB RAM — free tier)
-   - Sistema operativo: Ubuntu 24.04 LTS
-   - Disco: 10 GB standard (free tier)
+   - Regione: `europe-west1`, Zona: `europe-west1-b`
+   - Tipo di macchina: serie **E2**, poi **e2-micro** (0.25 vCPU, 1 GB RAM)
+   - Disco di avvio: clicca **Cambia** → Ubuntu 24.04 LTS, 10 GB, disco permanente standard
 4. Clicca **Crea**
 
 ### Opzione B — `gcloud` CLI (da terminale locale)
 
 ```bash
 gcloud compute instances create mdk-crypto-trading \
-  --zone=us-central1-a \
+  --zone=europe-west1-b \
   --machine-type=e2-micro \
   --image-family=ubuntu-2404-lts \
   --image-project=ubuntu-os-cloud \
@@ -39,23 +39,28 @@ gcloud compute instances create mdk-crypto-trading \
   --boot-disk-type=pd-standard
 ```
 
+> **Nota regione**: la VM deve essere in Europa (`europe-west1`). Binance blocca le connessioni dagli Stati Uniti, quindi regioni come `us-central1` non funzionano.
 > **Nota firewall**: il bot fa solo chiamate in uscita verso Binance e le API AI. Non serve aprire nessuna porta in entrata.
 
 ---
 
 ## 2. Accesso SSH alla VM
 
-### Da Google Cloud Console
+### Da `gcloud` CLI (raccomandato — più stabile)
+
+```bash
+gcloud compute ssh mdk-crypto-trading --zone=europe-west1-b
+```
+
+La prima volta gcloud genera automaticamente le chiavi SSH. Se chiede una passphrase, premere Invio per lasciarla vuota.
+
+### Da Google Cloud Console (alternativa via browser)
 
 1. Menu → **Compute Engine** → **Istanze VM**
 2. Clicca su **SSH** accanto alla VM `mdk-crypto-trading`
 3. Si apre un terminale browser direttamente sulla VM
 
-### Da `gcloud` CLI
-
-```bash
-gcloud compute ssh mdk-crypto-trading --zone=us-central1-a
-```
+> **Nota**: la sessione SSH via browser può essere instabile. Se crasha frequentemente, usare `gcloud` CLI dal terminale locale.
 
 ---
 
@@ -236,6 +241,10 @@ Hai bisogno di riaprire la sessione SSH dopo aver aggiunto l'utente al gruppo `d
 exit
 # riaccedi via SSH
 ```
+
+### Errore Binance "Service unavailable from a restricted location"
+
+La VM si trova in una regione bloccata da Binance (es. Stati Uniti). Bisogna ricreare la VM in una regione europea come `europe-west1` (Belgio). Vedi sezione 1.
 
 ### Il bot non si connette a Binance o alle API AI
 
