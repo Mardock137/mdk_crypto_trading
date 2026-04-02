@@ -27,7 +27,7 @@
  │    │    └── 📄 execution_trader.md
  │    ├── 📄 notes.md                                        # Appunti liberi di sviluppo.
  │    ├── 📄 to_do_list.md
- │    ├── 📄 verify_connections.py                           # Script di verifica connessioni API (Binance, OpenAI, Gemini, Claude).
+ │    ├── 📄 verify_connections.py                           # Script di verifica connessioni API (Binance, OpenAI, Gemini, Claude, Telegram).
  │    └── 📄 whiteboard.md                                   # Lavagna per idee e brainstorming.
  │
  ├── 📁 docs/                                                # Documentazione operativa e tecnica.
@@ -70,7 +70,8 @@
  │    │    ├── 📄 event_logger.py                            # Logger JSON strutturato per le decisioni di ogni ciclo.
  │    │    ├── 📄 indicators.py                              # Indicatori tecnici: RSI, EMA, SMA, MACD.
  │    │    ├── 📄 logging_config.py                          # Configurazione centralizzata del logging (console + file).
- │    │    └── 📄 memory_manager.py                          # Persistenza e recupero delle decisioni passate (JSONL) per la memoria del Decision Maker.
+ │    │    ├── 📄 memory_manager.py                          # Persistenza e recupero delle decisioni passate (JSONL) per la memoria del Decision Maker.
+ │    │    └── 📄 telegram_notifier.py                       # Notifiche Telegram opzionali (avvio/stop, ordini eseguiti, errori).
  │    └── 📄 main.py                                         # Entry point del sistema: bootstrap e avvio del runner.
  │
  ├── 📁 tests/                                               # Test automatici per tutte le funzioni e i moduli.
@@ -97,7 +98,8 @@
  │    │    ├── 📄 test_event_logger.py
  │    │    ├── 📄 test_indicators.py
  │    │    ├── 📄 test_logging_config.py
- │    │    └── 📄 test_memory_manager.py
+ │    │    ├── 📄 test_memory_manager.py
+ │    │    └── 📄 test_telegram_notifier.py
  │    └── 📄 test_main.py
  │
  ├── 📄 .dockerignore                                         # File e cartelle esclusi dal build context Docker.

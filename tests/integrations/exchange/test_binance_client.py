@@ -24,6 +24,8 @@ def _make_settings(**overrides: Any) -> AppSettings:
         "binance_demo_secret_key": "demo-secret",
         "binance_demo_base_url": "https://demo-api.binance.com/api",
         "log_level": "INFO",
+        "telegram_bot_token": None,
+        "telegram_chat_id": None,
     }
     defaults.update(overrides)
     return AppSettings(**defaults)

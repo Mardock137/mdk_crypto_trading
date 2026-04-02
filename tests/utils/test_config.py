@@ -20,6 +20,8 @@ def test_load_settings_reads_required_values() -> None:
             "OPENAI_API_KEY": "openai-key",
             "GEMINI_API_KEY": "gemini-key",
             "CLAUDE_API_KEY": "claude-key",
+            "TELEGRAM_BOT_TOKEN": "tg-token",
+            "TELEGRAM_CHAT_ID": "tg-chat",
         }
     )
 
@@ -29,6 +31,21 @@ def test_load_settings_reads_required_values() -> None:
     assert settings.openai_api_key == "openai-key"
     assert settings.gemini_api_key == "gemini-key"
     assert settings.claude_api_key == "claude-key"
+    assert settings.telegram_bot_token == "tg-token"
+    assert settings.telegram_chat_id == "tg-chat"
+
+
+def test_load_settings_telegram_defaults_to_none() -> None:
+    """Se le variabili Telegram non sono presenti, devono essere None."""
+    settings = load_settings(
+        {
+            "TRADING_MODE": "DEMO",
+            "CYCLE_INTERVAL_SECONDS": "7200",
+        }
+    )
+
+    assert settings.telegram_bot_token is None
+    assert settings.telegram_chat_id is None
 
 
 def test_load_settings_requires_trading_mode() -> None:

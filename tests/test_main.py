@@ -21,11 +21,14 @@ _FAKE_SETTINGS = AppSettings(
     binance_demo_secret_key="demo-secret",
     binance_demo_base_url="https://demo-api.binance.com/api",
     log_level="INFO",
+    telegram_bot_token="tg-token-test",
+    telegram_chat_id="tg-chat-test",
 )
 
 _FAKE_LLM_CONFIG = {"model": "gpt-test", "temperature": 0.2, "max_tokens": 512}
 
 
+@patch("src.main.TelegramNotifier")
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
 @patch("src.main.GeminiInterface")
@@ -43,6 +46,7 @@ def test_main_calls_runner_run(
     mock_gemini_cls: MagicMock,
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
+    mock_telegram_cls: MagicMock,
 ) -> None:
     """main() deve costruire il runner e chiamare run()."""
     main()
@@ -50,6 +54,7 @@ def test_main_calls_runner_run(
     mock_runner_cls.return_value.run.assert_called_once()
 
 
+@patch("src.main.TelegramNotifier")
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
 @patch("src.main.GeminiInterface")
@@ -67,6 +72,7 @@ def test_main_creates_openai_interface_once(
     mock_gemini_cls: MagicMock,
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
+    mock_telegram_cls: MagicMock,
 ) -> None:
     """OpenAiInterface deve essere istanziata 1 volta (solo Decision Maker)."""
     main()
@@ -74,6 +80,7 @@ def test_main_creates_openai_interface_once(
     mock_openai_cls.assert_called_once()
 
 
+@patch("src.main.TelegramNotifier")
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
 @patch("src.main.GeminiInterface")
@@ -91,6 +98,7 @@ def test_main_creates_anthropic_interface_once(
     mock_gemini_cls: MagicMock,
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
+    mock_telegram_cls: MagicMock,
 ) -> None:
     """AnthropicInterface deve essere istanziata 1 volta (Market Analyst)."""
     main()
@@ -98,6 +106,7 @@ def test_main_creates_anthropic_interface_once(
     mock_anthropic_cls.assert_called_once()
 
 
+@patch("src.main.TelegramNotifier")
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
 @patch("src.main.GeminiInterface")
@@ -115,6 +124,7 @@ def test_main_creates_gemini_interface_once(
     mock_gemini_cls: MagicMock,
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
+    mock_telegram_cls: MagicMock,
 ) -> None:
     """GeminiInterface deve essere istanziata 1 volta (Risk Manager)."""
     main()
@@ -122,6 +132,7 @@ def test_main_creates_gemini_interface_once(
     mock_gemini_cls.assert_called_once()
 
 
+@patch("src.main.TelegramNotifier")
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
 @patch("src.main.GeminiInterface")
@@ -139,6 +150,7 @@ def test_main_loads_three_llm_configs(
     mock_gemini_cls: MagicMock,
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
+    mock_telegram_cls: MagicMock,
 ) -> None:
     """load_llm_model_config deve essere chiamata 3 volte (MA, DM, RM)."""
     main()
@@ -150,6 +162,7 @@ def test_main_loads_three_llm_configs(
     assert any("risk_manager" in p for p in paths_called)
 
 
+@patch("src.main.TelegramNotifier")
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
 @patch("src.main.GeminiInterface")
@@ -167,8 +180,38 @@ def test_main_creates_binance_client_with_settings(
     mock_gemini_cls: MagicMock,
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
+    mock_telegram_cls: MagicMock,
 ) -> None:
     """BinanceClient deve essere istanziato con le settings caricate."""
     main()
 
     mock_binance_cls.assert_called_once_with(_FAKE_SETTINGS)
+
+
+@patch("src.main.TelegramNotifier")
+@patch("src.main.TradingRunner")
+@patch("src.main.BinanceClient")
+@patch("src.main.GeminiInterface")
+@patch("src.main.AnthropicInterface")
+@patch("src.main.OpenAiInterface")
+@patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
+@patch("src.main.load_symbol_config", return_value="BTCUSDC")
+@patch("src.main.load_settings", return_value=_FAKE_SETTINGS)
+def test_main_creates_telegram_notifier(
+    mock_load_settings: MagicMock,
+    mock_load_symbol: MagicMock,
+    mock_load_llm: MagicMock,
+    mock_openai_cls: MagicMock,
+    mock_anthropic_cls: MagicMock,
+    mock_gemini_cls: MagicMock,
+    mock_binance_cls: MagicMock,
+    mock_runner_cls: MagicMock,
+    mock_telegram_cls: MagicMock,
+) -> None:
+    """TelegramNotifier deve essere istanziato con token e chat_id dalle settings."""
+    main()
+
+    mock_telegram_cls.assert_called_once_with(
+        bot_token="tg-token-test",
+        chat_id="tg-chat-test",
+    )

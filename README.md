@@ -1,7 +1,7 @@
 # MDK Crypto Trading
 
 - **Python**: `3.12.10`
-- **Versione**: `1.3.0`
+- **Versione**: `1.4.0`
 
 ## 📋 Indice
 
@@ -58,6 +58,7 @@ python dev_support/verify_connections.py
 - **OpenAI API** (`GPT-5.4`): Decision Maker
 - **Gemini API** (`Gemini 3.1 Pro`): Risk Manager
 - **Binance API**: dati di mercato, portafoglio, ordini aperti, esecuzione ordini (DEMO e REAL)
+- **Telegram Bot API** (opzionale): notifiche in tempo reale su ordini eseguiti, errori e avvio/stop del bot
 
 ## ℹ️ Documentazione
 

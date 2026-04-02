@@ -87,6 +87,7 @@ Tutti e 4 gli agenti sono implementati. `MarketAnalystAgent`, `DecisionMakerAgen
 - `logging_config.py`: logging su console (Rich) e su file con rotazione automatica (5 MB, 5 backup)
 - `event_logger.py`: log JSON strutturato per le decisioni di ogni ciclo operativo
 - `memory_manager.py`: persistenza e recupero della memoria operativa del sistema (vedi sotto)
+- `telegram_notifier.py`: notifiche Telegram opzionali via Bot API — avvio/stop del bot, ordini eseguiti, errori nei cicli
 
 Per i dettagli completi sul sistema di logging, vedi `docs/observability.md`.
 

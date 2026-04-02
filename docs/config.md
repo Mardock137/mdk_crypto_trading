@@ -20,6 +20,8 @@ Contiene chiavi API, modalità di esecuzione e variabili riservate. Mai committa
 | `BINANCE_DEMO_API_KEY`    | in DEMO      | —        | Chiave API Binance Demo Trading                   |
 | `BINANCE_DEMO_SECRET_KEY` | in DEMO      | —        | Secret Binance Demo Trading                       |
 | `BINANCE_DEMO_BASE_URL`   | in DEMO      | —        | URL Binance Demo (`https://demo-api.binance.com`) |
+| `TELEGRAM_BOT_TOKEN`      | no           | —        | Token del bot Telegram (notifiche opzionali)      |
+| `TELEGRAM_CHAT_ID`        | no           | —        | ID della chat Telegram di destinazione            |
 
 Vedi `.env.example` per un template completo.
 

@@ -1,6 +1,27 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.4.0 — 2026-04-02
+
+### Aggiunto
+
+- `TelegramNotifier` (`src/utils/telegram_notifier.py`): nuovo componente per l'invio di notifiche Telegram tramite Bot API. Gestione errori silenziosa — nessuna eccezione propagata al bot in caso di problemi di rete o configurazione assente
+- Notifiche integrate nel `TradingRunner` su 3 eventi: avvio del bot, stop (`Ctrl+C`), ordine eseguito (con dettagli: azione, tipo, quantità, prezzo, valore, confidenza) ed errore nel ciclo
+- `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` aggiunti ad `AppSettings`, `load_settings()` e `.env.example` (entrambi opzionali)
+- Test 7 (Telegram) in `dev_support/verify_connections.py`
+- 6 nuovi test unitari in `tests/utils/test_telegram_notifier.py`
+- 5 nuovi test nel runner (`tests/core/test_runner.py`): avvio, stop, errore, ordine eseguito, ordine non eseguito
+- 1 nuovo test in `tests/test_main.py`: verifica che `TelegramNotifier` sia istanziato con le credenziali corrette
+- 2 nuovi test in `tests/utils/test_config.py`: lettura variabili Telegram e default a `None` se assenti
+
+### Modificato
+
+- `src/core/runner.py`: aggiunto parametro opzionale `telegram_notifier: TelegramNotifier | None`
+- `src/main.py`: bootstrap di `TelegramNotifier` e passaggio al runner
+- Documentazione aggiornata: `config.md`, `repo_structure.md`, `architecture.md`, `README.md`
+
+---
+
 ## 1.3.0 — 2026-04-01
 
 ### Aggiunto

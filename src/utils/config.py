@@ -29,6 +29,8 @@ class AppSettings:
     binance_demo_secret_key: str | None
     binance_demo_base_url: str | None
     log_level: str
+    telegram_bot_token: str | None
+    telegram_chat_id: str | None
 
 
 def load_settings(
@@ -59,6 +61,8 @@ def load_settings(
         binance_demo_secret_key=env.get("BINANCE_DEMO_SECRET_KEY"),
         binance_demo_base_url=env.get("BINANCE_DEMO_BASE_URL"),
         log_level=env.get("LOG_LEVEL", "INFO"),
+        telegram_bot_token=env.get("TELEGRAM_BOT_TOKEN"),
+        telegram_chat_id=env.get("TELEGRAM_CHAT_ID"),
     )
 
 

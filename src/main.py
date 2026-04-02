@@ -18,6 +18,7 @@ from src.utils.config import (
 from src.utils.event_logger import EventLogger
 from src.utils.logging_config import configure_logging
 from src.utils.memory_manager import MemoryManager
+from src.utils.telegram_notifier import TelegramNotifier
 
 
 def main() -> None:
@@ -70,6 +71,11 @@ def main() -> None:
 
     memory_manager = MemoryManager()
 
+    telegram_notifier = TelegramNotifier(
+        bot_token=settings.telegram_bot_token,
+        chat_id=settings.telegram_chat_id,
+    )
+
     runner = TradingRunner(
         workflow=workflow,
         event_logger=event_logger,
@@ -78,6 +84,7 @@ def main() -> None:
         symbol=symbol,
         exchange_client=exchange_client,
         memory_manager=memory_manager,
+        telegram_notifier=telegram_notifier,
     )
 
     runner.run()

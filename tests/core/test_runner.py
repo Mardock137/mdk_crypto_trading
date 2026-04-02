@@ -6,9 +6,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.core.contracts import (
+    ExecutionReport,
+    ExecutionStatus,
+    OrderType,
+    TradeAction,
+    TradeProposal,
+    TradeProposalDetails,
+)
 from src.core.runner import TradingRunner
 from src.utils.config import AppSettings, TradingMode
 from src.utils.memory_manager import MemoryManager
+from src.utils.telegram_notifier import TelegramNotifier
 
 _MOCK_TRADING_CONFIG = {"min_order_usdc": 10.0}
 
@@ -27,6 +36,8 @@ def _make_settings(**overrides: Any) -> AppSettings:
         "binance_demo_secret_key": None,
         "binance_demo_base_url": None,
         "log_level": "INFO",
+        "telegram_bot_token": None,
+        "telegram_chat_id": None,
     }
     defaults.update(overrides)
     return AppSettings(**defaults)
@@ -38,6 +49,7 @@ def _make_runner(
     event_logger: MagicMock | None = None,
     exchange_client: MagicMock | None = None,
     memory_manager: MemoryManager | None = None,
+    telegram_notifier: TelegramNotifier | None = None,
 ) -> TradingRunner:
     with patch("src.core.runner.load_trading_config", return_value=_MOCK_TRADING_CONFIG):
         return TradingRunner(
@@ -48,6 +60,7 @@ def _make_runner(
             symbol="BTCUSDC",
             exchange_client=exchange_client or MagicMock(),
             memory_manager=memory_manager or MagicMock(spec=MemoryManager),
+            telegram_notifier=telegram_notifier,
         )
 
 
@@ -115,3 +128,91 @@ def test_build_cycle_input_calls_exchange_client(mock_sleep: MagicMock) -> None:
 
     mock_exchange.get_market_snapshot.assert_called_with("BTCUSDC")
     mock_exchange.get_portfolio_state.assert_called_with("BTCUSDC")
+
+
+# ---------- Notifiche Telegram ----------
+
+
+@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
+def test_run_sends_startup_notification(mock_sleep: MagicMock) -> None:
+    """Il runner deve inviare una notifica di avvio."""
+    mock_notifier = MagicMock(spec=TelegramNotifier)
+    runner = _make_runner(telegram_notifier=mock_notifier)
+
+    runner.run()
+
+    assert mock_notifier.send_message.call_count >= 1
+    first_call_text: str = mock_notifier.send_message.call_args_list[0].args[0]
+    assert "AVVIATO" in first_call_text
+
+
+@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
+def test_run_sends_stop_notification(mock_sleep: MagicMock) -> None:
+    """Il runner deve inviare una notifica di stop su KeyboardInterrupt."""
+    mock_notifier = MagicMock(spec=TelegramNotifier)
+    runner = _make_runner(telegram_notifier=mock_notifier)
+
+    runner.run()
+
+    texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
+    assert any("FERMATO" in t for t in texts)
+
+
+@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
+def test_run_sends_error_notification_on_exception(mock_sleep: MagicMock) -> None:
+    """Su errore nel ciclo, il runner deve inviare una notifica Telegram."""
+    mock_notifier = MagicMock(spec=TelegramNotifier)
+    mock_workflow = MagicMock()
+    mock_workflow.run_cycle.side_effect = RuntimeError("boom")
+    runner = _make_runner(workflow=mock_workflow, telegram_notifier=mock_notifier)
+
+    runner.run()
+
+    texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
+    assert any("ERRORE" in t and "boom" in t for t in texts)
+
+
+@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
+def test_run_sends_order_notification_when_executed(mock_sleep: MagicMock) -> None:
+    """Quando un ordine è EXECUTED, il runner deve inviare una notifica."""
+    mock_notifier = MagicMock(spec=TelegramNotifier)
+    mock_workflow = MagicMock()
+    mock_result = mock_workflow.run_cycle.return_value
+    mock_result.execution_report.was_executed = True
+    mock_result.execution_report.executed_action = TradeAction.BUY
+    mock_result.execution_report.order_type = OrderType.MARKET
+    mock_result.execution_report.execution_status = ExecutionStatus.EXECUTED
+    mock_result.execution_report.execution_details = {
+        "cummulativeQuoteQty": "27.43",
+        "executedQty": "0.0004",
+    }
+    mock_result.trade_proposal = TradeProposal(
+        action=TradeAction.BUY,
+        order_type=OrderType.MARKET,
+        confidence=0.63,
+        reason="test",
+        details=TradeProposalDetails(quantity=0.0004),
+    )
+    runner = _make_runner(workflow=mock_workflow, telegram_notifier=mock_notifier)
+
+    runner.run()
+
+    texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
+    assert any("ESEGUITO" in t for t in texts)
+
+
+@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
+def test_run_does_not_send_order_notification_when_not_executed(
+    mock_sleep: MagicMock,
+) -> None:
+    """Quando l'ordine NON è eseguito, non deve arrivare notifica di ordine."""
+    mock_notifier = MagicMock(spec=TelegramNotifier)
+    mock_workflow = MagicMock()
+    mock_result = mock_workflow.run_cycle.return_value
+    mock_result.execution_report.was_executed = False
+    runner = _make_runner(workflow=mock_workflow, telegram_notifier=mock_notifier)
+
+    runner.run()
+
+    texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
+    assert not any("ESEGUITO" in t for t in texts)

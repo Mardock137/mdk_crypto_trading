@@ -3,12 +3,18 @@ from __future__ import annotations
 import logging
 import time
 
-from src.core.contracts import OperationConstraints, TradingCycleInput
+from src.core.contracts import (
+    OperationConstraints,
+    OrderType,
+    TradingCycleInput,
+    TradingCycleResult,
+)
 from src.core.workflow import TradingWorkflow
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
 from src.utils.config import AppSettings, load_trading_config
 from src.utils.event_logger import EventLogger
 from src.utils.memory_manager import MemoryManager
+from src.utils.telegram_notifier import TelegramNotifier
 
 
 class TradingRunner:
@@ -23,6 +29,7 @@ class TradingRunner:
         symbol: str,
         exchange_client: BaseExchangeClient,
         memory_manager: MemoryManager,
+        telegram_notifier: TelegramNotifier | None = None,
     ) -> None:
         self._workflow = workflow
         self._event_logger = event_logger
@@ -31,6 +38,7 @@ class TradingRunner:
         self._symbol = symbol
         self._exchange_client = exchange_client
         self._memory_manager = memory_manager
+        self._telegram_notifier = telegram_notifier
         self._trading_config = load_trading_config()
 
     def run(self) -> None:
@@ -47,6 +55,14 @@ class TradingRunner:
                 "Kill switch attivo: le operazioni saranno forzate a HOLD"
             )
 
+        if self._telegram_notifier:
+            self._telegram_notifier.send_message(
+                f"<b>Bot AVVIATO</b>\n"
+                f"Simbolo: {self._symbol}\n"
+                f"Modo: {self._settings.trading_mode.value}\n"
+                f"Intervallo: {self._settings.cycle_interval_seconds}s"
+            )
+
         try:
             while True:
                 self._run_single_cycle()
@@ -57,6 +73,10 @@ class TradingRunner:
                 time.sleep(self._settings.cycle_interval_seconds)
         except KeyboardInterrupt:
             self._logger.info("Shutdown richiesto. Arresto pulito del runner.")
+            if self._telegram_notifier:
+                self._telegram_notifier.send_message(
+                    f"<b>Bot FERMATO</b>\nSimbolo: {self._symbol}"
+                )
 
     def _run_single_cycle(self) -> None:
         """Esegue un singolo ciclo operativo con gestione degli errori."""
@@ -99,6 +119,10 @@ class TradingRunner:
                 result=result,
                 current_price=cycle_input.market_data.price,
             )
+            if self._telegram_notifier and result.execution_report.was_executed:
+                self._telegram_notifier.send_message(
+                    self._build_order_notification(result)
+                )
             self._logger.info("Ciclo completato con successo")
         except Exception as exc:
             self._logger.error("Errore durante il ciclo: %s", exc)
@@ -107,6 +131,12 @@ class TradingRunner:
                 trading_mode=self._settings.trading_mode.value,
                 error=str(exc),
             )
+            if self._telegram_notifier:
+                self._telegram_notifier.send_message(
+                    f"<b>ERRORE nel ciclo</b>\n"
+                    f"Simbolo: {self._symbol}\n"
+                    f"Errore: {exc}"
+                )
 
     def _build_cycle_input(self) -> TradingCycleInput:
         """Raccoglie dati di mercato e portafoglio dall'exchange e costruisce l'input."""
@@ -125,3 +155,42 @@ class TradingRunner:
             performance_summary=self._memory_manager.get_performance_summary(self._symbol),
             recent_performance=self._memory_manager.get_recent_performance(self._symbol),
         )
+
+    def _build_order_notification(self, result: TradingCycleResult) -> str:
+        """Costruisce il testo della notifica per un ordine eseguito."""
+        report = result.execution_report
+        proposal = result.trade_proposal
+        details = proposal.details
+
+        lines: list[str] = [
+            "<b>Ordine ESEGUITO</b>",
+            f"Azione: {report.executed_action.value}",
+            f"Tipo: {report.order_type.value}",
+        ]
+
+        if details.quantity is not None:
+            lines.append(f"Quantità: {details.quantity}")
+
+        if report.order_type is OrderType.MARKET:
+            exec_d = report.execution_details
+            cum_quote = exec_d.get("cummulativeQuoteQty")
+            exec_qty = exec_d.get("executedQty")
+            if cum_quote and exec_qty:
+                try:
+                    avg_price = float(cum_quote) / float(exec_qty)
+                    lines.append(f"Prezzo: {avg_price:.2f}")
+                    lines.append(f"Valore: {float(cum_quote):.2f} USDC")
+                except (ValueError, ZeroDivisionError):
+                    pass
+        elif report.order_type is OrderType.LIMIT:
+            if details.price is not None:
+                lines.append(f"Prezzo: {details.price:.2f}")
+            notional = details.estimated_notional()
+            if notional is not None:
+                lines.append(f"Valore stimato: {notional:.2f} USDC")
+
+        lines.append(f"Confidenza DM: {proposal.confidence:.2f}")
+        lines.append(f"Simbolo: {self._symbol}")
+        lines.append(f"Modo: {self._settings.trading_mode.value}")
+
+        return "\n".join(lines)
