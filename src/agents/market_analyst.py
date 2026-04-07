@@ -4,7 +4,7 @@ import dataclasses
 import logging
 from typing import Any
 
-from src.agents.base_agent import BaseAgent
+from src.agents.base_agent import BaseAgent, unwrap_llm_response
 from src.core.contracts import (
     MarketAnalysis,
     MarketAnalystInput,
@@ -39,8 +39,9 @@ class MarketAnalystAgent(BaseAgent[MarketAnalystInput, MarketAnalysis]):
                     raise
 
 
-def _parse_market_analysis(data: dict[str, Any]) -> MarketAnalysis:
+def _parse_market_analysis(data: Any) -> MarketAnalysis:
     """Valida e converte la risposta JSON del LLM in MarketAnalysis."""
+    data = unwrap_llm_response(data)
     required = ("market_bias", "signal_strength", "confidence", "summary")
     missing = [k for k in required if k not in data]
     if missing:

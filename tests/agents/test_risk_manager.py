@@ -89,3 +89,27 @@ def test_parse_missing_fields_raises() -> None:
     data = {"risk_decision": "APPROVE"}
     with pytest.raises(ValueError, match="Campi mancanti"):
         _parse_risk_assessment(data)
+
+
+# --- Risposta wrappata in array (comportamento Gemini reale) ---
+
+def test_parse_array_wrapped_response() -> None:
+    data = [
+        {
+            "risk_decision": "APPROVE",
+            "confidence": 0.93,
+            "reason": "Azione HOLD coerente con il contesto.",
+            "checks": ["Azione HOLD valida"],
+        }
+    ]
+    result = _parse_risk_assessment(data)
+
+    assert result.risk_decision is RiskDecision.APPROVE
+    assert result.confidence == pytest.approx(0.93)
+
+
+# --- Risposta vuota ---
+
+def test_parse_empty_dict_raises() -> None:
+    with pytest.raises(ValueError, match="dict vuoto"):
+        _parse_risk_assessment({})

@@ -52,6 +52,8 @@ Esegue la proposta se approvata. Nessuna decisione strategica.
 
 Se `KILL_SWITCH=1` nel `.env`, l'Execution Trader blocca qualsiasi operazione e ritorna `NOT_EXECUTED` indipendentemente dalla decisione degli altri agenti. Il resto della catena gira normalmente (analisi, decisione, risk check) ma nessun ordine viene piazzato.
 
-## Retry su errori LLM
+## Normalizzazione e retry su errori LLM
 
-Se un agente LLM (Market Analyst, Decision Maker, Risk Manager) risponde con un JSON non valido, il sistema riprova automaticamente una seconda volta. Se anche il secondo tentativo fallisce, il ciclo viene segnato come errore e il sistema passa al ciclo successivo.
+Prima di validare la risposta JSON di un agente LLM, il sistema la normalizza tramite `unwrap_llm_response()`. Questo gestisce i casi in cui il modello restituisce il JSON corretto ma wrappato in un array (es. `[{...}]` invece di `{...}`), oppure risponde con un dict vuoto o un tipo non atteso.
+
+Se dopo la normalizzazione la risposta risulta comunque non valida, il sistema riprova automaticamente una seconda volta. Se anche il secondo tentativo fallisce, il ciclo viene segnato come errore e il sistema passa al ciclo successivo.

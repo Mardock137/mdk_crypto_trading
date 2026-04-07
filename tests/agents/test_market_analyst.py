@@ -83,3 +83,27 @@ def test_parse_missing_required_fields_raises() -> None:
     data = {"market_bias": "BULLISH", "signal_strength": 0.8}
     with pytest.raises(ValueError, match="Campi mancanti"):
         _parse_market_analysis(data)
+
+
+# --- Risposta wrappata in array ---
+
+def test_parse_array_wrapped_response() -> None:
+    data = [
+        {
+            "market_bias": "BULLISH",
+            "signal_strength": 0.85,
+            "confidence": 0.78,
+            "summary": "Segnale rialzista.",
+        }
+    ]
+    result = _parse_market_analysis(data)
+
+    assert result.market_bias is MarketBias.BULLISH
+    assert result.signal_strength == pytest.approx(0.85)
+
+
+# --- Risposta vuota ---
+
+def test_parse_empty_dict_raises() -> None:
+    with pytest.raises(ValueError, match="dict vuoto"):
+        _parse_market_analysis({})

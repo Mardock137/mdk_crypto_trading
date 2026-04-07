@@ -4,7 +4,7 @@ import dataclasses
 import logging
 from typing import Any
 
-from src.agents.base_agent import BaseAgent
+from src.agents.base_agent import BaseAgent, unwrap_llm_response
 from src.core.contracts import (
     DecisionMakerInput,
     OrderSide,
@@ -49,8 +49,9 @@ class DecisionMakerAgent(BaseAgent[DecisionMakerInput, TradeProposal]):
                     raise
 
 
-def _parse_trade_proposal(data: dict[str, Any]) -> TradeProposal:
+def _parse_trade_proposal(data: Any) -> TradeProposal:
     """Valida e converte la risposta JSON del LLM in TradeProposal."""
+    data = unwrap_llm_response(data)
     required = ("action", "order_type", "confidence", "reason")
     missing = [k for k in required if k not in data]
     if missing:

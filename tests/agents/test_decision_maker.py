@@ -106,3 +106,28 @@ def test_parse_missing_fields_raises() -> None:
     data = {"action": "BUY", "order_type": "MARKET"}
     with pytest.raises(ValueError, match="Campi mancanti"):
         _parse_trade_proposal(data)
+
+
+# --- Risposta wrappata in array ---
+
+def test_parse_array_wrapped_response() -> None:
+    data = [
+        {
+            "action": "HOLD",
+            "order_type": "NONE",
+            "confidence": 0.72,
+            "reason": "Mercato incerto.",
+            "details": {},
+        }
+    ]
+    result = _parse_trade_proposal(data)
+
+    assert result.action is TradeAction.HOLD
+    assert result.confidence == pytest.approx(0.72)
+
+
+# --- Risposta vuota ---
+
+def test_parse_empty_dict_raises() -> None:
+    with pytest.raises(ValueError, match="dict vuoto"):
+        _parse_trade_proposal({})

@@ -1,7 +1,6 @@
 # Guida al Deploy su Google Compute Engine
 
 MDK Crypto Trading gira in loop continuo 24/7. La soluzione scelta è una VM Google Compute Engine con Docker Compose.
-Per connettersi via SSH: `gcloud compute ssh mdk-crypto-trading --zone=europe-west1-b`
 
 ---
 

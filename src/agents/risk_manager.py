@@ -4,7 +4,7 @@ import dataclasses
 import logging
 from typing import Any
 
-from src.agents.base_agent import BaseAgent
+from src.agents.base_agent import BaseAgent, unwrap_llm_response
 from src.core.contracts import (
     RiskAssessment,
     RiskDecision,
@@ -51,8 +51,9 @@ class RiskManagerAgent(BaseAgent[RiskManagerInput, RiskAssessment]):
                     raise
 
 
-def _parse_risk_assessment(data: dict[str, Any]) -> RiskAssessment:
+def _parse_risk_assessment(data: Any) -> RiskAssessment:
     """Valida e converte la risposta JSON del LLM in RiskAssessment."""
+    data = unwrap_llm_response(data)
     required = ("risk_decision", "confidence", "reason")
     missing = [k for k in required if k not in data]
     if missing:

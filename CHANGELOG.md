@@ -1,6 +1,20 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.4.1 — 2026-04-07
+
+### Aggiunto
+
+- `unwrap_llm_response()` in `src/agents/base_agent.py`: funzione helper che normalizza le risposte LLM prima del parsing — gestisce risposte wrappate in array (`[{...}]` → `{...}`), dict vuoti e tipi non attesi
+- 6 nuovi test per `unwrap_llm_response` in `tests/agents/test_agent_interfaces.py`
+- 2 nuovi test per ciascun parser (`test_risk_manager.py`, `test_decision_maker.py`, `test_market_analyst.py`): copertura su risposta array e risposta vuota
+
+### Corretto
+
+- Parsing risposte LLM nei 3 agenti (`_parse_risk_assessment`, `_parse_trade_proposal`, `_parse_market_analysis`): ora gestiscono correttamente risposte wrappate in array, che causavano errori in produzione con Gemini
+
+---
+
 ## 1.4.0 — 2026-04-02
 
 ### Aggiunto

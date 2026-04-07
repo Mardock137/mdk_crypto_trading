@@ -58,7 +58,7 @@ flowchart TD
 Contiene i 4 agenti dell'MVP e una base comune (`BaseAgent`).
 Ogni agente espone un input strutturato e un output strutturato.
 
-Tutti e 4 gli agenti sono implementati. `MarketAnalystAgent`, `DecisionMakerAgent` e `RiskManagerAgent` ricevono un `BaseLlmInterface`, leggono il prompt da disco, inviano i dati al modello e parsano la risposta JSON nei rispettivi contratti (`MarketAnalysis`, `TradeProposal` e `RiskAssessment`). `ExecutionTraderAgent` non usa LLM: riceve un `BaseExchangeClient` e piazza gli ordini direttamente sull'exchange.
+Tutti e 4 gli agenti sono implementati. `MarketAnalystAgent`, `DecisionMakerAgent` e `RiskManagerAgent` ricevono un `BaseLlmInterface`, leggono il prompt da disco, inviano i dati al modello, normalizzano la risposta tramite `unwrap_llm_response()` e parsano il JSON nei rispettivi contratti (`MarketAnalysis`, `TradeProposal` e `RiskAssessment`). `ExecutionTraderAgent` non usa LLM: riceve un `BaseExchangeClient` e piazza gli ordini direttamente sull'exchange.
 
 ### `src/core/`
 
