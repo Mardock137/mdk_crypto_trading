@@ -251,6 +251,25 @@ La VM si trova in una regione bloccata da Binance (es. Stati Uniti). Bisogna ric
 - Controlla che la VM abbia accesso a internet (test: `curl https://api.binance.com/api/v3/ping`)
 - Verifica che le chiavi Binance abbiano i permessi corretti (lettura + trading)
 
+### Il progetto non si trova nella home dell'utente SSH
+
+Se il progetto è stato clonato da un utente diverso da quello con cui si accede via SSH, la cartella non sarà visibile nella propria home. Per trovare il progetto e operarci:
+
+```bash
+# Cerca la cartella del progetto
+sudo find /home -name "mdk_crypto_trading" -type d
+
+# Se il progetto è sotto un altro utente (es. chief), entra con quell'utente
+sudo su - chief
+cd mdk_crypto_trading
+```
+
+Da qui si possono eseguire `git pull`, `docker compose up -d --build`, ecc. Per uscire e tornare al proprio utente:
+
+```bash
+exit
+```
+
 ### Spazio disco esaurito
 
 I log possono crescere nel tempo. Controlla con:

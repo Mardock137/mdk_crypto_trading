@@ -55,6 +55,36 @@ def test_generate_json_calls_messages_create_and_parses_response(mock_anthropic_
 
 
 @patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_generate_json_empty_text_returns_empty_dict(mock_anthropic_cls: MagicMock) -> None:
+    """Verifica che generate_json restituisca {} quando Claude risponde con stringa vuota."""
+    mock_client = mock_anthropic_cls.return_value
+    mock_content_block = MagicMock()
+    mock_content_block.text = ""
+    mock_response = MagicMock()
+    mock_response.content = [mock_content_block]
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(api_key="fake-key", model="claude-sonnet-4-6")
+    result = interface.generate_json("system prompt", {"chiave": "valore"})
+
+    assert result == {}
+
+
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_generate_json_no_content_returns_empty_dict(mock_anthropic_cls: MagicMock) -> None:
+    """Verifica che generate_json restituisca {} quando Claude risponde senza content."""
+    mock_client = mock_anthropic_cls.return_value
+    mock_response = MagicMock()
+    mock_response.content = []
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(api_key="fake-key", model="claude-sonnet-4-6")
+    result = interface.generate_json("system prompt", {"chiave": "valore"})
+
+    assert result == {}
+
+
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
 def test_custom_temperature_and_max_tokens_are_forwarded(mock_anthropic_cls: MagicMock) -> None:
     """Verifica che temperature e max_tokens personalizzati vengano passati all'API."""
     mock_client = mock_anthropic_cls.return_value

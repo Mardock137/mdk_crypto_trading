@@ -84,7 +84,7 @@ class AnthropicInterface(BaseLlmInterface):
                     {"role": "user", "content": json.dumps(dict(user_payload))}
                 ],
             )
-            raw = response.content[0].text if response.content else "{}"
+            raw = (response.content[0].text if response.content else "") or "{}"
             result: dict[str, Any] = json.loads(raw)
             return result
         except _RETRYABLE_ERRORS:

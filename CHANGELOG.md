@@ -1,6 +1,18 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.4.2 — 2026-04-08
+
+### Corretto
+
+- `AnthropicInterface.generate_json()`: gestita la risposta con testo vuoto (`""`) — allineata al comportamento di `OpenAiInterface` e `GeminiInterface`. Prima, una risposta vuota causava `json.JSONDecodeError` e il ciclo falliva senza possibilità di retry
+
+### Aggiunto
+
+- 2 nuovi test in `tests/integrations/llm_interfaces/test_anthropic_interface.py`: risposta con testo vuoto e risposta senza content
+
+---
+
 ## 1.4.1 — 2026-04-07
 
 ### Aggiunto
