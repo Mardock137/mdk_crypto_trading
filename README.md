@@ -1,7 +1,7 @@
 # MDK Crypto Trading
 
 - **Python**: `3.12.10`
-- **Versione**: `1.4.3`
+- **Versione**: `1.4.4`
 
 ## 📋 Indice
 

@@ -83,8 +83,12 @@ class GeminiInterface(BaseLlmInterface):
                     max_output_tokens=self._max_tokens,
                 ),
             )
-            raw = response.text or "{}"
+            raw = response.text
+            if not raw or not raw.strip():
+                raise RuntimeError("Risposta vuota dal provider Gemini.")
             result: dict[str, Any] = json.loads(raw)
+            if not result:
+                raise RuntimeError("Il provider Gemini ha risposto con un JSON vuoto.")
             return result
         except genai_errors.ServerError:
             raise

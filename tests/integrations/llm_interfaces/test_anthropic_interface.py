@@ -56,8 +56,8 @@ def test_generate_json_calls_messages_create_and_parses_response(mock_anthropic_
 
 
 @patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
-def test_generate_json_empty_text_returns_empty_dict(mock_anthropic_cls: MagicMock) -> None:
-    """Verifica che generate_json restituisca {} quando Claude risponde con stringa vuota."""
+def test_generate_json_empty_text_raises(mock_anthropic_cls: MagicMock) -> None:
+    """Verifica che generate_json sollevi RuntimeError quando Claude risponde con stringa vuota."""
     mock_client = mock_anthropic_cls.return_value
     mock_content_block = MagicMock()
     mock_content_block.text = ""
@@ -66,23 +66,39 @@ def test_generate_json_empty_text_returns_empty_dict(mock_anthropic_cls: MagicMo
     mock_client.messages.create.return_value = mock_response
 
     interface = AnthropicInterface(api_key="fake-key", model="claude-sonnet-4-6")
-    result = interface.generate_json("system prompt", {"chiave": "valore"})
 
-    assert result == {}
+    with pytest.raises(RuntimeError, match="Risposta vuota"):
+        interface.generate_json("system prompt", {"chiave": "valore"})
 
 
 @patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
-def test_generate_json_no_content_returns_empty_dict(mock_anthropic_cls: MagicMock) -> None:
-    """Verifica che generate_json restituisca {} quando Claude risponde senza content."""
+def test_generate_json_no_content_raises(mock_anthropic_cls: MagicMock) -> None:
+    """Verifica che generate_json sollevi RuntimeError quando Claude risponde senza content."""
     mock_client = mock_anthropic_cls.return_value
     mock_response = MagicMock()
     mock_response.content = []
     mock_client.messages.create.return_value = mock_response
 
     interface = AnthropicInterface(api_key="fake-key", model="claude-sonnet-4-6")
-    result = interface.generate_json("system prompt", {"chiave": "valore"})
 
-    assert result == {}
+    with pytest.raises(RuntimeError, match="Risposta vuota"):
+        interface.generate_json("system prompt", {"chiave": "valore"})
+
+
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_generate_json_empty_dict_response_raises(mock_anthropic_cls: MagicMock) -> None:
+    """Verifica che generate_json sollevi RuntimeError quando Claude risponde con JSON vuoto {}."""
+    mock_client = mock_anthropic_cls.return_value
+    mock_content_block = MagicMock()
+    mock_content_block.text = "{}"
+    mock_response = MagicMock()
+    mock_response.content = [mock_content_block]
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(api_key="fake-key", model="claude-sonnet-4-6")
+
+    with pytest.raises(RuntimeError, match="JSON vuoto"):
+        interface.generate_json("system prompt", {"chiave": "valore"})
 
 
 @patch("src.integrations.llm_interfaces.anthropic_interface._logger")

@@ -72,6 +72,34 @@ def test_generate_json_invalid_json_logs_raw_and_raises(
 
 
 @patch("src.integrations.llm_interfaces.gemini_interface.genai")
+def test_generate_json_empty_response_raises(mock_genai: MagicMock) -> None:
+    """Verifica che generate_json sollevi RuntimeError quando Gemini risponde con testo vuoto."""
+    mock_client = mock_genai.Client.return_value
+    mock_response = MagicMock()
+    mock_response.text = ""
+    mock_client.models.generate_content.return_value = mock_response
+
+    interface = GeminiInterface(api_key="fake-key", model="gemini-2.0-flash")
+
+    with pytest.raises(RuntimeError, match="Risposta vuota"):
+        interface.generate_json("system prompt", {"chiave": "valore"})
+
+
+@patch("src.integrations.llm_interfaces.gemini_interface.genai")
+def test_generate_json_empty_dict_response_raises(mock_genai: MagicMock) -> None:
+    """Verifica che generate_json sollevi RuntimeError quando Gemini risponde con JSON vuoto {}."""
+    mock_client = mock_genai.Client.return_value
+    mock_response = MagicMock()
+    mock_response.text = "{}"
+    mock_client.models.generate_content.return_value = mock_response
+
+    interface = GeminiInterface(api_key="fake-key", model="gemini-2.0-flash")
+
+    with pytest.raises(RuntimeError, match="JSON vuoto"):
+        interface.generate_json("system prompt", {"chiave": "valore"})
+
+
+@patch("src.integrations.llm_interfaces.gemini_interface.genai")
 def test_custom_temperature_and_max_tokens_are_forwarded(mock_genai: MagicMock) -> None:
     """Verifica che temperature e max_tokens personalizzati vengano passati al config."""
     mock_client = mock_genai.Client.return_value

@@ -136,3 +136,48 @@ def test_agent_retries_on_runtime_error_then_succeeds() -> None:
 
     assert mock_llm.generate_json.call_count == 2
     assert result.market_bias is MarketBias.BULLISH
+
+
+def test_agent_retries_up_to_3_times_then_raises() -> None:
+    """Verifica che l'agente esegua esattamente 3 tentativi prima di propagare l'eccezione."""
+    mock_llm = MagicMock()
+    mock_llm.generate_json.side_effect = RuntimeError("Risposta non valida")
+
+    agent = MarketAnalystAgent(llm=mock_llm)
+    market_data = MarketDataSnapshot(symbol="BTCUSDC")
+
+    mock_prompt = MagicMock()
+    mock_prompt.read_text.return_value = "system prompt"
+    with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
+        with pytest.raises(RuntimeError):
+            agent.run(MarketAnalystInput(symbol="BTCUSDC", market_data=market_data))
+
+    assert mock_llm.generate_json.call_count == 3
+
+
+def test_agent_warning_includes_raw_response() -> None:
+    """Verifica che il WARNING del retry includa la risposta raw del LLM."""
+    mock_llm = MagicMock()
+    valid_response = {
+        "market_bias": "BULLISH",
+        "signal_strength": 0.8,
+        "confidence": 0.75,
+        "summary": "Segnale rialzista.",
+    }
+    mock_llm.generate_json.side_effect = [
+        RuntimeError("Risposta non valida"),
+        valid_response,
+    ]
+
+    agent = MarketAnalystAgent(llm=mock_llm)
+    market_data = MarketDataSnapshot(symbol="BTCUSDC")
+
+    mock_prompt = MagicMock()
+    mock_prompt.read_text.return_value = "system prompt"
+    with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
+        with patch.object(agent, "_logger") as mock_logger:
+            agent.run(MarketAnalystInput(symbol="BTCUSDC", market_data=market_data))
+
+    mock_logger.warning.assert_called_once()
+    warning_args = mock_logger.warning.call_args.args
+    assert "Risposta:" in warning_args[0]

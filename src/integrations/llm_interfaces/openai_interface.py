@@ -114,7 +114,11 @@ class OpenAiInterface(BaseLlmInterface):
             raw = (
                 response.choices[0].message.content if response.choices else None
             )
-            result: dict[str, Any] = json.loads(raw or "{}")
+            if not raw or not raw.strip():
+                raise RuntimeError("Risposta vuota dal provider OpenAI.")
+            result: dict[str, Any] = json.loads(raw)
+            if not result:
+                raise RuntimeError("Il provider OpenAI ha risposto con un JSON vuoto.")
             return result
         except _RETRYABLE_ERRORS:
             raise

@@ -1,6 +1,24 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.4.4 — 2026-04-10
+
+### Corretto
+
+- Le 3 interfacce LLM (`anthropic_interface.py`, `openai_interface.py`, `gemini_interface.py`) ora sollevano `RuntimeError` quando il provider risponde con testo vuoto o con un JSON vuoto `{}`. In precedenza il fallback `or "{}"` mascherava silenziosamente queste risposte, che passavano l'interfaccia senza errori e venivano rilevate solo dall'agente, dove il retry aveva meno tentativi. Con il fix, il `RuntimeError` viene lanciato direttamente nell'interfaccia e il retry dell'agente scatta immediatamente
+- Il messaggio di WARNING del retry nei 3 agenti LLM ora include di nuovo la risposta raw del modello (`| Risposta: ...`), rimossa per errore nel refactoring v1.4.3
+
+### Modificato
+
+- Retry nei 3 agenti LLM portato da 2 a 3 tentativi (`max_attempts = 3`)
+
+### Aggiunto
+
+- 6 nuovi test per le interfacce LLM (2 per interfaccia): risposta vuota e JSON vuoto `{}` sollevano `RuntimeError`
+- 6 nuovi test per gli agenti (2 per agente): verifica che il retry raggiunga esattamente 3 tentativi e che il WARNING includa la risposta raw
+
+---
+
 ## 1.4.3 — 2026-04-10
 
 ### Corretto

@@ -87,8 +87,12 @@ class AnthropicInterface(BaseLlmInterface):
                     {"role": "user", "content": json.dumps(dict(user_payload))}
                 ],
             )
-            raw = (response.content[0].text if response.content else "") or "{}"
+            raw = response.content[0].text if response.content else ""
+            if not raw or not raw.strip():
+                raise RuntimeError("Risposta vuota dal provider Anthropic.")
             result: dict[str, Any] = json.loads(raw)
+            if not result:
+                raise RuntimeError("Il provider Anthropic ha risposto con un JSON vuoto.")
             return result
         except _RETRYABLE_ERRORS:
             raise

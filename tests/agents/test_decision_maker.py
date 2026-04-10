@@ -146,23 +146,8 @@ def test_parse_empty_dict_raises() -> None:
 
 # --- Retry su RuntimeError da generate_json ---
 
-def test_agent_retries_on_runtime_error_then_succeeds() -> None:
-    """Verifica che l'agente riprovi se generate_json lancia RuntimeError al primo tentativo."""
-    mock_llm = MagicMock()
-    valid_response = {
-        "action": "HOLD",
-        "order_type": "NONE",
-        "confidence": 0.7,
-        "reason": "Mercato incerto.",
-        "details": {},
-    }
-    mock_llm.generate_json.side_effect = [
-        RuntimeError("Risposta non valida"),
-        valid_response,
-    ]
-
-    agent = DecisionMakerAgent(llm=mock_llm)
-    agent_input = DecisionMakerInput(
+def _make_dm_input() -> DecisionMakerInput:
+    return DecisionMakerInput(
         symbol="BTCUSDC",
         portfolio=PortfolioState(
             usdc_balance=500.0,
@@ -181,10 +166,69 @@ def test_agent_retries_on_runtime_error_then_succeeds() -> None:
         constraints=OperationConstraints(cycle_interval_seconds=3600, min_order_usdc=10.0),
     )
 
+
+def test_agent_retries_on_runtime_error_then_succeeds() -> None:
+    """Verifica che l'agente riprovi se generate_json lancia RuntimeError al primo tentativo."""
+    mock_llm = MagicMock()
+    valid_response = {
+        "action": "HOLD",
+        "order_type": "NONE",
+        "confidence": 0.7,
+        "reason": "Mercato incerto.",
+        "details": {},
+    }
+    mock_llm.generate_json.side_effect = [
+        RuntimeError("Risposta non valida"),
+        valid_response,
+    ]
+
+    agent = DecisionMakerAgent(llm=mock_llm)
     mock_prompt = MagicMock()
     mock_prompt.read_text.return_value = "system prompt"
     with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
-        result = agent.run(agent_input)
+        result = agent.run(_make_dm_input())
 
     assert mock_llm.generate_json.call_count == 2
     assert result.action is TradeAction.HOLD
+
+
+def test_agent_retries_up_to_3_times_then_raises() -> None:
+    """Verifica che l'agente esegua esattamente 3 tentativi prima di propagare l'eccezione."""
+    mock_llm = MagicMock()
+    mock_llm.generate_json.side_effect = RuntimeError("Risposta non valida")
+
+    agent = DecisionMakerAgent(llm=mock_llm)
+    mock_prompt = MagicMock()
+    mock_prompt.read_text.return_value = "system prompt"
+    with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
+        with pytest.raises(RuntimeError):
+            agent.run(_make_dm_input())
+
+    assert mock_llm.generate_json.call_count == 3
+
+
+def test_agent_warning_includes_raw_response() -> None:
+    """Verifica che il WARNING del retry includa la risposta raw del LLM."""
+    mock_llm = MagicMock()
+    valid_response = {
+        "action": "HOLD",
+        "order_type": "NONE",
+        "confidence": 0.7,
+        "reason": "Mercato incerto.",
+        "details": {},
+    }
+    mock_llm.generate_json.side_effect = [
+        RuntimeError("Risposta non valida"),
+        valid_response,
+    ]
+
+    agent = DecisionMakerAgent(llm=mock_llm)
+    mock_prompt = MagicMock()
+    mock_prompt.read_text.return_value = "system prompt"
+    with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
+        with patch.object(agent, "_logger") as mock_logger:
+            agent.run(_make_dm_input())
+
+    mock_logger.warning.assert_called_once()
+    warning_args = mock_logger.warning.call_args.args
+    assert "Risposta:" in warning_args[0]
