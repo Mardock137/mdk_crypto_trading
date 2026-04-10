@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Mapping
 
 from openai import (
@@ -18,6 +19,8 @@ from tenacity import (
 )
 
 from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
+
+_logger = logging.getLogger("mdk_crypto_trading.openai_interface")
 
 # Eccezioni temporanee su cui fare retry automatico
 _RETRYABLE_ERRORS = (RateLimitError, APIConnectionError, APITimeoutError)
@@ -118,6 +121,7 @@ class OpenAiInterface(BaseLlmInterface):
         except APIError as exc:
             raise RuntimeError(f"Errore API OpenAI: {exc}") from exc
         except json.JSONDecodeError as exc:
+            _logger.warning("Risposta raw non decodificabile di OpenAI: %r", raw)
             raise RuntimeError(
                 f"Impossibile decodificare la risposta JSON di OpenAI: {exc}"
             ) from exc

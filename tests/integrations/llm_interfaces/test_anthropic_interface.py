@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from unittest.mock import MagicMock, patch
 
 from src.integrations.llm_interfaces.anthropic_interface import AnthropicInterface
@@ -82,6 +83,29 @@ def test_generate_json_no_content_returns_empty_dict(mock_anthropic_cls: MagicMo
     result = interface.generate_json("system prompt", {"chiave": "valore"})
 
     assert result == {}
+
+
+@patch("src.integrations.llm_interfaces.anthropic_interface._logger")
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_generate_json_invalid_json_logs_raw_and_raises(
+    mock_anthropic_cls: MagicMock,
+    mock_logger: MagicMock,
+) -> None:
+    """Verifica che generate_json loggi la risposta raw e rilanci RuntimeError su JSON non valido."""
+    mock_client = mock_anthropic_cls.return_value
+    mock_content_block = MagicMock()
+    mock_content_block.text = "questo non e json"
+    mock_response = MagicMock()
+    mock_response.content = [mock_content_block]
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(api_key="fake-key", model="claude-sonnet-4-6")
+
+    with pytest.raises(RuntimeError, match="Impossibile decodificare"):
+        interface.generate_json("system prompt", {"chiave": "valore"})
+
+    mock_logger.warning.assert_called_once()
+    assert "questo non e json" in mock_logger.warning.call_args.args[1]
 
 
 @patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")

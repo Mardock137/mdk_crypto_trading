@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import pytest
+from unittest.mock import MagicMock, PropertyMock, patch
 
-from src.agents.market_analyst import _parse_market_analysis
-from src.core.contracts import MarketBias, SuggestedAction
+from src.agents.market_analyst import MarketAnalystAgent, _parse_market_analysis
+from src.core.contracts import MarketBias, MarketDataSnapshot, MarketAnalystInput, SuggestedAction
 
 
 # --- JSON valido BULLISH ---
@@ -107,3 +108,31 @@ def test_parse_array_wrapped_response() -> None:
 def test_parse_empty_dict_raises() -> None:
     with pytest.raises(ValueError, match="dict vuoto"):
         _parse_market_analysis({})
+
+
+# --- Retry su RuntimeError da generate_json ---
+
+def test_agent_retries_on_runtime_error_then_succeeds() -> None:
+    """Verifica che l'agente riprovi se generate_json lancia RuntimeError al primo tentativo."""
+    mock_llm = MagicMock()
+    valid_response = {
+        "market_bias": "BULLISH",
+        "signal_strength": 0.8,
+        "confidence": 0.75,
+        "summary": "Segnale rialzista.",
+    }
+    mock_llm.generate_json.side_effect = [
+        RuntimeError("Risposta non valida"),
+        valid_response,
+    ]
+
+    agent = MarketAnalystAgent(llm=mock_llm)
+    market_data = MarketDataSnapshot(symbol="BTCUSDC")
+
+    mock_prompt = MagicMock()
+    mock_prompt.read_text.return_value = "system prompt"
+    with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
+        result = agent.run(MarketAnalystInput(symbol="BTCUSDC", market_data=market_data))
+
+    assert mock_llm.generate_json.call_count == 2
+    assert result.market_bias is MarketBias.BULLISH

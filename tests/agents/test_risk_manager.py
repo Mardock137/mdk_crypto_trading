@@ -3,9 +3,21 @@
 from __future__ import annotations
 
 import pytest
+from unittest.mock import MagicMock, PropertyMock, patch
 
-from src.agents.risk_manager import _parse_risk_assessment
-from src.core.contracts import RiskDecision
+from src.agents.risk_manager import RiskManagerAgent, _parse_risk_assessment
+from src.core.contracts import (
+    MarketAnalysis,
+    MarketBias,
+    OperationConstraints,
+    OrderType,
+    PortfolioState,
+    RiskDecision,
+    RiskManagerInput,
+    SuggestedAction,
+    TradeAction,
+    TradeProposal,
+)
 
 
 # --- APPROVE ---
@@ -113,3 +125,54 @@ def test_parse_array_wrapped_response() -> None:
 def test_parse_empty_dict_raises() -> None:
     with pytest.raises(ValueError, match="dict vuoto"):
         _parse_risk_assessment({})
+
+
+# --- Retry su RuntimeError da generate_json ---
+
+def test_agent_retries_on_runtime_error_then_succeeds() -> None:
+    """Verifica che l'agente riprovi se generate_json lancia RuntimeError al primo tentativo."""
+    mock_llm = MagicMock()
+    valid_response = {
+        "risk_decision": "APPROVE",
+        "confidence": 0.9,
+        "reason": "Proposta valida.",
+        "checks": ["Saldo sufficiente"],
+    }
+    mock_llm.generate_json.side_effect = [
+        RuntimeError("Risposta non valida"),
+        valid_response,
+    ]
+
+    agent = RiskManagerAgent(llm=mock_llm)
+    agent_input = RiskManagerInput(
+        symbol="BTCUSDC",
+        proposal=TradeProposal(
+            action=TradeAction.HOLD,
+            order_type=OrderType.NONE,
+            confidence=0.7,
+            reason="Mercato incerto.",
+        ),
+        portfolio=PortfolioState(
+            usdc_balance=500.0,
+            usdc_balance_total=500.0,
+            usdc_value=0.0,
+            portfolio_qty_free=0.0,
+            portfolio_qty_total=0.0,
+        ),
+        market_analysis=MarketAnalysis(
+            market_bias=MarketBias.NEUTRAL,
+            signal_strength=0.5,
+            confidence=0.5,
+            summary="Neutrale.",
+            suggested_action=SuggestedAction.NO_TRADE_BIAS,
+        ),
+        constraints=OperationConstraints(cycle_interval_seconds=3600, min_order_usdc=10.0),
+    )
+
+    mock_prompt = MagicMock()
+    mock_prompt.read_text.return_value = "system prompt"
+    with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
+        result = agent.run(agent_input)
+
+    assert mock_llm.generate_json.call_count == 2
+    assert result.risk_decision is RiskDecision.APPROVE

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from unittest.mock import MagicMock, patch
 
 from src.integrations.llm_interfaces.gemini_interface import GeminiInterface
@@ -47,6 +48,27 @@ def test_generate_json_uses_json_mime_type(mock_genai: MagicMock) -> None:
     assert config.temperature == 0.7
     assert config.max_output_tokens is None
     assert result == {"risultato": "ok"}
+
+
+@patch("src.integrations.llm_interfaces.gemini_interface._logger")
+@patch("src.integrations.llm_interfaces.gemini_interface.genai")
+def test_generate_json_invalid_json_logs_raw_and_raises(
+    mock_genai: MagicMock,
+    mock_logger: MagicMock,
+) -> None:
+    """Verifica che generate_json loggi la risposta raw e rilanci RuntimeError su JSON non valido."""
+    mock_client = mock_genai.Client.return_value
+    mock_response = MagicMock()
+    mock_response.text = "questo non e json"
+    mock_client.models.generate_content.return_value = mock_response
+
+    interface = GeminiInterface(api_key="fake-key", model="gemini-2.0-flash")
+
+    with pytest.raises(RuntimeError, match="Impossibile decodificare"):
+        interface.generate_json("system prompt", {"chiave": "valore"})
+
+    mock_logger.warning.assert_called_once()
+    assert "questo non e json" in mock_logger.warning.call_args.args[1]
 
 
 @patch("src.integrations.llm_interfaces.gemini_interface.genai")

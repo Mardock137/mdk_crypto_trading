@@ -56,4 +56,6 @@ Se `KILL_SWITCH=1` nel `.env`, l'Execution Trader blocca qualsiasi operazione e 
 
 Prima di validare la risposta JSON di un agente LLM, il sistema la normalizza tramite `unwrap_llm_response()`. Questo gestisce i casi in cui il modello restituisce il JSON corretto ma wrappato in un array (es. `[{...}]` invece di `{...}`), oppure risponde con un dict vuoto o un tipo non atteso.
 
-Se dopo la normalizzazione la risposta risulta comunque non valida, il sistema riprova automaticamente una seconda volta. Se anche il secondo tentativo fallisce, il ciclo viene segnato come errore e il sistema passa al ciclo successivo.
+L'intera operazione — chiamata al modello, normalizzazione e parsing — è racchiusa in un blocco `try/except` che cattura `ValueError`, `KeyError` e `RuntimeError`. Se qualcosa va storto (risposta non valida, JSON non decodificabile, errore dell'interfaccia), il sistema riprova automaticamente una seconda volta. Se anche il secondo tentativo fallisce, il ciclo viene segnato come errore e il sistema passa al ciclo successivo.
+
+Quando il JSON non è decodificabile, le interfacce LLM loggano la risposta raw a livello WARNING prima di rilanciare l'eccezione, rendendo sempre visibile cosa ha risposto il modello anche in caso di errore.

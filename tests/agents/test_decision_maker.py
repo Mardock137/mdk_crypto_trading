@@ -3,9 +3,20 @@
 from __future__ import annotations
 
 import pytest
+from unittest.mock import MagicMock, PropertyMock, patch
 
-from src.agents.decision_maker import _parse_trade_proposal
-from src.core.contracts import OrderSide, OrderType, TradeAction
+from src.agents.decision_maker import DecisionMakerAgent, _parse_trade_proposal
+from src.core.contracts import (
+    DecisionMakerInput,
+    MarketAnalysis,
+    MarketBias,
+    OperationConstraints,
+    OrderSide,
+    OrderType,
+    PortfolioState,
+    SuggestedAction,
+    TradeAction,
+)
 
 
 # --- BUY MARKET ---
@@ -131,3 +142,49 @@ def test_parse_array_wrapped_response() -> None:
 def test_parse_empty_dict_raises() -> None:
     with pytest.raises(ValueError, match="dict vuoto"):
         _parse_trade_proposal({})
+
+
+# --- Retry su RuntimeError da generate_json ---
+
+def test_agent_retries_on_runtime_error_then_succeeds() -> None:
+    """Verifica che l'agente riprovi se generate_json lancia RuntimeError al primo tentativo."""
+    mock_llm = MagicMock()
+    valid_response = {
+        "action": "HOLD",
+        "order_type": "NONE",
+        "confidence": 0.7,
+        "reason": "Mercato incerto.",
+        "details": {},
+    }
+    mock_llm.generate_json.side_effect = [
+        RuntimeError("Risposta non valida"),
+        valid_response,
+    ]
+
+    agent = DecisionMakerAgent(llm=mock_llm)
+    agent_input = DecisionMakerInput(
+        symbol="BTCUSDC",
+        portfolio=PortfolioState(
+            usdc_balance=500.0,
+            usdc_balance_total=500.0,
+            usdc_value=0.0,
+            portfolio_qty_free=0.0,
+            portfolio_qty_total=0.0,
+        ),
+        market_analysis=MarketAnalysis(
+            market_bias=MarketBias.NEUTRAL,
+            signal_strength=0.5,
+            confidence=0.5,
+            summary="Neutrale.",
+            suggested_action=SuggestedAction.NO_TRADE_BIAS,
+        ),
+        constraints=OperationConstraints(cycle_interval_seconds=3600, min_order_usdc=10.0),
+    )
+
+    mock_prompt = MagicMock()
+    mock_prompt.read_text.return_value = "system prompt"
+    with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
+        result = agent.run(agent_input)
+
+    assert mock_llm.generate_json.call_count == 2
+    assert result.action is TradeAction.HOLD

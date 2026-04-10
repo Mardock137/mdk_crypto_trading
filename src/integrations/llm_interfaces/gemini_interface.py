@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Mapping
 
 from google import genai
@@ -14,6 +15,8 @@ from tenacity import (
 )
 
 from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
+
+_logger = logging.getLogger("mdk_crypto_trading.gemini_interface")
 
 
 class GeminiInterface(BaseLlmInterface):
@@ -88,6 +91,7 @@ class GeminiInterface(BaseLlmInterface):
         except genai_errors.ClientError as exc:
             raise RuntimeError(f"Errore API Gemini: {exc}") from exc
         except json.JSONDecodeError as exc:
+            _logger.warning("Risposta raw non decodificabile di Gemini: %r", raw)
             raise RuntimeError(
                 f"Impossibile decodificare la risposta JSON di Gemini: {exc}"
             ) from exc

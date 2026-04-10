@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from unittest.mock import MagicMock, patch
 
 from src.integrations.llm_interfaces.openai_interface import OpenAiInterface
@@ -96,6 +97,29 @@ def test_reasoning_effort_is_forwarded_when_set(mock_openai_cls: MagicMock) -> N
     call_kwargs = mock_client.chat.completions.create.call_args.kwargs
     assert call_kwargs["reasoning_effort"] == "high"
     assert "temperature" not in call_kwargs
+
+
+@patch("src.integrations.llm_interfaces.openai_interface._logger")
+@patch("src.integrations.llm_interfaces.openai_interface.OpenAI")
+def test_generate_json_invalid_json_logs_raw_and_raises(
+    mock_openai_cls: MagicMock,
+    mock_logger: MagicMock,
+) -> None:
+    """Verifica che generate_json loggi la risposta raw e rilanci RuntimeError su JSON non valido."""
+    mock_client = mock_openai_cls.return_value
+    mock_choice = MagicMock()
+    mock_choice.message.content = "questo non e json"
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_client.chat.completions.create.return_value = mock_response
+
+    interface = OpenAiInterface(api_key="fake-key", model="gpt-4o")
+
+    with pytest.raises(RuntimeError, match="Impossibile decodificare"):
+        interface.generate_json("system prompt", {"chiave": "valore"})
+
+    mock_logger.warning.assert_called_once()
+    assert "questo non e json" in mock_logger.warning.call_args.args[1]
 
 
 @patch("src.integrations.llm_interfaces.openai_interface.OpenAI")

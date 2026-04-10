@@ -36,14 +36,14 @@ class DecisionMakerAgent(BaseAgent[DecisionMakerInput, TradeProposal]):
 
         max_attempts = 2
         for attempt in range(1, max_attempts + 1):
-            response = self._llm.generate_json(system_prompt, user_payload)
-            self._logger.debug("Risposta raw LLM: %s", response)
             try:
+                response = self._llm.generate_json(system_prompt, user_payload)
+                self._logger.debug("Risposta raw LLM: %s", response)
                 return _parse_trade_proposal(response)
-            except (ValueError, KeyError) as exc:
+            except (ValueError, KeyError, RuntimeError) as exc:
                 self._logger.warning(
-                    "Tentativo %d/%d — parsing fallito: %s | Risposta: %s",
-                    attempt, max_attempts, exc, response,
+                    "Tentativo %d/%d — parsing fallito: %s",
+                    attempt, max_attempts, exc,
                 )
                 if attempt == max_attempts:
                     raise

@@ -1,6 +1,21 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.4.3 — 2026-04-10
+
+### Corretto
+
+- Retry nei 3 agenti LLM (`market_analyst.py`, `decision_maker.py`, `risk_manager.py`): la chiamata a `generate_json()` era fuori dal blocco `try/except`, quindi un `RuntimeError` lanciato dall'interfaccia (es. JSON non decodificabile) bypassava il retry e faceva fallire il ciclo al primo tentativo. Ora `generate_json()` è dentro il try e `RuntimeError` è tra le eccezioni catturate
+- Il messaggio di WARNING del retry non includeva più la risposta raw (rimossa per errore dal refactoring precedente) — non era un problema bloccante ma riduceva la leggibilità dei log
+
+### Aggiunto
+
+- Le 3 interfacce LLM (`anthropic_interface.py`, `openai_interface.py`, `gemini_interface.py`) loggano ora la risposta raw a livello WARNING quando il `json.loads` fallisce, rendendo sempre visibile cosa ha risposto il modello anche in caso di errore
+- 3 nuovi test di integrazione (uno per interfaccia): verifica che il log WARNING con la risposta raw venga emesso su JSON non valido
+- 3 nuovi test agenti (uno per agente): verifica che `RuntimeError` da `generate_json` attivi correttamente il retry
+
+---
+
 ## 1.4.2 — 2026-04-08
 
 ### Corretto
