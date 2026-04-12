@@ -124,6 +124,33 @@ def test_generate_json_invalid_json_logs_raw_and_raises(
     assert "questo non e json" in mock_logger.warning.call_args.args[1]
 
 
+@patch("src.integrations.llm_interfaces.anthropic_interface._logger")
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_generate_json_empty_response_logs_stop_reason(
+    mock_anthropic_cls: MagicMock,
+    mock_logger: MagicMock,
+) -> None:
+    """Verifica che generate_json loggi stop_reason e usage quando Anthropic risponde con stringa vuota."""
+    mock_client = mock_anthropic_cls.return_value
+    mock_content_block = MagicMock()
+    mock_content_block.text = ""
+    mock_response = MagicMock()
+    mock_response.content = [mock_content_block]
+    mock_response.stop_reason = "max_tokens"
+    mock_response.usage = MagicMock(input_tokens=200, output_tokens=0)
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(api_key="fake-key", model="claude-sonnet-4-6")
+
+    with pytest.raises(RuntimeError, match="Risposta vuota"):
+        interface.generate_json("system prompt", {"chiave": "valore"})
+
+    mock_logger.warning.assert_called_once()
+    warning_args = mock_logger.warning.call_args.args
+    assert "stop_reason" in warning_args[0]
+    assert "max_tokens" in warning_args
+
+
 @patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
 def test_custom_temperature_and_max_tokens_are_forwarded(mock_anthropic_cls: MagicMock) -> None:
     """Verifica che temperature e max_tokens personalizzati vengano passati all'API."""

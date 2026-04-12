@@ -89,6 +89,11 @@ class AnthropicInterface(BaseLlmInterface):
             )
             raw = response.content[0].text if response.content else ""
             if not raw or not raw.strip():
+                _logger.warning(
+                    "Anthropic risposta vuota | stop_reason: %s | usage: %s",
+                    response.stop_reason,
+                    response.usage,
+                )
                 raise RuntimeError("Risposta vuota dal provider Anthropic.")
             result: dict[str, Any] = json.loads(raw)
             if not result:

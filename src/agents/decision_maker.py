@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import time
 from typing import Any
 
 from src.agents.base_agent import BaseAgent, unwrap_llm_response
@@ -34,7 +35,8 @@ class DecisionMakerAgent(BaseAgent[DecisionMakerInput, TradeProposal]):
             "recent_performance": agent_input.recent_performance,
         }
 
-        max_attempts = 3
+        max_attempts = 4
+        base_delay = 2
         response = None
         for attempt in range(1, max_attempts + 1):
             try:
@@ -42,11 +44,18 @@ class DecisionMakerAgent(BaseAgent[DecisionMakerInput, TradeProposal]):
                 self._logger.debug("Risposta raw LLM: %s", response)
                 return _parse_trade_proposal(response)
             except (ValueError, KeyError, RuntimeError) as exc:
-                self._logger.warning(
-                    "Tentativo %d/%d — parsing fallito: %s | Risposta: %s",
-                    attempt, max_attempts, exc, response,
-                )
-                if attempt == max_attempts:
+                if attempt < max_attempts:
+                    sleep_time = base_delay * (2 ** attempt)
+                    self._logger.warning(
+                        "Tentativo %d/%d — parsing fallito: %s | Risposta: %s | riprovo tra %ds",
+                        attempt, max_attempts, exc, response, sleep_time,
+                    )
+                    time.sleep(sleep_time)
+                else:
+                    self._logger.warning(
+                        "Tentativo %d/%d — parsing fallito: %s | Risposta: %s",
+                        attempt, max_attempts, exc, response,
+                    )
                     raise
 
 

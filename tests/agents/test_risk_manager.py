@@ -173,26 +173,45 @@ def test_agent_retries_on_runtime_error_then_succeeds() -> None:
     agent = RiskManagerAgent(llm=mock_llm)
     mock_prompt = MagicMock()
     mock_prompt.read_text.return_value = "system prompt"
-    with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
-        result = agent.run(_make_rm_input())
+    with patch("src.agents.risk_manager.time.sleep"):
+        with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
+            result = agent.run(_make_rm_input())
 
     assert mock_llm.generate_json.call_count == 2
     assert result.risk_decision is RiskDecision.APPROVE
 
 
-def test_agent_retries_up_to_3_times_then_raises() -> None:
-    """Verifica che l'agente esegua esattamente 3 tentativi prima di propagare l'eccezione."""
+def test_agent_retries_up_to_4_times_then_raises() -> None:
+    """Verifica che l'agente esegua esattamente 4 tentativi prima di propagare l'eccezione."""
     mock_llm = MagicMock()
     mock_llm.generate_json.side_effect = RuntimeError("Risposta non valida")
 
     agent = RiskManagerAgent(llm=mock_llm)
     mock_prompt = MagicMock()
     mock_prompt.read_text.return_value = "system prompt"
-    with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
-        with pytest.raises(RuntimeError):
-            agent.run(_make_rm_input())
+    with patch("src.agents.risk_manager.time.sleep"):
+        with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
+            with pytest.raises(RuntimeError):
+                agent.run(_make_rm_input())
 
-    assert mock_llm.generate_json.call_count == 3
+    assert mock_llm.generate_json.call_count == 4
+
+
+def test_agent_retry_backoff_sleep_values() -> None:
+    """Verifica che il backoff tra i retry segua la progressione 4s, 8s, 16s."""
+    mock_llm = MagicMock()
+    mock_llm.generate_json.side_effect = RuntimeError("Risposta non valida")
+
+    agent = RiskManagerAgent(llm=mock_llm)
+    mock_prompt = MagicMock()
+    mock_prompt.read_text.return_value = "system prompt"
+    with patch("src.agents.risk_manager.time.sleep") as mock_sleep:
+        with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
+            with pytest.raises(RuntimeError):
+                agent.run(_make_rm_input())
+
+    sleep_calls = [call.args[0] for call in mock_sleep.call_args_list]
+    assert sleep_calls == [4, 8, 16]
 
 
 def test_agent_warning_includes_raw_response() -> None:
@@ -212,9 +231,10 @@ def test_agent_warning_includes_raw_response() -> None:
     agent = RiskManagerAgent(llm=mock_llm)
     mock_prompt = MagicMock()
     mock_prompt.read_text.return_value = "system prompt"
-    with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
-        with patch.object(agent, "_logger") as mock_logger:
-            agent.run(_make_rm_input())
+    with patch("src.agents.risk_manager.time.sleep"):
+        with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
+            with patch.object(agent, "_logger") as mock_logger:
+                agent.run(_make_rm_input())
 
     mock_logger.warning.assert_called_once()
     warning_args = mock_logger.warning.call_args.args

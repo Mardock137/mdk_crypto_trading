@@ -83,6 +83,18 @@ class OpenAiInterface(BaseLlmInterface):
             content = (
                 response.choices[0].message.content if response.choices else None
             )
+            if not content:
+                if response.choices:
+                    _logger.warning(
+                        "OpenAI generate_text risposta vuota | finish_reason: %s | usage: %s",
+                        response.choices[0].finish_reason,
+                        response.usage,
+                    )
+                else:
+                    _logger.warning(
+                        "OpenAI generate_text risposta vuota | choices: [] | usage: %s",
+                        response.usage,
+                    )
             return content or ""
         except _RETRYABLE_ERRORS:
             raise
@@ -115,6 +127,17 @@ class OpenAiInterface(BaseLlmInterface):
                 response.choices[0].message.content if response.choices else None
             )
             if not raw or not raw.strip():
+                if response.choices:
+                    _logger.warning(
+                        "OpenAI risposta vuota | finish_reason: %s | usage: %s",
+                        response.choices[0].finish_reason,
+                        response.usage,
+                    )
+                else:
+                    _logger.warning(
+                        "OpenAI risposta vuota | choices: [] | usage: %s",
+                        response.usage,
+                    )
                 raise RuntimeError("Risposta vuota dal provider OpenAI.")
             result: dict[str, Any] = json.loads(raw)
             if not result:

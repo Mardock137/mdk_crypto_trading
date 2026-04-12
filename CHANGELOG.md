@@ -1,6 +1,20 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.4.6 — 2026-04-12
+
+### Aggiunto
+
+- Diagnostica risposte vuote LLM: le 3 interfacce (`openai_interface.py`, `anthropic_interface.py`, `gemini_interface.py`) ora loggano a livello WARNING le metadata del provider (`finish_reason`, `usage`/`usage_metadata`, `stop_reason`) quando la risposta è vuota, prima di lanciare il `RuntimeError`. In precedenza il motivo della risposta vuota era invisibile nei log
+- Backoff esponenziale nei retry degli agenti LLM: aggiunta una pausa crescente (4s → 8s → 16s) tra i tentativi in `market_analyst.py`, `decision_maker.py`, `risk_manager.py`. In precedenza i retry partivano immediatamente uno dopo l'altro, senza dare tempo al provider di recuperare
+- 6 nuovi test: 3 per le interfacce LLM (verifica log diagnostico su risposta vuota) e 3 per gli agenti (verifica valori di backoff `time.sleep`)
+
+### Modificato
+
+- Retry nei 3 agenti LLM portato da 3 a 4 tentativi (`max_attempts = 4`)
+
+---
+
 ## 1.4.5 — 2026-04-12
 
 ### Modificato

@@ -99,6 +99,33 @@ def test_generate_json_empty_dict_response_raises(mock_genai: MagicMock) -> None
         interface.generate_json("system prompt", {"chiave": "valore"})
 
 
+@patch("src.integrations.llm_interfaces.gemini_interface._logger")
+@patch("src.integrations.llm_interfaces.gemini_interface.genai")
+def test_generate_json_empty_response_logs_finish_reason(
+    mock_genai: MagicMock,
+    mock_logger: MagicMock,
+) -> None:
+    """Verifica che generate_json loggi finish_reason e usage_metadata quando Gemini risponde con testo vuoto."""
+    mock_client = mock_genai.Client.return_value
+    mock_candidate = MagicMock()
+    mock_candidate.finish_reason = "SAFETY"
+    mock_response = MagicMock()
+    mock_response.text = ""
+    mock_response.candidates = [mock_candidate]
+    mock_response.usage_metadata = MagicMock(prompt_token_count=150, candidates_token_count=0)
+    mock_client.models.generate_content.return_value = mock_response
+
+    interface = GeminiInterface(api_key="fake-key", model="gemini-2.0-flash")
+
+    with pytest.raises(RuntimeError, match="Risposta vuota"):
+        interface.generate_json("system prompt", {"chiave": "valore"})
+
+    mock_logger.warning.assert_called_once()
+    warning_args = mock_logger.warning.call_args.args
+    assert "finish_reason" in warning_args[0]
+    assert "SAFETY" in warning_args
+
+
 @patch("src.integrations.llm_interfaces.gemini_interface.genai")
 def test_custom_temperature_and_max_tokens_are_forwarded(mock_genai: MagicMock) -> None:
     """Verifica che temperature e max_tokens personalizzati vengano passati al config."""

@@ -85,6 +85,16 @@ class GeminiInterface(BaseLlmInterface):
             )
             raw = response.text
             if not raw or not raw.strip():
+                finish_reason = (
+                    response.candidates[0].finish_reason
+                    if response.candidates
+                    else None
+                )
+                _logger.warning(
+                    "Gemini risposta vuota | finish_reason: %s | usage_metadata: %s",
+                    finish_reason,
+                    response.usage_metadata,
+                )
                 raise RuntimeError("Risposta vuota dal provider Gemini.")
             result: dict[str, Any] = json.loads(raw)
             if not result:

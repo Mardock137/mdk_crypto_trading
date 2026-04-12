@@ -154,6 +154,33 @@ def test_generate_json_empty_dict_response_raises(mock_openai_cls: MagicMock) ->
         interface.generate_json("system prompt", {"chiave": "valore"})
 
 
+@patch("src.integrations.llm_interfaces.openai_interface._logger")
+@patch("src.integrations.llm_interfaces.openai_interface.OpenAI")
+def test_generate_json_empty_response_logs_finish_reason(
+    mock_openai_cls: MagicMock,
+    mock_logger: MagicMock,
+) -> None:
+    """Verifica che generate_json loggi finish_reason e usage quando OpenAI risponde con stringa vuota."""
+    mock_client = mock_openai_cls.return_value
+    mock_choice = MagicMock()
+    mock_choice.message.content = ""
+    mock_choice.finish_reason = "content_filter"
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=0)
+    mock_client.chat.completions.create.return_value = mock_response
+
+    interface = OpenAiInterface(api_key="fake-key", model="gpt-4o")
+
+    with pytest.raises(RuntimeError, match="Risposta vuota"):
+        interface.generate_json("system prompt", {"chiave": "valore"})
+
+    mock_logger.warning.assert_called_once()
+    warning_args = mock_logger.warning.call_args.args
+    assert "finish_reason" in warning_args[0]
+    assert "content_filter" in warning_args
+
+
 @patch("src.integrations.llm_interfaces.openai_interface.OpenAI")
 def test_reasoning_effort_absent_when_none(mock_openai_cls: MagicMock) -> None:
     """Verifica che reasoning_effort non venga passato all'API se non configurato."""
