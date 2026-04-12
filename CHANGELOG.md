@@ -1,6 +1,14 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.4.5 — 2026-04-12
+
+### Modificato
+
+- Python aggiornato da 3.12 a 3.14 (ambiente locale e `Dockerfile` per il deploy)
+
+---
+
 ## 1.4.4 — 2026-04-10
 
 ### Corretto

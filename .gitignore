@@ -1,5 +1,6 @@
 ## Python / venv / caches
 .venv/
+.venv_backup/
 venv/
 ENV/
 env/
