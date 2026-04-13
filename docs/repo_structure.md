@@ -2,6 +2,10 @@
 
 📁 mdk_crypto_trading/
  │
+ ├── 📁 .github/                                             # Configurazione GitHub.
+ │    └── 📁 workflows/                                      # Workflow GitHub Actions.
+ │         └── 📄 ci.yml                                     # CI: esegue i test pytest automaticamente ad ogni push e pull request.
+ │
  ├── 📁 .venv/                                               # Ambiente virtuale con tutte le dipendenze installate.
  │
  ├── 📁 data/                                                # Dati persistenti del sistema (ignorata da git).

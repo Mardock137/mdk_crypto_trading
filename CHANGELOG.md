@@ -1,6 +1,14 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.5.0 — 2026-04-13
+
+### Aggiunto
+
+- GitHub Actions CI (`.github/workflows/ci.yml`): workflow che esegue automaticamente tutti i test pytest ad ogni push e pull request. Non richiede secrets perché i test sono unitari con mock. Badge di stato CI aggiunto al README
+
+---
+
 ## 1.4.7 — 2026-04-13
 
 ### Corretto
