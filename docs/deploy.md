@@ -4,6 +4,20 @@ MDK Crypto Trading gira in loop continuo 24/7. La soluzione scelta è una VM Goo
 
 ---
 
+## 📋 Indice
+
+- [Prerequisiti](#prerequisiti)
+- [1. Creazione della VM](#1-creazione-della-vm)
+- [2. Accesso SSH alla VM](#2-accesso-ssh-alla-vm)
+- [3. Installazione Docker sulla VM](#3-installazione-docker-sulla-vm)
+- [4. Primo Deploy](#4-primo-deploy)
+- [5. Aggiornamento (nuova versione del codice)](#5-aggiornamento-nuova-versione-del-codice)
+- [6. Comandi utili](#6-comandi-utili)
+- [7. 🔍 Troubleshooting](#7--troubleshooting)
+- [📚 Riferimenti](#-riferimenti)
+
+---
+
 ## Prerequisiti
 
 - Account Google Cloud Platform con billing attivato
@@ -217,7 +231,7 @@ df -h
 
 ---
 
-## 7. Troubleshooting
+## 7. 🔍 Troubleshooting
 
 ### Il container si avvia e si chiude subito
 
@@ -295,3 +309,14 @@ sudo systemctl start docker
 cd mdk_crypto_trading
 docker compose up -d
 ```
+
+---
+
+## 📚 Riferimenti
+
+- **Codice**: `Dockerfile`, `docker-compose.yaml`
+- **Doc correlati**: `docs/config.md`
+- **Risorse esterne**:
+  - [Google Compute Engine](https://cloud.google.com/compute/docs)
+  - [Docker Compose](https://docs.docker.com/compose/)
+  - [gcloud CLI](https://cloud.google.com/sdk/docs/install)

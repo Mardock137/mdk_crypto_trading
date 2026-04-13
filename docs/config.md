@@ -1,6 +1,19 @@
-# ⚙️ Configurazione
+# Configurazione
 
 Il sistema usa due fonti di configurazione separate: il file `.env` per i segreti e la cartella `config/` per le configurazioni applicative.
+
+---
+
+## 📋 Indice
+
+- [`.env` — Segreti e variabili d'ambiente](#env--segreti-e-variabili-dambiente)
+- [`config/` — Configurazioni applicative](#config--configurazioni-applicative)
+- [Distinzione tra `config/` e `.env`](#distinzione-tra-config-e-env)
+- [🧪 Testing](#-testing)
+- [🔍 Troubleshooting](#-troubleshooting)
+- [📚 Riferimenti](#-riferimenti)
+
+---
 
 ## `.env` — Segreti e variabili d'ambiente
 
@@ -24,6 +37,8 @@ Contiene chiavi API, modalità di esecuzione e variabili riservate. Mai committa
 | `TELEGRAM_CHAT_ID`        | no           | —        | ID della chat Telegram di destinazione            |
 
 Vedi `.env.example` per un template completo.
+
+---
 
 ## `config/` — Configurazioni applicative
 
@@ -90,6 +105,8 @@ Prompt runtime caricati dal codice durante l'esecuzione. Ogni agente ha il suo f
 
 I file in `dev_support/prompts/` sono la versione di progettazione e riferimento umano. Quelli in `config/prompts/` sono la versione usata dal codice.
 
+---
+
 ## Distinzione tra `config/` e `.env`
 
 | Cosa                          | Dove        |
@@ -100,3 +117,75 @@ I file in `dev_support/prompts/` sono la versione di progettazione e riferimento
 | Prompt degli agenti           | `config/`   |
 | Regole operative (min order)  | `config/`   |
 | Simbolo di trading            | `config/`   |
+
+---
+
+## 🧪 Testing
+
+Test automatici per il caricamento della configurazione:
+
+```bash
+pytest tests/utils/test_config.py -v
+```
+
+Verifica manuale delle connessioni API (Binance, OpenAI, Gemini, Claude, Telegram):
+
+```bash
+python dev_support/verify_connections.py
+```
+
+---
+
+## 🔍 Troubleshooting
+
+### Problema: `ValueError: Missing required environment variable: TRADING_MODE`
+
+**Causa**: la variabile `TRADING_MODE` non è presente nel `.env` (oppure è vuota).
+
+**Soluzione**: aggiungere `TRADING_MODE=DEMO` o `TRADING_MODE=REAL` nel file `.env`.
+
+### Problema: `ValueError: Missing required environment variable: CYCLE_INTERVAL_SECONDS`
+
+**Causa**: la variabile `CYCLE_INTERVAL_SECONDS` non è presente nel `.env` (oppure è vuota).
+
+**Soluzione**: aggiungere `CYCLE_INTERVAL_SECONDS=300` (o l'intervallo desiderato in secondi) nel file `.env`.
+
+### Problema: `ValueError` su `TRADING_MODE` con valore non valido
+
+**Causa**: `TRADING_MODE` ha un valore diverso da `DEMO` o `REAL` (es. `demo`, `test`, `live`). Il valore è case-sensitive.
+
+**Soluzione**: usare esattamente `DEMO` o `REAL` in maiuscolo.
+
+### Problema: `ValueError: Invalid boolean value` su `KILL_SWITCH`
+
+**Causa**: `KILL_SWITCH` ha un valore non riconosciuto. Valori accettati: `1`, `true`, `yes`, `on`, `0`, `false`, `no`, `off`.
+
+**Soluzione**: usare uno dei valori accettati (es. `KILL_SWITCH=1`).
+
+### Problema: `FileNotFoundError: File di configurazione non trovato`
+
+**Causa**: manca uno dei file YAML nella cartella `config/` (`trading.yaml`, `symbols.yaml`, o uno dei file in `llm_models/`).
+
+**Soluzione**: verificare che tutti i file YAML siano presenti nella cartella `config/`. Se il progetto è stato clonato di recente, questi file dovrebbero essere già nel repository.
+
+### Problema: `ValueError: Campo 'symbol' mancante in symbols.yaml`
+
+**Causa**: il file `config/symbols.yaml` esiste ma non contiene il campo `symbol`.
+
+**Soluzione**: aggiungere `symbol: BTCUSDC` (o il simbolo desiderato) nel file.
+
+### Problema: `KeyError: 'model'` all'avvio
+
+**Causa**: uno dei file YAML in `config/llm_models/` non contiene il campo `model`.
+
+**Soluzione**: verificare che ogni file YAML abbia almeno il campo `model` con il nome del modello (es. `model: claude-sonnet-4-6`).
+
+---
+
+## 📚 Riferimenti
+
+- **Codice**: `src/utils/config.py`
+- **Test**: `tests/utils/test_config.py`
+- **Verifica connessioni**: `dev_support/verify_connections.py`
+- **File di esempio**: `.env.example`
+- **Doc correlati**: `docs/architecture.md`

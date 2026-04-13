@@ -1,6 +1,20 @@
-# 📜 Observability - Sistema di Logging
+# Observability - Sistema di Logging
 
 MDK Crypto Trading produce due tipi di log complementari: un log testuale per il monitoraggio operativo e un log JSON strutturato per l'analisi delle decisioni ciclo per ciclo.
+
+---
+
+## 📋 Indice
+
+- [Log testuale (`logs/mdk_crypto_trading.log`)](#log-testuale-logsmdk_crypto_tradinglog)
+- [Log eventi JSON (`logs/events/`)](#log-eventi-json-logsevents)
+- [Struttura della cartella `logs/`](#struttura-della-cartella-logs)
+- [🔧 Configurazione](#-configurazione)
+- [Come leggere i log eventi](#come-leggere-i-log-eventi)
+- [🧪 Testing](#-testing)
+- [📚 Riferimenti](#-riferimenti)
+
+---
 
 ## Log testuale (`logs/mdk_crypto_trading.log`)
 
@@ -26,6 +40,8 @@ Output leggibile destinato al monitoraggio in tempo reale e al debug.
 | `INFO`    | Flusso operativo normale (default)                |
 | `WARNING` | Situazioni anomale ma non bloccanti               |
 | `ERROR`   | Errori che impediscono il completamento del ciclo |
+
+---
 
 ## Log eventi JSON (`logs/events/`)
 
@@ -65,6 +81,8 @@ Log strutturato che registra le decisioni di ogni ciclo operativo in formato mac
 }
 ```
 
+---
+
 ## Struttura della cartella `logs/`
 
 ```text
@@ -77,13 +95,17 @@ logs/
     └── 2026-03-25.jsonl
 ```
 
-## Configurazione
+---
+
+## 🔧 Configurazione
 
 | Variabile   | Dove       | Default  | Descrizione                  |
 |-------------|------------|----------|------------------------------|
 | `LOG_LEVEL` | `.env`     | `INFO`   | Livello minimo dei log       |
 
 La cartella `logs/` è già presente nel `.gitignore` e non viene tracciata.
+
+---
 
 ## Come leggere i log eventi
 
@@ -100,3 +122,20 @@ Per analisi più avanzate, i file `.jsonl` possono essere caricati con `pandas`:
 import pandas as pd
 df = pd.read_json("logs/events/2026-03-24.jsonl", lines=True)
 ```
+
+---
+
+## 🧪 Testing
+
+```bash
+pytest tests/utils/test_logging_config.py -v
+pytest tests/utils/test_event_logger.py -v
+```
+
+---
+
+## 📚 Riferimenti
+
+- **Codice**: `src/utils/logging_config.py`, `src/utils/event_logger.py`
+- **Test**: `tests/utils/test_logging_config.py`, `tests/utils/test_event_logger.py`
+- **Doc correlati**: `docs/architecture.md`, `docs/config.md`

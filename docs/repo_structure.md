@@ -38,7 +38,8 @@
  │    ├── 📄 deploy.md                                       # Guida completa al deploy su Google Compute Engine con Docker.
  │    ├── 📄 hierarchy_and_roles.md                          # Gerarchia e ruoli dei 4 agenti.
  │    ├── 📄 observability.md                                # Sistema di logging: log testuale e log eventi JSON.
- │    └── 📄 repo_structure.md                               # Struttura e spiegazione della repo.
+ │    ├── 📄 repo_structure.md                               # Struttura e spiegazione della repo.
+ │    └── 📄 TEMPLATE.md                                     # Template standard per la documentazione (struttura, emoji, regole).
  │
  ├── 📁 logs/                                                # Log operativi (ignorata da git).
  │    ├── 📁 events/                                         # Log JSON strutturati per ciclo operativo.

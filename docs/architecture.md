@@ -1,7 +1,22 @@
-# 🏗️ Architettura
+# Architettura
 
 MDK Crypto Trading è progettato come un sistema multi-agente per il trading crypto spot.
 L'MVP separa chiaramente analisi, decisione, controllo del rischio ed esecuzione, in modo da evitare che un singolo componente faccia tutto da solo.
+
+---
+
+## 📋 Indice
+
+- [Flusso operativo MVP](#flusso-operativo-mvp)
+- [Ruoli degli agenti](#ruoli-degli-agenti)
+- [Strati principali](#strati-principali)
+- [Contratti condivisi](#contratti-condivisi)
+- [Orchestrazione](#orchestrazione)
+- [Memoria operativa (MemoryManager)](#memoria-operativa-memorymanager)
+- [🔧 Configurazione e prompt](#-configurazione-e-prompt)
+- [📚 Riferimenti](#-riferimenti)
+
+---
 
 ## Flusso operativo MVP
 
@@ -12,6 +27,8 @@ flowchart TD
     riskManager --> executionTrader["Execution Trader"]
     executionTrader --> exchangeLayer["Exchange Layer"]
 ```
+
+---
 
 ## Ruoli degli agenti
 
@@ -50,6 +67,8 @@ flowchart TD
 - Per `CANCEL_AND_REPLACE_ORDER` → chiama `cancel_order` + `place_limit_order`.
 - Se l'exchange lancia un'eccezione → `FAILED`.
 - Non rivaluta strategia o rischio.
+
+---
 
 ## Strati principali
 
@@ -91,6 +110,8 @@ Tutti e 4 gli agenti sono implementati. `MarketAnalystAgent`, `DecisionMakerAgen
 
 Per i dettagli completi sul sistema di logging, vedi `docs/observability.md`.
 
+---
+
 ## Contratti condivisi
 
 Per l'MVP ogni passaggio tra agenti usa strutture dati esplicite.
@@ -105,6 +126,8 @@ I contratti principali sono:
 - `RiskAssessment`: output del `Risk Manager`
 - `ExecutionReport`: output del `Execution Trader`
 - `TradingCycleInput` / `TradingCycleResult`: input e output del ciclo completo
+
+---
 
 ## Orchestrazione
 
@@ -122,6 +145,8 @@ Il runner:
 
 Il punto di ingresso è `src/main.py`, che fa il bootstrap di tutti i componenti (settings, LLM, exchange client, agenti, workflow, memory manager, runner) e avvia il loop.
 
+---
+
 ## Memoria operativa (MemoryManager)
 
 `MemoryManager` (`src/utils/memory_manager.py`) permette al sistema di ricordare le decisioni passate e passarle al `Decision Maker` ad ogni ciclo.
@@ -138,7 +163,9 @@ Il punto di ingresso è `src/main.py`, che fa il bootstrap di tutti i componenti
 
 I file `data/memory/` sono esclusi da git (vedi `.gitignore`) e vengono creati automaticamente a runtime. Il `Decision Maker` riceve questi dati come contesto aggiuntivo per prendere decisioni più informate.
 
-## Configurazione e prompt
+---
+
+## 🔧 Configurazione e prompt
 
 - I prompt di lavoro degli agenti vivono in `config/prompts/`.
 - I file in `dev_support/prompts/` restano la base di progettazione e riferimento umano.
@@ -148,3 +175,18 @@ I file `data/memory/` sono esclusi da git (vedi `.gitignore`) e vengono creati a
 - I segreti (API key, URL, modalità) vivono nel `.env`. Le chiavi attive sono `CLAUDE_API_KEY` (Market Analyst), `OPENAI_API_KEY` (Decision Maker) e `GEMINI_API_KEY` (Risk Manager).
 
 Per i dettagli, vedi `docs/config.md`.
+
+---
+
+## 📚 Riferimenti
+
+- **Codice**:
+  - `src/agents/` — agenti (Market Analyst, Decision Maker, Risk Manager, Execution Trader, BaseAgent)
+  - `src/core/contracts.py` — contratti condivisi
+  - `src/core/workflow.py` — orchestratore della catena
+  - `src/core/runner.py` — loop operativo ciclico
+  - `src/integrations/llm_interfaces/` — interfacce LLM (Anthropic, OpenAI, Gemini)
+  - `src/integrations/exchange/` — interfaccia exchange (Binance)
+  - `src/utils/memory_manager.py` — memoria operativa
+  - `src/main.py` — entry point
+- **Doc correlati**: `docs/config.md`, `docs/hierarchy_and_roles.md`, `docs/decision_logic.md`, `docs/observability.md`
