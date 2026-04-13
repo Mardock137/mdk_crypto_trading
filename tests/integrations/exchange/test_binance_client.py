@@ -138,7 +138,6 @@ def _setup_market_mocks(mock_instance: MagicMock) -> None:
     mock_instance.get_symbol_ticker.return_value = {"price": "50000.0"}
     mock_instance.get_avg_price.return_value = {"price": "49950.0"}
     mock_instance.get_ticker.return_value = {"volume": "1234.5"}
-    mock_instance.get_recent_trades.return_value = [{"price": "50000.0"}]
     mock_instance.get_order_book.return_value = {
         "bids": [["49999", "0.1"]],
         "asks": [["50001", "0.2"]],
@@ -163,7 +162,6 @@ def test_get_market_snapshot_returns_populated_snapshot(
     assert snapshot.price == 50000.0
     assert snapshot.avg_price == 49950.0
     assert snapshot.volume_24h == 1234.5
-    assert len(snapshot.recent_public_trades) == 1
     assert len(snapshot.order_book_top_10_bids) == 1
     assert "rsi_14" in snapshot.indicators
 

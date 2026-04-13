@@ -37,7 +37,6 @@ AI Market Analyst di MDK Crypto Trading
 - `price`: prezzo attuale della coppia.
 - `avg_price`: prezzo medio degli ultimi minuti.
 - `volume_24h`: volume totale scambiato nelle ultime 24h.
-- `recent_public_trades`: ultimi 10 trade pubblici avvenuti sul mercato.
 - `order_book_top_10_bids`: top 10 ordini di acquisto presenti sul mercato.
 - `order_book_top_10_asks`: top 10 ordini di vendita presenti sul mercato.
 - `rsi_14`, `rsi_14_prev`: Relative Strength Index (14 periodi).
@@ -46,11 +45,11 @@ AI Market Analyst di MDK Crypto Trading
 - `macd_hist`, `macd_hist_prev`: istogramma MACD attuale e precedente.
 - `ema_21`, `ema_21_prev`: Exponential Moving Average (21 periodi).
 - `sma_50`, `sma_50_prev`: Simple Moving Average (50 periodi).
-- `last_2_candles_2h`: ultime 2 candele da 2 ore.
-- `last_2_candles_4h`: ultime 2 candele da 4 ore.
-- `last_1_candle_1d`: ultima candela da 1 giorno.
-- `last_candle_1w`: ultima candela da 1 settimana.
-- `last_candle_1M`: ultima candela da 1 mese.
+- `candles_2h`: ultime 12 candele da 2 ore (= 1 giorno di contesto).
+- `candles_4h`: ultime 14 candele da 4 ore (= ~2.3 giorni di contesto).
+- `candles_1d`: ultime 14 candele giornaliere (= 2 settimane di contesto).
+- `candles_1w`: ultime 8 candele settimanali (= 2 mesi di contesto).
+- `candles_1M`: ultime 6 candele mensili (= 6 mesi di contesto).
 
 ## 📝 SCHEMA RISPOSTA
 

@@ -93,7 +93,7 @@ Tutti e 4 gli agenti sono implementati. `MarketAnalystAgent`, `DecisionMakerAgen
 `BinanceClient` espone:
 
 - `ping()` / `get_account_info()`: verifica connessione e autenticazione
-- `get_market_snapshot(symbol)`: raccoglie prezzo, volume, order book, trade recenti, candele multi-timeframe e calcola indicatori tecnici (RSI, EMA, SMA, MACD)
+- `get_market_snapshot(symbol)`: raccoglie prezzo, volume, order book, candele multi-timeframe e calcola indicatori tecnici (RSI, EMA, SMA, MACD)
 - `get_portfolio_state(symbol)`: raccoglie saldi USDC e coin, ordini aperti, ultimi trade
 - `place_market_order(symbol, side, quantity)`: piazza un ordine a mercato
 - `place_limit_order(symbol, side, quantity, price)`: piazza un ordine limit GTC

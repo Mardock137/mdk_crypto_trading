@@ -1,6 +1,17 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.5.2 — 2026-04-13
+
+### Modificato
+
+- Rimosso il campo `recent_public_trades` da `MarketDataSnapshot` (`contracts.py`), dalla raccolta dati in `binance_client.py` e dal prompt del Market Analyst: il dato (10 trade pubblici) era rumore inutile su BTC e occupava token nel contesto LLM senza aggiungere valore informativo
+- Aumentato il numero di candele per tutti i timeframe in `_fetch_candles` (`binance_client.py`): da 1-2 a valori significativi (12 × 2h, 14 × 4h, 14 × 1d, 8 × 1w, 6 × 1M) per dare al Market Analyst un contesto storico adeguato
+- Rinominate le chiavi delle candele da formato verboso (`last_2_candles_2h`, `last_1_candle_1d`, ecc.) a formato semplificato (`candles_2h`, `candles_1d`, ecc.)
+- Aggiornato il prompt del Market Analyst per riflettere le nuove chiavi e quantità di candele
+
+---
+
 ## 1.5.1 — 2026-04-13
 
 ### Aggiunto

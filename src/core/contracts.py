@@ -53,7 +53,6 @@ class MarketDataSnapshot:
     price: float | None = None
     avg_price: float | None = None
     volume_24h: float | None = None
-    recent_public_trades: list[dict[str, Any]] = field(default_factory=list)
     order_book_top_10_bids: list[dict[str, Any]] = field(default_factory=list)
     order_book_top_10_asks: list[dict[str, Any]] = field(default_factory=list)
     indicators: dict[str, float | None] = field(default_factory=dict)

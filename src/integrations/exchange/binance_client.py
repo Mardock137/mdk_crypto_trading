@@ -58,7 +58,6 @@ class BinanceClient(BaseExchangeClient):
         ticker_24h = self._client.get_ticker(symbol=symbol)
         volume_24h = float(ticker_24h["volume"])
 
-        recent_trades = self._client.get_recent_trades(symbol=symbol, limit=10)
         order_book = self._client.get_order_book(symbol=symbol, limit=10)
 
         candles = self._fetch_candles(symbol)
@@ -72,7 +71,6 @@ class BinanceClient(BaseExchangeClient):
             price=price,
             avg_price=avg_price,
             volume_24h=volume_24h,
-            recent_public_trades=recent_trades,
             order_book_top_10_bids=order_book.get("bids", []),
             order_book_top_10_asks=order_book.get("asks", []),
             indicators=indicator_values,
@@ -163,11 +161,11 @@ class BinanceClient(BaseExchangeClient):
     def _fetch_candles(self, symbol: str) -> dict[str, Any]:
         """Recupera le candele per i timeframe richiesti dal Market Analyst."""
         intervals: dict[str, tuple[str, int]] = {
-            "last_2_candles_2h": ("2h", 2),
-            "last_2_candles_4h": ("4h", 2),
-            "last_1_candle_1d": ("1d", 1),
-            "last_candle_1w": ("1w", 1),
-            "last_candle_1M": ("1M", 1),
+            "candles_2h": ("2h", 12),
+            "candles_4h": ("4h", 14),
+            "candles_1d": ("1d", 14),
+            "candles_1w": ("1w", 8),
+            "candles_1M": ("1M", 6),
         }
         candles: dict[str, Any] = {}
         for key, (interval, limit) in intervals.items():
