@@ -1,6 +1,15 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.5.3 — 2026-04-13
+
+### Modificato
+
+- Aggiunto lo scopo del sistema (generare rendimento sul capitale) nella sezione SCOPO del prompt del Decision Maker
+- Aggiunta nota alla sezione "Memoria e performance" del prompt del Decision Maker per chiarire il perché di quei dati, lasciando all'agente l'autonomia su come usarli
+
+---
+
 ## 1.5.2 — 2026-04-13
 
 ### Modificato
