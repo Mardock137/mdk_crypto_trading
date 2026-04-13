@@ -172,3 +172,84 @@ def test_custom_temperature_and_max_tokens_are_forwarded(mock_anthropic_cls: Mag
     call_kwargs = mock_client.messages.create.call_args.kwargs
     assert call_kwargs["temperature"] == 0.2
     assert call_kwargs["max_tokens"] == 512
+
+
+# --- Test per _strip_markdown_json ---
+
+from src.integrations.llm_interfaces.anthropic_interface import _strip_markdown_json
+
+
+def test_strip_markdown_json_with_json_tag() -> None:
+    """Verifica che il wrapping ```json...``` venga rimosso correttamente."""
+    raw = '```json\n{"market_bias": "BULLISH", "confidence": 0.7}\n```'
+    result = _strip_markdown_json(raw)
+    assert result == '{"market_bias": "BULLISH", "confidence": 0.7}'
+
+
+def test_strip_markdown_json_without_tag() -> None:
+    """Verifica che il wrapping ```...``` (senza 'json') venga rimosso correttamente."""
+    raw = '```\n{"market_bias": "BEARISH"}\n```'
+    result = _strip_markdown_json(raw)
+    assert result == '{"market_bias": "BEARISH"}'
+
+
+def test_strip_markdown_json_with_extra_text_before() -> None:
+    """Verifica che il testo prima del JSON venga ignorato (fallback su primo '{')."""
+    raw = 'Here is my analysis:\n{"market_bias": "NEUTRAL", "confidence": 0.5}'
+    result = _strip_markdown_json(raw)
+    assert result == '{"market_bias": "NEUTRAL", "confidence": 0.5}'
+
+
+def test_strip_markdown_json_pure_json_unchanged() -> None:
+    """Verifica che un JSON puro passi invariato (non-regressione)."""
+    raw = '{"market_bias": "BULLISH", "signal_strength": 0.8}'
+    result = _strip_markdown_json(raw)
+    assert result == raw
+
+
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_generate_json_parses_markdown_wrapped_response(mock_anthropic_cls: MagicMock) -> None:
+    """Verifica che generate_json parsi correttamente una risposta wrappata in ```json...```."""
+    mock_client = mock_anthropic_cls.return_value
+    mock_content_block = MagicMock()
+    mock_content_block.text = '```json\n{"risultato": "ok"}\n```'
+    mock_response = MagicMock()
+    mock_response.content = [mock_content_block]
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(api_key="fake-key", model="claude-sonnet-4-6")
+    result = interface.generate_json("system prompt", {"chiave": "valore"})
+
+    assert result == {"risultato": "ok"}
+
+
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_generate_json_parses_markdown_wrapped_response_no_tag(mock_anthropic_cls: MagicMock) -> None:
+    """Verifica che generate_json parsi correttamente una risposta wrappata in ```...``` (senza tag json)."""
+    mock_client = mock_anthropic_cls.return_value
+    mock_content_block = MagicMock()
+    mock_content_block.text = '```\n{"risultato": "ok"}\n```'
+    mock_response = MagicMock()
+    mock_response.content = [mock_content_block]
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(api_key="fake-key", model="claude-sonnet-4-6")
+    result = interface.generate_json("system prompt", {"chiave": "valore"})
+
+    assert result == {"risultato": "ok"}
+
+
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_generate_json_parses_response_with_text_prefix(mock_anthropic_cls: MagicMock) -> None:
+    """Verifica che generate_json parsi correttamente una risposta con testo prima del JSON."""
+    mock_client = mock_anthropic_cls.return_value
+    mock_content_block = MagicMock()
+    mock_content_block.text = 'Here is the analysis:\n{"risultato": "ok"}'
+    mock_response = MagicMock()
+    mock_response.content = [mock_content_block]
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(api_key="fake-key", model="claude-sonnet-4-6")
+    result = interface.generate_json("system prompt", {"chiave": "valore"})
+
+    assert result == {"risultato": "ok"}

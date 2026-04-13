@@ -95,7 +95,7 @@ class AnthropicInterface(BaseLlmInterface):
                     response.usage,
                 )
                 raise RuntimeError("Risposta vuota dal provider Anthropic.")
-            result: dict[str, Any] = json.loads(raw)
+            result: dict[str, Any] = json.loads(_strip_markdown_json(raw))
             if not result:
                 raise RuntimeError("Il provider Anthropic ha risposto con un JSON vuoto.")
             return result
@@ -108,3 +108,36 @@ class AnthropicInterface(BaseLlmInterface):
             raise RuntimeError(
                 f"Impossibile decodificare la risposta JSON di Anthropic: {exc}"
             ) from exc
+
+
+def _strip_markdown_json(text: str) -> str:
+    """Rimuove il wrapping markdown da una risposta JSON di Claude.
+
+    Claude a volte restituisce il JSON wrappato in un code block markdown
+    (```json ... ```) nonostante il prompt chieda JSON puro. Questa funzione
+    estrae il contenuto grezzo del JSON in tre passi:
+    1. Rimuove il code block markdown se presente (```json o ```).
+    2. Come fallback, estrae il sottostringa dal primo '{' all'ultimo '}'.
+    3. Se la stringa e gia JSON puro, la restituisce invariata.
+    """
+    stripped = text.strip()
+
+    # Caso 1: code block markdown (```json ... ``` oppure ``` ... ```)
+    if stripped.startswith("```"):
+        # Rimuove la prima riga (```json o ```)
+        first_newline = stripped.find("\n")
+        if first_newline != -1:
+            inner = stripped[first_newline + 1:]
+            # Rimuove il ``` finale
+            if inner.rstrip().endswith("```"):
+                inner = inner.rstrip()[:-3].rstrip()
+            return inner.strip()
+
+    # Caso 2: testo extra prima o dopo il JSON — estrae dal primo '{' all'ultimo '}'
+    start = stripped.find("{")
+    end = stripped.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return stripped[start : end + 1]
+
+    # Caso 3: stringa invariata (gia JSON puro o vuota — gestita a monte)
+    return stripped

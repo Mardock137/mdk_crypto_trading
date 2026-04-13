@@ -1,6 +1,18 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.4.7 — 2026-04-13
+
+### Corretto
+
+- `AnthropicInterface.generate_json()`: aggiunta funzione `_strip_markdown_json()` che pulisce la risposta di Claude prima del parsing JSON. Claude a volte ignora l'istruzione di rispondere con JSON puro e wrappa la risposta in un code block markdown (` ```json...``` `), causando un `json.JSONDecodeError` non recuperabile dal retry. La funzione estrae il JSON puro rimuovendo il wrapping markdown o, come fallback, estraendo il sottostringa dal primo `{` all'ultimo `}`. Questo risolve un errore ricorrente in produzione confermato dai log della VM
+
+### Aggiunto
+
+- 7 nuovi test in `tests/integrations/llm_interfaces/test_anthropic_interface.py`: 4 test unitari per `_strip_markdown_json` (wrapping con tag `json`, wrapping senza tag, testo extra prima del JSON, JSON puro invariato) e 3 test di integrazione per `generate_json` (risposta con ` ```json...``` `, risposta con ` ```...``` `, risposta con testo prima del JSON)
+
+---
+
 ## 1.4.6 — 2026-04-12
 
 ### Aggiunto
