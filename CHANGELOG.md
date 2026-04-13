@@ -1,6 +1,21 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.5.1 — 2026-04-13
+
+### Aggiunto
+
+- Gestione SIGTERM in `runner.py`: il runner ora intercetta sia `SIGINT` (Ctrl+C) che `SIGTERM` (`docker stop`) tramite signal handler, garantendo l'invio della notifica di stop in qualsiasi scenario di arresto pulito. In precedenza, solo `KeyboardInterrupt` veniva gestito e la notifica di stop non partiva quando il container Docker veniva fermato
+- Sezione "Notifiche Telegram" in `docs/observability.md`: documenta le 4 notifiche (avvio, ordine eseguito, errore, stop), con esempio e configurazione
+- Test per SIGTERM in `tests/core/test_runner.py`: verifica che la notifica di stop venga inviata anche alla ricezione del segnale SIGTERM
+
+### Modificato
+
+- Testi notifiche Telegram in `runner.py`: tutti i messaggi sono ora in inglese con emoji nel titolo e riga vuota di separazione tra titolo e campi (es. `🚀 Bot STARTED`, `✅ Order EXECUTED`, `⚠️ Cycle ERROR`, `🛑 Bot STOPPED`). In precedenza i testi erano in italiano e senza emoji
+- Test notifiche in `tests/core/test_runner.py`: aggiornate le asserzioni per corrispondere ai nuovi testi in inglese
+
+---
+
 ## 1.5.0 — 2026-04-13
 
 ### Aggiunto

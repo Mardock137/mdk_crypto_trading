@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import signal
 import time
+import types
 
 from src.core.contracts import (
     OperationConstraints,
@@ -40,9 +42,10 @@ class TradingRunner:
         self._memory_manager = memory_manager
         self._telegram_notifier = telegram_notifier
         self._trading_config = load_trading_config()
+        self._shutdown_requested = False
 
     def run(self) -> None:
-        """Avvia il loop operativo. Esce solo su KeyboardInterrupt."""
+        """Avvia il loop operativo. Esce su KeyboardInterrupt o SIGTERM."""
         self._logger.info(
             "Avvio loop operativo — symbol=%s, mode=%s, intervallo=%ds",
             self._symbol,
@@ -55,28 +58,40 @@ class TradingRunner:
                 "Kill switch attivo: le operazioni saranno forzate a HOLD"
             )
 
+        def _handle_signal(signum: int, frame: types.FrameType | None) -> None:
+            self._logger.info("Segnale %d ricevuto. Shutdown richiesto.", signum)
+            self._shutdown_requested = True
+
+        signal.signal(signal.SIGTERM, _handle_signal)
+        signal.signal(signal.SIGINT, _handle_signal)
+
         if self._telegram_notifier:
             self._telegram_notifier.send_message(
-                f"<b>Bot AVVIATO</b>\n"
-                f"Simbolo: {self._symbol}\n"
-                f"Modo: {self._settings.trading_mode.value}\n"
-                f"Intervallo: {self._settings.cycle_interval_seconds}s"
+                f"<b>🚀 Bot STARTED</b>\n\n"
+                f"Symbol: {self._symbol}\n"
+                f"Mode: {self._settings.trading_mode.value}\n"
+                f"Interval: {self._settings.cycle_interval_seconds}s"
             )
 
         try:
-            while True:
+            while not self._shutdown_requested:
                 self._run_single_cycle()
+                if self._shutdown_requested:
+                    break
                 self._logger.info(
                     "Prossimo ciclo tra %d secondi",
                     self._settings.cycle_interval_seconds,
                 )
                 time.sleep(self._settings.cycle_interval_seconds)
         except KeyboardInterrupt:
-            self._logger.info("Shutdown richiesto. Arresto pulito del runner.")
-            if self._telegram_notifier:
-                self._telegram_notifier.send_message(
-                    f"<b>Bot FERMATO</b>\nSimbolo: {self._symbol}"
-                )
+            pass
+
+        self._logger.info("Shutdown richiesto. Arresto pulito del runner.")
+        if self._telegram_notifier:
+            self._telegram_notifier.send_message(
+                f"<b>🛑 Bot STOPPED</b>\n\n"
+                f"Symbol: {self._symbol}"
+            )
 
     def _run_single_cycle(self) -> None:
         """Esegue un singolo ciclo operativo con gestione degli errori."""
@@ -133,9 +148,9 @@ class TradingRunner:
             )
             if self._telegram_notifier:
                 self._telegram_notifier.send_message(
-                    f"<b>ERRORE nel ciclo</b>\n"
-                    f"Simbolo: {self._symbol}\n"
-                    f"Errore: {exc}"
+                    f"<b>⚠️ Cycle ERROR</b>\n\n"
+                    f"Symbol: {self._symbol}\n"
+                    f"Error: {exc}"
                 )
 
     def _build_cycle_input(self) -> TradingCycleInput:
@@ -163,13 +178,14 @@ class TradingRunner:
         details = proposal.details
 
         lines: list[str] = [
-            "<b>Ordine ESEGUITO</b>",
-            f"Azione: {report.executed_action.value}",
-            f"Tipo: {report.order_type.value}",
+            "<b>✅ Order EXECUTED</b>",
+            "",
+            f"Action: {report.executed_action.value}",
+            f"Type: {report.order_type.value}",
         ]
 
         if details.quantity is not None:
-            lines.append(f"Quantità: {details.quantity}")
+            lines.append(f"Quantity: {details.quantity}")
 
         if report.order_type is OrderType.MARKET:
             exec_d = report.execution_details
@@ -178,19 +194,19 @@ class TradingRunner:
             if cum_quote and exec_qty:
                 try:
                     avg_price = float(cum_quote) / float(exec_qty)
-                    lines.append(f"Prezzo: {avg_price:.2f}")
-                    lines.append(f"Valore: {float(cum_quote):.2f} USDC")
+                    lines.append(f"Price: {avg_price:.2f}")
+                    lines.append(f"Value: {float(cum_quote):.2f} USDC")
                 except (ValueError, ZeroDivisionError):
                     pass
         elif report.order_type is OrderType.LIMIT:
             if details.price is not None:
-                lines.append(f"Prezzo: {details.price:.2f}")
+                lines.append(f"Price: {details.price:.2f}")
             notional = details.estimated_notional()
             if notional is not None:
-                lines.append(f"Valore stimato: {notional:.2f} USDC")
+                lines.append(f"Est. Value: {notional:.2f} USDC")
 
-        lines.append(f"Confidenza DM: {proposal.confidence:.2f}")
-        lines.append(f"Simbolo: {self._symbol}")
-        lines.append(f"Modo: {self._settings.trading_mode.value}")
+        lines.append(f"DM Confidence: {proposal.confidence:.2f}")
+        lines.append(f"Symbol: {self._symbol}")
+        lines.append(f"Mode: {self._settings.trading_mode.value}")
 
         return "\n".join(lines)

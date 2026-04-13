@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import signal
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -135,7 +136,7 @@ def test_build_cycle_input_calls_exchange_client(mock_sleep: MagicMock) -> None:
 
 @patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
 def test_run_sends_startup_notification(mock_sleep: MagicMock) -> None:
-    """Il runner deve inviare una notifica di avvio."""
+    """Il runner deve inviare una notifica di avvio con il nuovo stile."""
     mock_notifier = MagicMock(spec=TelegramNotifier)
     runner = _make_runner(telegram_notifier=mock_notifier)
 
@@ -143,7 +144,7 @@ def test_run_sends_startup_notification(mock_sleep: MagicMock) -> None:
 
     assert mock_notifier.send_message.call_count >= 1
     first_call_text: str = mock_notifier.send_message.call_args_list[0].args[0]
-    assert "AVVIATO" in first_call_text
+    assert "STARTED" in first_call_text
 
 
 @patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
@@ -155,7 +156,32 @@ def test_run_sends_stop_notification(mock_sleep: MagicMock) -> None:
     runner.run()
 
     texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
-    assert any("FERMATO" in t for t in texts)
+    assert any("STOPPED" in t for t in texts)
+
+
+@patch("src.core.runner.signal.signal")
+@patch("src.core.runner.time.sleep")
+def test_run_sends_stop_notification_on_sigterm(
+    mock_sleep: MagicMock, mock_signal: MagicMock
+) -> None:
+    """Il runner deve inviare la notifica di stop anche quando viene ricevuto SIGTERM."""
+    mock_notifier = MagicMock(spec=TelegramNotifier)
+    runner = _make_runner(telegram_notifier=mock_notifier)
+
+    captured_handlers: dict[int, Any] = {}
+
+    def _capture_signal(signum: int, handler: Any) -> None:
+        captured_handlers[signum] = handler
+
+    mock_signal.side_effect = _capture_signal
+    mock_sleep.side_effect = lambda _: captured_handlers[signal.SIGTERM](
+        signal.SIGTERM, None
+    )
+
+    runner.run()
+
+    texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
+    assert any("STOPPED" in t for t in texts)
 
 
 @patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
@@ -169,7 +195,7 @@ def test_run_sends_error_notification_on_exception(mock_sleep: MagicMock) -> Non
     runner.run()
 
     texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
-    assert any("ERRORE" in t and "boom" in t for t in texts)
+    assert any("ERROR" in t and "boom" in t for t in texts)
 
 
 @patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
@@ -198,7 +224,7 @@ def test_run_sends_order_notification_when_executed(mock_sleep: MagicMock) -> No
     runner.run()
 
     texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
-    assert any("ESEGUITO" in t for t in texts)
+    assert any("EXECUTED" in t for t in texts)
 
 
 @patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)

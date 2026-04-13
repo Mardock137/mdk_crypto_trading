@@ -10,6 +10,7 @@ MDK Crypto Trading produce due tipi di log complementari: un log testuale per il
 - [Log eventi JSON (`logs/events/`)](#log-eventi-json-logsevents)
 - [Struttura della cartella `logs/`](#struttura-della-cartella-logs)
 - [🔧 Configurazione](#-configurazione)
+- [📱 Notifiche Telegram](#-notifiche-telegram)
 - [Come leggere i log eventi](#come-leggere-i-log-eventi)
 - [🧪 Testing](#-testing)
 - [📚 Riferimenti](#-riferimenti)
@@ -107,6 +108,41 @@ La cartella `logs/` è già presente nel `.gitignore` e non viene tracciata.
 
 ---
 
+## 📱 Notifiche Telegram
+
+Il sistema invia notifiche opzionali via Telegram Bot API. Se `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` non sono configurati nel `.env`, le notifiche sono silenziosamente disabilitate.
+
+| Notifica              | Quando scatta                                   |
+|-----------------------|-------------------------------------------------|
+| 🚀 **Bot STARTED**    | All'avvio del runner                            |
+| ✅ **Order EXECUTED** | Quando un ordine viene eseguito su Binance      |
+| ⚠️ **Cycle ERROR**    | Se un ciclo operativo fallisce con un'eccezione |
+| 🛑 **Bot STOPPED**    | Allo stop del sistema (Ctrl+C o `docker stop`)  |
+
+**Esempio notifica ordine eseguito:**
+
+```text
+✅ Order EXECUTED
+
+Action: BUY
+Type: MARKET
+Quantity: 0.00123
+Price: 84521.30
+Value: 103.96 USDC
+DM Confidence: 0.82
+Symbol: BTCUSDC
+Mode: DEMO
+```
+
+**Configurazione** (nel `.env`):
+
+| Variabile            | Descrizione                                        |
+|----------------------|----------------------------------------------------|
+| `TELEGRAM_BOT_TOKEN` | Token del bot Telegram (fornito da @BotFather)     |
+| `TELEGRAM_CHAT_ID`   | ID della chat o del canale che riceve le notifiche |
+
+---
+
 ## Come leggere i log eventi
 
 Per visualizzare i log JSON in modo leggibile da terminale:
@@ -136,6 +172,6 @@ pytest tests/utils/test_event_logger.py -v
 
 ## 📚 Riferimenti
 
-- **Codice**: `src/utils/logging_config.py`, `src/utils/event_logger.py`
-- **Test**: `tests/utils/test_logging_config.py`, `tests/utils/test_event_logger.py`
+- **Codice**: `src/utils/logging_config.py`, `src/utils/event_logger.py`, `src/utils/telegram_notifier.py`
+- **Test**: `tests/utils/test_logging_config.py`, `tests/utils/test_event_logger.py`, `tests/utils/test_telegram_notifier.py`
 - **Doc correlati**: `docs/architecture.md`, `docs/config.md`
