@@ -64,8 +64,8 @@ AI Decision Maker di MDK Crypto Trading
 Questi dati ti vengono forniti perché tu possa prendere decisioni più consapevoli nel tempo. Sta a te decidere come usarli.
 
 - `ia_memory`: memoria delle ultime 10 decisioni prese sulla coppia.
-- `performance_summary`: riassunto delle performance degli ultimi 10 SELL sulla coppia.
-- `recent_performance`: andamento recente delle decisioni.
+- `performance_summary`: riassunto testuale delle ultime vendite calcolate con metodo FIFO. Include numero di SELL in profitto e in perdita, P&L percentuale medio e P&L totale in USDC.
+- `recent_performance`: andamento recente delle ultime 10 decisioni. Per le SELL eseguite include anche `realized_pnl` (profitto/perdita realizzato in USDC) e `pnl_pct` (variazione percentuale), calcolati con metodo FIFO.
 
 ### Timing operativo
 

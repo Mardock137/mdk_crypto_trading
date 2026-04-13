@@ -1,6 +1,22 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.6.0 — 2026-04-13
+
+### Aggiunto
+
+- Metodo privato `_compute_fifo_trades()` in `memory_manager.py`: calcola le vendite realizzate usando il metodo FIFO (First In, First Out), tracciando una coda di lotti di acquisto e consumandola in ordine cronologico per ogni SELL eseguita. Gestisce vendite parziali e vendite che attraversano più lotti
+- Metodo privato `_build_fifo_index()` in `memory_manager.py`: mappa ogni record SELL al suo P&L FIFO per arricchire `get_recent_performance()`
+
+### Modificato
+
+- `get_performance_summary()` in `memory_manager.py`: sostituisce il calcolo approssimativo (BUY più recente -> SELL) con la logica FIFO. Il riassunto ora include P&L percentuale medio e P&L totale in USDC
+- `get_recent_performance()` in `memory_manager.py`: i record delle SELL eseguite ora includono `realized_pnl` (USDC) e `pnl_pct` (%) calcolati con metodo FIFO. Il campo `quantity` è stato aggiunto a tutti i record
+- Prompt del Decision Maker: aggiornata la descrizione di `performance_summary` e `recent_performance` per riflettere i nuovi campi FIFO
+- Test `tests/utils/test_memory_manager.py`: riscritti e ampliati con scenari FIFO (acquisti multipli, vendita parziale, vendita multi-lotto, SELL senza BUY, record invalidi)
+
+---
+
 ## 1.5.3 — 2026-04-13
 
 ### Modificato

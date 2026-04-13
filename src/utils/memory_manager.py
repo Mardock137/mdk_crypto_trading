@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import deque
 from datetime import datetime
 from pathlib import Path
 
@@ -46,74 +47,66 @@ class MemoryManager:
         return self._read_last_n(symbol, n=10)
 
     def get_performance_summary(self, symbol: str) -> str:
-        """Genera un riassunto testuale delle ultime 10 SELL eseguite.
+        """Genera un riassunto testuale delle ultime 10 vendite calcolate con metodo FIFO.
 
-        Confronta ogni SELL con il BUY precedente per stabilire profitto o perdita.
-        Ritorna stringa vuota se non ci sono abbastanza dati.
+        Ritorna stringa vuota se non ci sono vendite realizzate.
         """
-        all_records = self._read_all(symbol)
-        executed_sells = [
-            r
-            for r in all_records
-            if r.get("action") == "SELL"
-            and r.get("execution_status") == "EXECUTED"
-            and r.get("price") is not None
-        ]
-
-        if not executed_sells:
+        fifo_trades = self._compute_fifo_trades(symbol)
+        if not fifo_trades:
             return ""
 
-        last_sells = executed_sells[-10:]
-        profits = 0
-        losses = 0
-        pct_changes: list[float] = []
+        last_trades = fifo_trades[-10:]
+        profits = sum(1 for t in last_trades if t["pnl_pct"] >= 0)
+        losses = len(last_trades) - profits
+        avg_pct = sum(t["pnl_pct"] for t in last_trades) / len(last_trades)
+        total_pnl = sum(t["realized_pnl"] for t in last_trades)
 
-        for sell in last_sells:
-            sell_price: float = sell["price"]
-            sell_idx = all_records.index(sell)
-
-            # Trova il BUY EXECUTED più recente prima di questo SELL
-            buy_price: float | None = None
-            for record in reversed(all_records[:sell_idx]):
-                if (
-                    record.get("action") == "BUY"
-                    and record.get("execution_status") == "EXECUTED"
-                    and record.get("price") is not None
-                ):
-                    buy_price = record["price"]
-                    break
-
-            if buy_price is None or buy_price == 0:
-                continue
-
-            pct = (sell_price - buy_price) / buy_price * 100
-            pct_changes.append(pct)
-            if pct >= 0:
-                profits += 1
-            else:
-                losses += 1
-
-        if not pct_changes:
-            return ""
-
-        avg_pct = sum(pct_changes) / len(pct_changes)
-        sign = "+" if avg_pct >= 0 else ""
+        avg_sign = "+" if avg_pct >= 0 else ""
+        total_sign = "+" if total_pnl >= 0 else ""
         return (
-            f"Ultimi {len(last_sells)} SELL eseguiti: {profits} in profitto, "
-            f"{losses} in perdita. Performance media: {sign}{avg_pct:.1f}%."
+            f"Ultimi {len(last_trades)} SELL (FIFO): {profits} in profitto, "
+            f"{losses} in perdita. "
+            f"P&L medio: {avg_sign}{avg_pct:.1f}%. "
+            f"P&L totale: {total_sign}{total_pnl:.2f} USDC."
         )
 
     def get_recent_performance(self, symbol: str) -> list[dict]:
-        """Ritorna le ultime 10 decisioni come lista semplificata."""
+        """Ritorna le ultime 10 decisioni come lista semplificata.
+
+        Per le SELL eseguite include anche i dati FIFO (realized_pnl, pnl_pct).
+        """
         records = self._read_last_n(symbol, n=10)
-        return [
-            {
-                "action": r.get("action"),
-                "price": r.get("price"),
-                "execution_status": r.get("execution_status"),
+        fifo_by_idx = self._build_fifo_index(symbol)
+
+        result: list[dict] = []
+        all_records = self._read_all(symbol)
+        total = len(all_records)
+        last_10_start = max(0, total - 10)
+
+        for i, record in enumerate(all_records[last_10_start:], start=last_10_start):
+            entry: dict = {
+                "action": record.get("action"),
+                "price": record.get("price"),
+                "quantity": record.get("quantity"),
+                "execution_status": record.get("execution_status"),
             }
-            for r in records
-        ]
+            if i in fifo_by_idx:
+                entry["realized_pnl"] = fifo_by_idx[i]["realized_pnl"]
+                entry["pnl_pct"] = fifo_by_idx[i]["pnl_pct"]
+            result.append(entry)
+
+        # fallback: se _build_fifo_index non ha dati usa i record semplici
+        if not result:
+            return [
+                {
+                    "action": r.get("action"),
+                    "price": r.get("price"),
+                    "quantity": r.get("quantity"),
+                    "execution_status": r.get("execution_status"),
+                }
+                for r in records
+            ]
+        return result
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -155,3 +148,129 @@ class MemoryManager:
             except json.JSONDecodeError:
                 continue
         return records
+
+    def _compute_fifo_trades(self, symbol: str) -> list[dict]:
+        """Calcola le vendite realizzate usando il metodo FIFO.
+
+        Ogni BUY EXECUTED aggiunge un lotto (quantity, price) in coda.
+        Ogni SELL EXECUTED consuma i lotti partendo dal piu vecchio.
+        Vendite parziali attraverso piu lotti vengono aggregate in un singolo
+        record con il costo medio ponderato.
+
+        Ritorna lista di dict con: sell_price, avg_cost_basis, quantity,
+        realized_pnl (USDC), pnl_pct (%).
+        Ignora record con quantity o price mancanti/invalidi.
+        """
+        records = self._read_all(symbol)
+        # coda di lotti: ogni elemento e [quantita_residua, prezzo_acquisto]
+        lot_queue: deque[list[float]] = deque()
+        fifo_trades: list[dict] = []
+
+        for record in records:
+            action = record.get("action")
+            status = record.get("execution_status")
+            quantity = record.get("quantity")
+            price = record.get("price")
+
+            if status != "EXECUTED":
+                continue
+            if quantity is None or price is None:
+                continue
+            try:
+                qty = float(quantity)
+                px = float(price)
+            except (TypeError, ValueError):
+                continue
+            if qty <= 0 or px <= 0:
+                continue
+
+            if action == "BUY":
+                lot_queue.append([qty, px])
+
+            elif action == "SELL":
+                remaining_sell = qty
+                total_cost = 0.0
+                total_qty_consumed = 0.0
+
+                while remaining_sell > 0 and lot_queue:
+                    lot_qty, lot_price = lot_queue[0]
+                    consumed = min(lot_qty, remaining_sell)
+                    total_cost += consumed * lot_price
+                    total_qty_consumed += consumed
+                    remaining_sell -= consumed
+                    lot_queue[0][0] -= consumed
+                    if lot_queue[0][0] <= 0:
+                        lot_queue.popleft()
+
+                if total_qty_consumed <= 0:
+                    continue
+
+                avg_cost = total_cost / total_qty_consumed
+                realized_pnl = total_qty_consumed * (px - avg_cost)
+                pnl_pct = (px - avg_cost) / avg_cost * 100
+
+                fifo_trades.append({
+                    "sell_price": px,
+                    "avg_cost_basis": round(avg_cost, 8),
+                    "quantity": round(total_qty_consumed, 8),
+                    "realized_pnl": round(realized_pnl, 4),
+                    "pnl_pct": round(pnl_pct, 4),
+                })
+
+        return fifo_trades
+
+    def _build_fifo_index(self, symbol: str) -> dict[int, dict]:
+        """Mappa indice del record SELL -> dati FIFO, per arricchire get_recent_performance."""
+        records = self._read_all(symbol)
+        lot_queue: deque[list[float]] = deque()
+        fifo_index: dict[int, dict] = {}
+
+        for i, record in enumerate(records):
+            action = record.get("action")
+            status = record.get("execution_status")
+            quantity = record.get("quantity")
+            price = record.get("price")
+
+            if status != "EXECUTED":
+                continue
+            if quantity is None or price is None:
+                continue
+            try:
+                qty = float(quantity)
+                px = float(price)
+            except (TypeError, ValueError):
+                continue
+            if qty <= 0 or px <= 0:
+                continue
+
+            if action == "BUY":
+                lot_queue.append([qty, px])
+
+            elif action == "SELL":
+                remaining_sell = qty
+                total_cost = 0.0
+                total_qty_consumed = 0.0
+
+                while remaining_sell > 0 and lot_queue:
+                    lot_qty, lot_price = lot_queue[0]
+                    consumed = min(lot_qty, remaining_sell)
+                    total_cost += consumed * lot_price
+                    total_qty_consumed += consumed
+                    remaining_sell -= consumed
+                    lot_queue[0][0] -= consumed
+                    if lot_queue[0][0] <= 0:
+                        lot_queue.popleft()
+
+                if total_qty_consumed <= 0:
+                    continue
+
+                avg_cost = total_cost / total_qty_consumed
+                realized_pnl = total_qty_consumed * (px - avg_cost)
+                pnl_pct = (px - avg_cost) / avg_cost * 100
+
+                fifo_index[i] = {
+                    "realized_pnl": round(realized_pnl, 4),
+                    "pnl_pct": round(pnl_pct, 4),
+                }
+
+        return fifo_index

@@ -156,8 +156,8 @@ Il punto di ingresso è `src/main.py`, che fa il bootstrap di tutti i componenti
 - Dopo ogni ciclo completato con successo, il runner salva un record JSONL in `data/memory/{symbol}.jsonl` con: timestamp, azione, tipo ordine, confidenza, motivazione, quantità, prezzo, stato esecuzione, decisione rischio, bias di mercato.
 - Prima di ogni ciclo, il runner legge gli ultimi record e popola tre campi di `TradingCycleInput`:
   - `ia_memory`: ultime 10 decisioni complete
-  - `performance_summary`: riassunto testuale delle ultime 10 SELL eseguite (profitti/perdite vs BUY precedente)
-  - `recent_performance`: lista semplificata delle ultime 10 decisioni (action, price, execution_status)
+  - `performance_summary`: riassunto testuale delle ultime 10 vendite calcolate con metodo FIFO (profitti/perdite, P&L medio % e P&L totale in USDC)
+  - `recent_performance`: ultime 10 decisioni con, per le SELL eseguite, `realized_pnl` (USDC) e `pnl_pct` (%) calcolati con metodo FIFO
 
 ### Persistenza
 
