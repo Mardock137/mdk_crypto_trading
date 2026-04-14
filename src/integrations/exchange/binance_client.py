@@ -61,7 +61,6 @@ class BinanceClient(BaseExchangeClient):
 
     # ---- Metodi base ----
 
-    @_binance_retry
     def ping(self) -> bool:
         try:
             self._client.ping()
