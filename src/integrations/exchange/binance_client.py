@@ -125,29 +125,35 @@ class BinanceClient(BaseExchangeClient):
     def place_market_order(
         self, symbol: str, side: str, quantity: float,
     ) -> dict[str, Any]:
-        if side.upper() == "BUY":
+        normalized = side.upper()
+        if normalized == "BUY":
             result: dict[str, Any] = self._client.order_market_buy(
                 symbol=symbol, quantity=quantity,
             )
-        else:
+        elif normalized == "SELL":
             result = self._client.order_market_sell(
                 symbol=symbol, quantity=quantity,
             )
+        else:
+            raise ValueError(f"Invalid order side: {side!r}. Expected 'BUY' or 'SELL'.")
         return result
 
     def place_limit_order(
         self, symbol: str, side: str, quantity: float, price: float,
     ) -> dict[str, Any]:
-        if side.upper() == "BUY":
+        normalized = side.upper()
+        if normalized == "BUY":
             result: dict[str, Any] = self._client.order_limit_buy(
                 symbol=symbol, quantity=quantity, price=str(price),
                 timeInForce="GTC",
             )
-        else:
+        elif normalized == "SELL":
             result = self._client.order_limit_sell(
                 symbol=symbol, quantity=quantity, price=str(price),
                 timeInForce="GTC",
             )
+        else:
+            raise ValueError(f"Invalid order side: {side!r}. Expected 'BUY' or 'SELL'.")
         return result
 
     def cancel_order(self, symbol: str, order_id: str) -> dict[str, Any]:

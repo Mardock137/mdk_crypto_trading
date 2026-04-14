@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from src.agents.base_agent import BaseAgent
@@ -11,6 +12,8 @@ from src.core.contracts import (
     TradeAction,
 )
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
+
+_logger = logging.getLogger(__name__)
 
 
 class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
@@ -77,16 +80,33 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
         details = proposal.details
 
         if action is TradeAction.CANCEL_AND_REPLACE_ORDER:
-            assert details.order_id is not None
-            assert details.side is not None
-            assert details.quantity is not None
-            assert details.price is not None
+            if details.order_id is None:
+                raise ValueError("order_id is required for CANCEL_AND_REPLACE_ORDER.")
+            if details.side is None:
+                raise ValueError("side is required for CANCEL_AND_REPLACE_ORDER.")
+            if details.quantity is None:
+                raise ValueError("quantity is required for CANCEL_AND_REPLACE_ORDER.")
+            if details.price is None:
+                raise ValueError("price is required for CANCEL_AND_REPLACE_ORDER.")
             self._exchange.cancel_order(symbol, details.order_id)
-            return self._exchange.place_limit_order(
-                symbol, details.side.value, details.quantity, details.price,
-            )
+            try:
+                return self._exchange.place_limit_order(
+                    symbol, details.side.value, details.quantity, details.price,
+                )
+            except Exception as exc:
+                _logger.warning(
+                    "CRITICAL: Order %s cancelled but replacement failed: %s. "
+                    "Manual intervention may be required.",
+                    details.order_id,
+                    exc,
+                )
+                raise RuntimeError(
+                    f"CRITICAL: Order {details.order_id} cancelled but replacement "
+                    f"failed: {exc}. Manual intervention may be required."
+                ) from exc
 
-        assert details.quantity is not None
+        if details.quantity is None:
+            raise ValueError("quantity is required for BUY/SELL orders.")
         side = action.value  # "BUY" o "SELL"
 
         if proposal.order_type is OrderType.MARKET:
@@ -94,7 +114,8 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
                 symbol, side, details.quantity,
             )
 
-        assert details.price is not None
+        if details.price is None:
+            raise ValueError("price is required for LIMIT orders.")
         return self._exchange.place_limit_order(
             symbol, side, details.quantity, details.price,
         )

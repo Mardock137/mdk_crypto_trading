@@ -1,6 +1,21 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.6.1 — 2026-04-14
+
+### Corretto
+
+- `execution_trader.py`: sostituiti i 6 `assert` in `_execute_order` con controlli espliciti che sollevano `ValueError`. Gli `assert` venivano rimossi dal compilatore con `python -O`, rendendo la validazione inaffidabile. I `ValueError` vengono catturati dal `except Exception` in `run()` e restituiscono un `ExecutionReport` con status `FAILED`
+- `execution_trader.py`: gestito lo stato parziale in `CANCEL_AND_REPLACE_ORDER` — se `cancel_order` riesce ma `place_limit_order` fallisce, viene loggato un warning e sollevato un `RuntimeError` con messaggio esplicito che compare nel `reason` del report `FAILED` e nelle notifiche Telegram di errore
+- `binance_client.py`: sostituito il pattern `if BUY / else` con `if BUY / elif SELL / else raise ValueError` in `place_market_order` e `place_limit_order`. In precedenza qualsiasi valore diverso da `"BUY"` veniva silenziosamente trattato come SELL
+
+### Aggiunto
+
+- 6 nuovi test in `tests/agents/test_execution_trader.py`: BUY senza quantity → `FAILED`, SELL LIMIT senza price → `FAILED`, CANCEL_AND_REPLACE senza order_id → `FAILED`, CANCEL_AND_REPLACE con place fallito → `FAILED` con messaggio "cancelled but replacement failed"
+- 2 nuovi test in `tests/integrations/exchange/test_binance_client.py`: `place_market_order` con side non valido → `ValueError`, `place_limit_order` con side non valido → `ValueError`
+
+---
+
 ## 1.6.0 — 2026-04-13
 
 ### Aggiunto

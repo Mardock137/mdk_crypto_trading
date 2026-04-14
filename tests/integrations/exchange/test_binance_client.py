@@ -260,6 +260,24 @@ def test_place_limit_order_sell(mock_client_cls: MagicMock) -> None:
 
 
 @patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_market_order_invalid_side_raises(mock_client_cls: MagicMock) -> None:
+    """place_market_order con side non valido deve lanciare ValueError."""
+    client = BinanceClient(_make_settings())
+
+    with pytest.raises(ValueError, match="Invalid order side"):
+        client.place_market_order("BTCUSDC", "HOLD", 0.001)
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_limit_order_invalid_side_raises(mock_client_cls: MagicMock) -> None:
+    """place_limit_order con side non valido deve lanciare ValueError."""
+    client = BinanceClient(_make_settings())
+
+    with pytest.raises(ValueError, match="Invalid order side"):
+        client.place_limit_order("BTCUSDC", "HOLD", 0.001, 97000.0)
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
 def test_cancel_order(mock_client_cls: MagicMock) -> None:
     """cancel_order chiama cancel_order dell'SDK con orderId."""
     mock_instance = mock_client_cls.return_value

@@ -184,6 +184,78 @@ def test_cancel_and_replace_calls_cancel_then_limit() -> None:
     )
 
 
+# --- Validazione input mancante (CR-01) ---
+
+def test_buy_market_without_quantity_returns_failed() -> None:
+    proposal = TradeProposal(
+        action=TradeAction.BUY,
+        order_type=OrderType.MARKET,
+        confidence=0.8,
+        reason="segnale",
+        details=TradeProposalDetails(),
+    )
+    agent = ExecutionTraderAgent(exchange_client=MagicMock())
+    report = agent.run(_make_input(proposal, APPROVED))
+
+    assert report.execution_status is ExecutionStatus.FAILED
+    assert "quantity" in report.reason
+
+
+def test_sell_limit_without_price_returns_failed() -> None:
+    proposal = TradeProposal(
+        action=TradeAction.SELL,
+        order_type=OrderType.LIMIT,
+        confidence=0.8,
+        reason="segnale",
+        details=TradeProposalDetails(quantity=0.001),
+    )
+    agent = ExecutionTraderAgent(exchange_client=MagicMock())
+    report = agent.run(_make_input(proposal, APPROVED))
+
+    assert report.execution_status is ExecutionStatus.FAILED
+    assert "price" in report.reason
+
+
+def test_cancel_replace_without_order_id_returns_failed() -> None:
+    proposal = TradeProposal(
+        action=TradeAction.CANCEL_AND_REPLACE_ORDER,
+        order_type=OrderType.LIMIT,
+        confidence=0.7,
+        reason="aggiornamento prezzo",
+        details=TradeProposalDetails(
+            side=OrderSide.BUY, quantity=0.001, price=97000.0,
+        ),
+    )
+    agent = ExecutionTraderAgent(exchange_client=MagicMock())
+    report = agent.run(_make_input(proposal, APPROVED))
+
+    assert report.execution_status is ExecutionStatus.FAILED
+    assert "order_id" in report.reason
+
+
+# --- Stato parziale CANCEL_AND_REPLACE (CR-03) ---
+
+def test_cancel_and_replace_partial_failure_returns_failed() -> None:
+    mock_exchange = MagicMock()
+    mock_exchange.cancel_order.return_value = {"status": "CANCELED"}
+    mock_exchange.place_limit_order.side_effect = RuntimeError("API timeout")
+
+    proposal = TradeProposal(
+        action=TradeAction.CANCEL_AND_REPLACE_ORDER,
+        order_type=OrderType.LIMIT,
+        confidence=0.71,
+        reason="prezzo migliorato",
+        details=TradeProposalDetails(
+            order_id="999", side=OrderSide.BUY, quantity=0.001, price=97250.0,
+        ),
+    )
+    agent = ExecutionTraderAgent(exchange_client=mock_exchange)
+    report = agent.run(_make_input(proposal, APPROVED))
+
+    assert report.execution_status is ExecutionStatus.FAILED
+    assert "cancelled but replacement failed" in report.reason
+
+
 # --- Eccezione dall'exchange ---
 
 def test_exchange_exception_returns_failed() -> None:
