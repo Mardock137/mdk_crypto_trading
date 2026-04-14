@@ -22,7 +22,7 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
         exchange_client: BaseExchangeClient,
         kill_switch: bool = False,
     ) -> None:
-        super().__init__(name="execution_trader", prompt_name="execution_trader.md")
+        super().__init__(name="execution_trader")
         self._exchange = exchange_client
         self._kill_switch = kill_switch
 

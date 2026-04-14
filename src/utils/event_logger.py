@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -36,7 +36,7 @@ class EventLogger:
     ) -> None:
         """Registra un ciclo operativo completato con successo."""
         record: dict[str, Any] = {
-            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "symbol": symbol,
             "trading_mode": trading_mode,
             "market_analysis": dataclasses.asdict(market_analysis),
@@ -55,7 +55,7 @@ class EventLogger:
     ) -> None:
         """Registra un ciclo fallito con errore."""
         record: dict[str, Any] = {
-            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "symbol": symbol,
             "trading_mode": trading_mode,
             "market_analysis": None,

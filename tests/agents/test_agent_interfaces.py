@@ -10,7 +10,7 @@ from src.agents import (
     MarketAnalystAgent,
     RiskManagerAgent,
 )
-from src.agents.base_agent import unwrap_llm_response
+from src.agents.base_agent import _ensure_list_of_str, unwrap_llm_response
 
 
 def test_all_agents_inherit_from_base_agent() -> None:
@@ -21,15 +21,43 @@ def test_all_agents_inherit_from_base_agent() -> None:
 
 
 def test_agents_expose_expected_prompt_paths() -> None:
-    agents = [
+    agents_with_prompts = [
         (MarketAnalystAgent(llm=MagicMock()), "market_analyst.md"),
         (DecisionMakerAgent(llm=MagicMock()), "decision_maker.md"),
         (RiskManagerAgent(llm=MagicMock()), "risk_manager.md"),
-        (ExecutionTraderAgent(exchange_client=MagicMock()), "execution_trader.md"),
     ]
 
-    for agent, prompt_name in agents:
-        assert agent.prompt_path == Path("config") / "prompts" / prompt_name
+    for agent, prompt_name in agents_with_prompts:
+        assert agent.prompt_path is not None
+        assert agent.prompt_path.is_absolute()
+        assert agent.prompt_path.name == prompt_name
+        assert "config" in agent.prompt_path.parts
+        assert "prompts" in agent.prompt_path.parts
+
+
+def test_execution_trader_prompt_path_is_none() -> None:
+    agent = ExecutionTraderAgent(exchange_client=MagicMock())
+    assert agent.prompt_path is None
+
+
+# --- Test _ensure_list_of_str ---
+
+def test_ensure_list_of_str_with_normal_list() -> None:
+    assert _ensure_list_of_str(["a", "b", "c"], "field") == ["a", "b", "c"]
+
+
+def test_ensure_list_of_str_converts_items_to_str() -> None:
+    assert _ensure_list_of_str([1, 2.5, True], "field") == ["1", "2.5", "True"]
+
+
+def test_ensure_list_of_str_with_single_string() -> None:
+    assert _ensure_list_of_str("solo", "field") == ["solo"]
+
+
+def test_ensure_list_of_str_with_unexpected_type_returns_empty() -> None:
+    assert _ensure_list_of_str(42, "field") == []
+    assert _ensure_list_of_str(None, "field") == []
+    assert _ensure_list_of_str({"key": "val"}, "field") == []
 
 
 # --- Test unwrap_llm_response ---

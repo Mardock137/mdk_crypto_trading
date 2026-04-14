@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from src.agents.base_agent import BaseAgent, unwrap_llm_response
+from src.agents.base_agent import BaseAgent, _ensure_list_of_str, unwrap_llm_response
 from src.core.contracts import (
     MarketAnalysis,
     MarketAnalystInput,
@@ -19,6 +19,7 @@ class MarketAnalystAgent(BaseAgent[MarketAnalystInput, MarketAnalysis]):
         self._llm = llm
 
     def run(self, agent_input: MarketAnalystInput) -> MarketAnalysis:
+        assert self.prompt_path is not None
         system_prompt = self.prompt_path.read_text(encoding="utf-8")
         user_payload = dataclasses.asdict(agent_input.market_data)
 
@@ -40,8 +41,8 @@ def _parse_market_analysis(data: Any) -> MarketAnalysis:
         signal_strength=float(data["signal_strength"]),
         confidence=float(data["confidence"]),
         summary=str(data["summary"]),
-        key_factors=data.get("key_factors", []),
-        risk_notes=data.get("risk_notes", []),
+        key_factors=_ensure_list_of_str(data.get("key_factors", []), "key_factors"),
+        risk_notes=_ensure_list_of_str(data.get("risk_notes", []), "risk_notes"),
         suggested_action=SuggestedAction(
             data.get("suggested_action", "NO_TRADE_BIAS")
         ),

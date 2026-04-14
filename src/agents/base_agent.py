@@ -12,16 +12,21 @@ from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
 InputT = TypeVar("InputT")
 OutputT = TypeVar("OutputT")
 
+# base_agent.py si trova in src/agents/ — risalendo 3 livelli si arriva alla root del progetto
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 
 class BaseAgent(ABC, Generic[InputT, OutputT]):
-    def __init__(self, name: str, prompt_name: str) -> None:
+    def __init__(self, name: str, prompt_name: str = "") -> None:
         self.name = name
         self.prompt_name = prompt_name
         self._logger = logging.getLogger(f"mdk_crypto_trading.{name}")
 
     @property
-    def prompt_path(self) -> Path:
-        return Path("config") / "prompts" / self.prompt_name
+    def prompt_path(self) -> Path | None:
+        if not self.prompt_name:
+            return None
+        return _PROJECT_ROOT / "config" / "prompts" / self.prompt_name
 
     @abstractmethod
     def run(self, agent_input: InputT) -> OutputT:
@@ -42,7 +47,7 @@ class BaseAgent(ABC, Generic[InputT, OutputT]):
                 response = llm.generate_json(system_prompt, user_payload)
                 self._logger.debug("Risposta raw LLM: %s", response)
                 return parse_fn(response)
-            except (ValueError, KeyError, RuntimeError) as exc:
+            except (ValueError, KeyError, TypeError, RuntimeError) as exc:
                 if attempt < max_attempts:
                     sleep_time = base_delay * (2 ** attempt)
                     self._logger.warning(
@@ -57,6 +62,18 @@ class BaseAgent(ABC, Generic[InputT, OutputT]):
                     )
                     raise
         raise RuntimeError("Unexpected: retry loop completed without returning or raising")
+
+
+def _ensure_list_of_str(value: Any, field_name: str) -> list[str]:
+    """Normalizza un campo lista dalla risposta LLM in list[str].
+
+    Gestisce: lista normale, stringa singola, tipo inatteso (ritorna lista vuota).
+    """
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    if isinstance(value, str):
+        return [value]
+    return []
 
 
 def unwrap_llm_response(data: Any) -> dict[str, Any]:

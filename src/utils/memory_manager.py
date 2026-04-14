@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from src.core.contracts import TradingCycleResult
@@ -27,7 +27,7 @@ class MemoryManager:
     ) -> None:
         """Salva il riassunto di un ciclo completato nel file JSONL del simbolo."""
         record = {
-            "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
             "action": result.trade_proposal.action.value,
             "order_type": result.trade_proposal.order_type.value,
             "confidence": result.trade_proposal.confidence,
@@ -149,81 +149,20 @@ class MemoryManager:
                 continue
         return records
 
-    def _compute_fifo_trades(self, symbol: str) -> list[dict]:
-        """Calcola le vendite realizzate usando il metodo FIFO.
+    def _walk_fifo(self, symbol: str) -> list[dict]:
+        """Logica FIFO condivisa: itera i record e calcola P&L per ogni SELL EXECUTED.
 
         Ogni BUY EXECUTED aggiunge un lotto (quantity, price) in coda.
         Ogni SELL EXECUTED consuma i lotti partendo dal piu vecchio.
-        Vendite parziali attraverso piu lotti vengono aggregate in un singolo
-        record con il costo medio ponderato.
-
-        Ritorna lista di dict con: sell_price, avg_cost_basis, quantity,
-        realized_pnl (USDC), pnl_pct (%).
+        Vendite parziali attraverso piu lotti vengono aggregate con costo medio ponderato.
         Ignora record con quantity o price mancanti/invalidi.
+
+        Ritorna lista di dict con le chiavi:
+            record_idx, sell_price, avg_cost_basis, qty_consumed, realized_pnl, pnl_pct
         """
         records = self._read_all(symbol)
-        # coda di lotti: ogni elemento e [quantita_residua, prezzo_acquisto]
         lot_queue: deque[list[float]] = deque()
-        fifo_trades: list[dict] = []
-
-        for record in records:
-            action = record.get("action")
-            status = record.get("execution_status")
-            quantity = record.get("quantity")
-            price = record.get("price")
-
-            if status != "EXECUTED":
-                continue
-            if quantity is None or price is None:
-                continue
-            try:
-                qty = float(quantity)
-                px = float(price)
-            except (TypeError, ValueError):
-                continue
-            if qty <= 0 or px <= 0:
-                continue
-
-            if action == "BUY":
-                lot_queue.append([qty, px])
-
-            elif action == "SELL":
-                remaining_sell = qty
-                total_cost = 0.0
-                total_qty_consumed = 0.0
-
-                while remaining_sell > 0 and lot_queue:
-                    lot_qty, lot_price = lot_queue[0]
-                    consumed = min(lot_qty, remaining_sell)
-                    total_cost += consumed * lot_price
-                    total_qty_consumed += consumed
-                    remaining_sell -= consumed
-                    lot_queue[0][0] -= consumed
-                    if lot_queue[0][0] <= 0:
-                        lot_queue.popleft()
-
-                if total_qty_consumed <= 0:
-                    continue
-
-                avg_cost = total_cost / total_qty_consumed
-                realized_pnl = total_qty_consumed * (px - avg_cost)
-                pnl_pct = (px - avg_cost) / avg_cost * 100
-
-                fifo_trades.append({
-                    "sell_price": px,
-                    "avg_cost_basis": round(avg_cost, 8),
-                    "quantity": round(total_qty_consumed, 8),
-                    "realized_pnl": round(realized_pnl, 4),
-                    "pnl_pct": round(pnl_pct, 4),
-                })
-
-        return fifo_trades
-
-    def _build_fifo_index(self, symbol: str) -> dict[int, dict]:
-        """Mappa indice del record SELL -> dati FIFO, per arricchire get_recent_performance."""
-        records = self._read_all(symbol)
-        lot_queue: deque[list[float]] = deque()
-        fifo_index: dict[int, dict] = {}
+        results: list[dict] = []
 
         for i, record in enumerate(records):
             action = record.get("action")
@@ -268,9 +207,40 @@ class MemoryManager:
                 realized_pnl = total_qty_consumed * (px - avg_cost)
                 pnl_pct = (px - avg_cost) / avg_cost * 100
 
-                fifo_index[i] = {
-                    "realized_pnl": round(realized_pnl, 4),
-                    "pnl_pct": round(pnl_pct, 4),
-                }
+                results.append({
+                    "record_idx": i,
+                    "sell_price": px,
+                    "avg_cost_basis": avg_cost,
+                    "qty_consumed": total_qty_consumed,
+                    "realized_pnl": realized_pnl,
+                    "pnl_pct": pnl_pct,
+                })
 
-        return fifo_index
+        return results
+
+    def _compute_fifo_trades(self, symbol: str) -> list[dict]:
+        """Calcola le vendite realizzate usando il metodo FIFO.
+
+        Ritorna lista di dict con: sell_price, avg_cost_basis, quantity,
+        realized_pnl (USDC), pnl_pct (%).
+        """
+        return [
+            {
+                "sell_price": entry["sell_price"],
+                "avg_cost_basis": round(entry["avg_cost_basis"], 8),
+                "quantity": round(entry["qty_consumed"], 8),
+                "realized_pnl": round(entry["realized_pnl"], 4),
+                "pnl_pct": round(entry["pnl_pct"], 4),
+            }
+            for entry in self._walk_fifo(symbol)
+        ]
+
+    def _build_fifo_index(self, symbol: str) -> dict[int, dict]:
+        """Mappa indice del record SELL -> dati FIFO, per arricchire get_recent_performance."""
+        return {
+            entry["record_idx"]: {
+                "realized_pnl": round(entry["realized_pnl"], 4),
+                "pnl_pct": round(entry["pnl_pct"], 4),
+            }
+            for entry in self._walk_fifo(symbol)
+        }

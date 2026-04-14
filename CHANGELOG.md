@@ -1,6 +1,27 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.7.1 — 2026-04-14
+
+### Corretto
+
+- `base_agent.py`: `TypeError` aggiunto alla tupla di eccezioni catturate in `_call_llm_with_retry` — gestisce il caso in cui il JSON del LLM contenga tipi inattesi (es. `float(None)`)
+- `base_agent.py`: `prompt_path` ancorato alla root del progetto con `Path(__file__).resolve()` invece di `Path("config")` relativo alla cwd — il path ora funziona correttamente indipendentemente da dove viene lanciato il processo
+- `base_agent.py`: `prompt_name` reso opzionale (`default=""`); `prompt_path` ritorna `None` se non configurato. `ExecutionTraderAgent` (che non usa LLM) non passa più `prompt_name` al super
+- `event_logger.py` e `memory_manager.py`: `datetime.now()` sostituito con `datetime.now(timezone.utc)` — i timestamp sono ora timezone-aware in UTC
+- `runner.py`: `time.sleep()` sostituito con `threading.Event.wait()` — lo sleep del runner è ora interrompibile immediatamente da SIGTERM/SIGINT senza aspettare il timeout completo
+
+### Aggiunto
+
+- `base_agent.py`: funzione `_ensure_list_of_str(value, field_name)` — normalizza campi lista dalla risposta LLM in `list[str]`, gestendo lista, stringa singola e tipi inattesi. Usata nei parser di `market_analyst.py` e `risk_manager.py` per `key_factors`, `risk_notes`, `checks`, `required_changes`
+- 5 nuovi test per `_ensure_list_of_str` e `prompt_path` in `tests/agents/test_agent_interfaces.py`
+
+### Modificato
+
+- `memory_manager.py`: logica FIFO duplicata tra `_compute_fifo_trades` e `_build_fifo_index` estratta nel metodo privato `_walk_fifo` — le due funzioni pubbliche diventano semplici trasformazioni del risultato condiviso
+
+---
+
 ## 1.7.0 — 2026-04-14
 
 ### Aggiunto

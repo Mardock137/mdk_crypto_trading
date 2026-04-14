@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from src.agents.base_agent import BaseAgent, unwrap_llm_response
+from src.agents.base_agent import BaseAgent, _ensure_list_of_str, unwrap_llm_response
 from src.core.contracts import (
     RiskAssessment,
     RiskDecision,
@@ -18,6 +18,7 @@ class RiskManagerAgent(BaseAgent[RiskManagerInput, RiskAssessment]):
         self._llm = llm
 
     def run(self, agent_input: RiskManagerInput) -> RiskAssessment:
+        assert self.prompt_path is not None
         system_prompt = self.prompt_path.read_text(encoding="utf-8")
 
         market_analysis_subset = {
@@ -51,6 +52,6 @@ def _parse_risk_assessment(data: Any) -> RiskAssessment:
         risk_decision=RiskDecision(data["risk_decision"]),
         confidence=float(data["confidence"]),
         reason=str(data["reason"]),
-        checks=data.get("checks", []),
-        required_changes=data.get("required_changes", []),
+        checks=_ensure_list_of_str(data.get("checks", []), "checks"),
+        required_changes=_ensure_list_of_str(data.get("required_changes", []), "required_changes"),
     )

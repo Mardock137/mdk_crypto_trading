@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import signal
-import time
+import threading
 import types
 
 from src.core.contracts import (
@@ -43,6 +43,7 @@ class TradingRunner:
         self._telegram_notifier = telegram_notifier
         self._trading_config = load_trading_config()
         self._shutdown_requested = False
+        self._shutdown_event = threading.Event()
 
     def run(self) -> None:
         """Avvia il loop operativo. Esce su KeyboardInterrupt o SIGTERM."""
@@ -61,6 +62,7 @@ class TradingRunner:
         def _handle_signal(signum: int, frame: types.FrameType | None) -> None:
             self._logger.info("Segnale %d ricevuto. Shutdown richiesto.", signum)
             self._shutdown_requested = True
+            self._shutdown_event.set()
 
         signal.signal(signal.SIGTERM, _handle_signal)
         signal.signal(signal.SIGINT, _handle_signal)
@@ -82,7 +84,7 @@ class TradingRunner:
                     "Prossimo ciclo tra %d secondi",
                     self._settings.cycle_interval_seconds,
                 )
-                time.sleep(self._settings.cycle_interval_seconds)
+                self._shutdown_event.wait(self._settings.cycle_interval_seconds)
         except KeyboardInterrupt:
             pass
 

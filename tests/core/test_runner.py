@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import signal
+import threading
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -68,21 +69,21 @@ def _make_runner(
 # ---------- Ciclo singolo ----------
 
 
-@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
-def test_run_sleeps_even_after_cycle_error(mock_sleep: MagicMock) -> None:
-    """Anche se il ciclo fallisce, il runner dorme prima di riprovare."""
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_run_sleeps_even_after_cycle_error(mock_wait: MagicMock) -> None:
+    """Anche se il ciclo fallisce, il runner attende prima di riprovare."""
     runner = _make_runner()
 
     runner.run()
 
-    mock_sleep.assert_called_once_with(60)
+    mock_wait.assert_called_once_with(60)
 
 
 # ---------- Gestione errore ----------
 
 
-@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
-def test_run_logs_error_on_exception(mock_sleep: MagicMock) -> None:
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_run_logs_error_on_exception(mock_wait: MagicMock) -> None:
     """Se il ciclo fallisce, il runner logga l'errore e non crasha."""
     mock_event_logger = MagicMock()
     mock_workflow = MagicMock()
@@ -101,9 +102,9 @@ def test_run_logs_error_on_exception(mock_sleep: MagicMock) -> None:
 # ---------- Kill switch ----------
 
 
-@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
 def test_run_logs_warning_when_kill_switch_active(
-    mock_sleep: MagicMock, caplog: pytest.LogCaptureFixture,
+    mock_wait: MagicMock, caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Se kill_switch è True, il runner logga un avviso all'avvio."""
     settings = _make_settings(kill_switch=True)
@@ -118,8 +119,8 @@ def test_run_logs_warning_when_kill_switch_active(
 # ---------- _build_cycle_input ----------
 
 
-@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
-def test_build_cycle_input_calls_exchange_client(mock_sleep: MagicMock) -> None:
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_build_cycle_input_calls_exchange_client(mock_wait: MagicMock) -> None:
     """_build_cycle_input deve chiamare get_market_snapshot e get_portfolio_state."""
     mock_exchange = MagicMock()
     mock_workflow = MagicMock()
@@ -134,8 +135,8 @@ def test_build_cycle_input_calls_exchange_client(mock_sleep: MagicMock) -> None:
 # ---------- Notifiche Telegram ----------
 
 
-@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
-def test_run_sends_startup_notification(mock_sleep: MagicMock) -> None:
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_run_sends_startup_notification(mock_wait: MagicMock) -> None:
     """Il runner deve inviare una notifica di avvio con il nuovo stile."""
     mock_notifier = MagicMock(spec=TelegramNotifier)
     runner = _make_runner(telegram_notifier=mock_notifier)
@@ -147,8 +148,8 @@ def test_run_sends_startup_notification(mock_sleep: MagicMock) -> None:
     assert "STARTED" in first_call_text
 
 
-@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
-def test_run_sends_stop_notification(mock_sleep: MagicMock) -> None:
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_run_sends_stop_notification(mock_wait: MagicMock) -> None:
     """Il runner deve inviare una notifica di stop su KeyboardInterrupt."""
     mock_notifier = MagicMock(spec=TelegramNotifier)
     runner = _make_runner(telegram_notifier=mock_notifier)
@@ -160,9 +161,9 @@ def test_run_sends_stop_notification(mock_sleep: MagicMock) -> None:
 
 
 @patch("src.core.runner.signal.signal")
-@patch("src.core.runner.time.sleep")
+@patch("src.core.runner.threading.Event.wait")
 def test_run_sends_stop_notification_on_sigterm(
-    mock_sleep: MagicMock, mock_signal: MagicMock
+    mock_wait: MagicMock, mock_signal: MagicMock
 ) -> None:
     """Il runner deve inviare la notifica di stop anche quando viene ricevuto SIGTERM."""
     mock_notifier = MagicMock(spec=TelegramNotifier)
@@ -174,7 +175,7 @@ def test_run_sends_stop_notification_on_sigterm(
         captured_handlers[signum] = handler
 
     mock_signal.side_effect = _capture_signal
-    mock_sleep.side_effect = lambda _: captured_handlers[signal.SIGTERM](
+    mock_wait.side_effect = lambda _: captured_handlers[signal.SIGTERM](
         signal.SIGTERM, None
     )
 
@@ -184,8 +185,8 @@ def test_run_sends_stop_notification_on_sigterm(
     assert any("STOPPED" in t for t in texts)
 
 
-@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
-def test_run_sends_error_notification_on_exception(mock_sleep: MagicMock) -> None:
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_run_sends_error_notification_on_exception(mock_wait: MagicMock) -> None:
     """Su errore nel ciclo, il runner deve inviare una notifica Telegram."""
     mock_notifier = MagicMock(spec=TelegramNotifier)
     mock_workflow = MagicMock()
@@ -198,8 +199,8 @@ def test_run_sends_error_notification_on_exception(mock_sleep: MagicMock) -> Non
     assert any("ERROR" in t and "boom" in t for t in texts)
 
 
-@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
-def test_run_sends_order_notification_when_executed(mock_sleep: MagicMock) -> None:
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_run_sends_order_notification_when_executed(mock_wait: MagicMock) -> None:
     """Quando un ordine è EXECUTED, il runner deve inviare una notifica."""
     mock_notifier = MagicMock(spec=TelegramNotifier)
     mock_workflow = MagicMock()
@@ -227,9 +228,9 @@ def test_run_sends_order_notification_when_executed(mock_sleep: MagicMock) -> No
     assert any("EXECUTED" in t for t in texts)
 
 
-@patch("src.core.runner.time.sleep", side_effect=KeyboardInterrupt)
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
 def test_run_does_not_send_order_notification_when_not_executed(
-    mock_sleep: MagicMock,
+    mock_wait: MagicMock,
 ) -> None:
     """Quando l'ordine NON è eseguito, non deve arrivare notifica di ordine."""
     mock_notifier = MagicMock(spec=TelegramNotifier)
