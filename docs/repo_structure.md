@@ -20,7 +20,7 @@
  │    │    ├── 📄 decision_maker.md                          # Prompt operativo del Decision Maker.
  │    │    ├── 📄 market_analyst.md                          # Prompt operativo del Market Analyst.
  │    │    └── 📄 risk_manager.md                            # Prompt operativo del Risk Manager.
- │    ├── 📄 symbols.yaml                                    # Simbolo di trading attivo (es. BTCUSDC).
+ │    ├── 📄 symbols.yaml                                    # Simbolo di trading attivo e quote currency (es. BTCUSDC / USDC).
  │    └── 📄 trading.yaml                                    # Regole operative statiche del sistema (es. min_order_usdc).
  │
  ├── 📁 dev_support/                                         # Materiale di supporto per Chief Mardock e Cursor.

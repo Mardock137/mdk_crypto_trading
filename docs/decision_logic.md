@@ -91,7 +91,7 @@ Le interfacce LLM rilevano in anticipo le risposte problematiche e sollevano `Ru
 - risposta JSON decodificata in un dict vuoto `{}`
 - risposta non decodificabile come JSON (con log WARNING della risposta raw)
 
-L'intera operazione — chiamata al modello, normalizzazione e parsing — è racchiusa in un blocco `try/except` che cattura `ValueError`, `KeyError` e `RuntimeError`. Se qualcosa va storto, il sistema riprova automaticamente fino a un massimo di 3 tentativi. Ad ogni tentativo fallito viene emesso un WARNING con il dettaglio dell'errore e la risposta raw del modello. Se tutti e 3 i tentativi falliscono, il ciclo viene segnato come errore e il sistema passa al ciclo successivo.
+L'intera operazione — chiamata al modello, normalizzazione e parsing — è racchiusa in un blocco `try/except` che cattura `ValueError`, `KeyError`, `TypeError` e `RuntimeError`. Se qualcosa va storto, il sistema riprova automaticamente fino a un massimo di 4 tentativi. Ad ogni tentativo fallito viene emesso un WARNING con il dettaglio dell'errore e la risposta raw del modello. Se tutti e 4 i tentativi falliscono, il ciclo viene segnato come errore e il sistema passa al ciclo successivo.
 
 ---
 

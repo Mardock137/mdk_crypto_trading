@@ -56,7 +56,7 @@ Log strutturato che registra le decisioni di ogni ciclo operativo in formato mac
 
 ```json
 {
-  "timestamp": "2026-03-24T14:30:00",
+  "timestamp": "2026-03-24T14:30:00+00:00",
   "symbol": "BTCUSDC",
   "trading_mode": "DEMO",
   "market_analysis": { "market_bias": "BULLISH", "signal_strength": 0.78, "confidence": 0.74, "..." : "..." },
@@ -71,7 +71,7 @@ Log strutturato che registra le decisioni di ogni ciclo operativo in formato mac
 
 ```json
 {
-  "timestamp": "2026-03-24T14:30:00",
+  "timestamp": "2026-03-24T14:30:00+00:00",
   "symbol": "BTCUSDC",
   "trading_mode": "DEMO",
   "market_analysis": null,
