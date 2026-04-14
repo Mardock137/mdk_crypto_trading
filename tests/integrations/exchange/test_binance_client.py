@@ -4,6 +4,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from binance.exceptions import BinanceAPIException, BinanceRequestException
 
 from src.integrations.exchange.binance_client import BinanceClient
 from src.utils.config import AppSettings, TradingMode
@@ -118,6 +119,18 @@ def test_ping_calls_sdk_ping(mock_client_cls: MagicMock) -> None:
 
 
 @patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_ping_returns_false_on_exception(mock_client_cls: MagicMock) -> None:
+    """ping() deve ritornare False se l'SDK lancia un'eccezione."""
+    mock_instance = mock_client_cls.return_value
+    mock_instance.ping.side_effect = RuntimeError("Network error")
+
+    client = BinanceClient(_make_settings())
+    result = client.ping()
+
+    assert result is False
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
 def test_get_account_info_calls_sdk_get_account(mock_client_cls: MagicMock) -> None:
     """get_account_info() deve chiamare get_account dell'SDK Binance."""
     mock_instance = mock_client_cls.return_value
@@ -164,6 +177,49 @@ def test_get_market_snapshot_returns_populated_snapshot(
     assert snapshot.volume_24h == 1234.5
     assert len(snapshot.order_book_top_10_bids) == 1
     assert "rsi_14" in snapshot.indicators
+
+
+# ---------- Verifica retry su get_market_snapshot ----------
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_get_market_snapshot_retries_on_request_exception(
+    mock_client_cls: MagicMock,
+) -> None:
+    """get_market_snapshot deve ritentare su BinanceRequestException."""
+    mock_instance = mock_client_cls.return_value
+    _setup_market_mocks(mock_instance)
+    mock_instance.get_symbol_ticker.side_effect = [
+        BinanceRequestException("Connection error"),
+        {"price": "50000.0"},
+    ]
+
+    client = BinanceClient(_make_settings())
+    snapshot = client.get_market_snapshot("BTCUSDC")
+
+    assert snapshot.symbol == "BTCUSDC"
+    assert mock_instance.get_symbol_ticker.call_count == 2
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_get_market_snapshot_no_retry_on_client_error(
+    mock_client_cls: MagicMock,
+) -> None:
+    """get_market_snapshot NON deve ritentare su errori 400 (client error)."""
+    mock_instance = mock_client_cls.return_value
+    _setup_market_mocks(mock_instance)
+    api_exc = BinanceAPIException(
+        response=MagicMock(status_code=400, text="Bad Request"),
+        status_code=400,
+        text="Bad Request",
+    )
+    mock_instance.get_symbol_ticker.side_effect = api_exc
+
+    client = BinanceClient(_make_settings())
+    with pytest.raises(BinanceAPIException):
+        client.get_market_snapshot("BTCUSDC")
+
+    assert mock_instance.get_symbol_ticker.call_count == 1
 
 
 # ---------- Verifica get_portfolio_state ----------

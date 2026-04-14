@@ -84,20 +84,28 @@ def test_load_trading_config_raises_if_file_missing(tmp_path: Path) -> None:
 # ---------- load_symbol_config ----------
 
 
-def test_load_symbol_config_returns_symbol(tmp_path: Path) -> None:
+def test_load_symbol_config_returns_dict(tmp_path: Path) -> None:
     yaml_file = tmp_path / "symbols.yaml"
-    yaml_file.write_text("symbol: BTCUSDC\n", encoding="utf-8")
+    yaml_file.write_text("symbol: BTCUSDC\nquote_currency: USDC\n", encoding="utf-8")
 
     result = load_symbol_config(yaml_file)
 
-    assert result == "BTCUSDC"
+    assert result == {"symbol": "BTCUSDC", "quote_currency": "USDC"}
 
 
 def test_load_symbol_config_raises_if_symbol_missing(tmp_path: Path) -> None:
     yaml_file = tmp_path / "symbols.yaml"
-    yaml_file.write_text("altro_campo: qualcosa\n", encoding="utf-8")
+    yaml_file.write_text("quote_currency: USDC\n", encoding="utf-8")
 
     with pytest.raises(ValueError, match="symbol"):
+        load_symbol_config(yaml_file)
+
+
+def test_load_symbol_config_raises_if_quote_currency_missing(tmp_path: Path) -> None:
+    yaml_file = tmp_path / "symbols.yaml"
+    yaml_file.write_text("symbol: BTCUSDC\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="quote_currency"):
         load_symbol_config(yaml_file)
 
 

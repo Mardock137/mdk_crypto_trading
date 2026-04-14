@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import logging
-import time
 from typing import Any
 
 from src.agents.base_agent import BaseAgent, unwrap_llm_response
@@ -18,7 +16,6 @@ class RiskManagerAgent(BaseAgent[RiskManagerInput, RiskAssessment]):
     def __init__(self, llm: BaseLlmInterface) -> None:
         super().__init__(name="risk_manager", prompt_name="risk_manager.md")
         self._llm = llm
-        self._logger = logging.getLogger(f"mdk_crypto_trading.{self.name}")
 
     def run(self, agent_input: RiskManagerInput) -> RiskAssessment:
         system_prompt = self.prompt_path.read_text(encoding="utf-8")
@@ -37,28 +34,9 @@ class RiskManagerAgent(BaseAgent[RiskManagerInput, RiskAssessment]):
             "current_price": agent_input.current_price,
         }
 
-        max_attempts = 4
-        base_delay = 2
-        response = None
-        for attempt in range(1, max_attempts + 1):
-            try:
-                response = self._llm.generate_json(system_prompt, user_payload)
-                self._logger.debug("Risposta raw LLM: %s", response)
-                return _parse_risk_assessment(response)
-            except (ValueError, KeyError, RuntimeError) as exc:
-                if attempt < max_attempts:
-                    sleep_time = base_delay * (2 ** attempt)
-                    self._logger.warning(
-                        "Tentativo %d/%d — parsing fallito: %s | Risposta: %s | riprovo tra %ds",
-                        attempt, max_attempts, exc, response, sleep_time,
-                    )
-                    time.sleep(sleep_time)
-                else:
-                    self._logger.warning(
-                        "Tentativo %d/%d — parsing fallito: %s | Risposta: %s",
-                        attempt, max_attempts, exc, response,
-                    )
-                    raise
+        return self._call_llm_with_retry(
+            self._llm, system_prompt, user_payload, _parse_risk_assessment,
+        )
 
 
 def _parse_risk_assessment(data: Any) -> RiskAssessment:

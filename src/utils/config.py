@@ -80,17 +80,20 @@ def load_trading_config(
 
 def load_symbol_config(
     config_path: str | Path = "config/symbols.yaml",
-) -> str:
-    """Carica il simbolo di trading dal file YAML di configurazione."""
+) -> dict[str, str]:
+    """Carica il simbolo di trading e la quote currency dal file YAML."""
     path = Path(config_path)
     if not path.exists():
         raise FileNotFoundError(f"File di configurazione non trovato: {path}")
     with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
     symbol = data.get("symbol")
+    quote_currency = data.get("quote_currency")
     if not symbol:
         raise ValueError("Campo 'symbol' mancante in symbols.yaml")
-    return str(symbol)
+    if not quote_currency:
+        raise ValueError("Campo 'quote_currency' mancante in symbols.yaml")
+    return {"symbol": str(symbol), "quote_currency": str(quote_currency)}
 
 
 def load_llm_model_config(

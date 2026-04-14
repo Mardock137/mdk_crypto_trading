@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from binance.client import Client as BinanceApiClient
+from binance.exceptions import BinanceAPIException, BinanceRequestException
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from src.core.contracts import MarketDataSnapshot, PortfolioState
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
@@ -10,10 +12,27 @@ from src.utils.config import AppSettings, TradingMode
 from src.utils import indicators
 
 
+def _is_retryable(exc: BaseException) -> bool:
+    if isinstance(exc, BinanceRequestException):
+        return True
+    if isinstance(exc, BinanceAPIException):
+        return exc.status_code in (429, 418) or exc.status_code >= 500
+    return False
+
+
+_binance_retry = retry(
+    retry=retry_if_exception(_is_retryable),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    stop=stop_after_attempt(3),
+    reraise=True,
+)
+
+
 class BinanceClient(BaseExchangeClient):
     """Client Binance con supporto per modalità DEMO e REAL."""
 
-    def __init__(self, settings: AppSettings) -> None:
+    def __init__(self, settings: AppSettings, *, quote_currency: str = "USDC") -> None:
+        self._quote_currency = quote_currency
         if settings.trading_mode == TradingMode.DEMO:
             if not settings.binance_demo_api_key or not settings.binance_demo_secret_key:
                 raise ValueError(
@@ -42,16 +61,22 @@ class BinanceClient(BaseExchangeClient):
 
     # ---- Metodi base ----
 
+    @_binance_retry
     def ping(self) -> bool:
-        self._client.ping()
-        return True
+        try:
+            self._client.ping()
+            return True
+        except Exception:
+            return False
 
+    @_binance_retry
     def get_account_info(self) -> dict[str, Any]:
         result: dict[str, Any] = self._client.get_account()
         return result
 
     # ---- Dati di mercato ----
 
+    @_binance_retry
     def get_market_snapshot(self, symbol: str) -> MarketDataSnapshot:
         price = float(self._client.get_symbol_ticker(symbol=symbol)["price"])
         avg_price = float(self._client.get_avg_price(symbol=symbol)["price"])
@@ -77,14 +102,14 @@ class BinanceClient(BaseExchangeClient):
             candles=candles,
         )
 
+    @_binance_retry
     def get_portfolio_state(self, symbol: str) -> PortfolioState:
         account = self._client.get_account()
         balances = {b["asset"]: b for b in account.get("balances", [])}
 
-        # Estrae la coin dal simbolo (es. "BTCUSDC" → "BTC")
-        coin = symbol.replace("USDC", "")
+        coin = symbol.removesuffix(self._quote_currency)
 
-        usdc = balances.get("USDC", {})
+        usdc = balances.get(self._quote_currency, {})
         usdc_free = float(usdc.get("free", 0))
         usdc_locked = float(usdc.get("locked", 0))
 
@@ -105,7 +130,7 @@ class BinanceClient(BaseExchangeClient):
         last_trades = self._client.get_my_trades(symbol=symbol, limit=10)
 
         snapshot = (
-            f"USDC: {usdc_free:.2f} free / {usdc_free + usdc_locked:.2f} total | "
+            f"{self._quote_currency}: {usdc_free:.2f} free / {usdc_free + usdc_locked:.2f} total | "
             f"{coin}: {coin_free} free / {coin_free + coin_locked} total"
         )
 

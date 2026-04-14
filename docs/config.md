@@ -52,11 +52,15 @@ min_order_usdc: 10.0
 
 ### `config/symbols.yaml`
 
-Simbolo di trading attivo.
+Simbolo di trading attivo e quote currency.
 
 ```yaml
 symbol: BTCUSDC
+quote_currency: USDC
 ```
+
+- `symbol`: coppia di trading attiva (es. `BTCUSDC`, `ETHUSDC`)
+- `quote_currency`: valuta di riferimento usata per calcolare saldi e controvalore. Deve corrispondere al suffisso del simbolo
 
 ### `config/llm_models/`
 
@@ -173,6 +177,12 @@ python dev_support/verify_connections.py
 **Causa**: il file `config/symbols.yaml` esiste ma non contiene il campo `symbol`.
 
 **Soluzione**: aggiungere `symbol: BTCUSDC` (o il simbolo desiderato) nel file.
+
+### Problema: `ValueError: Campo 'quote_currency' mancante in symbols.yaml`
+
+**Causa**: il file `config/symbols.yaml` esiste ma non contiene il campo `quote_currency`.
+
+**Soluzione**: aggiungere `quote_currency: USDC` (o la quote currency corrispondente al simbolo).
 
 ### Problema: `KeyError: 'model'` all'avvio
 

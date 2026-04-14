@@ -35,7 +35,7 @@ _FAKE_LLM_CONFIG = {"model": "gpt-test", "temperature": 0.2, "max_tokens": 512}
 @patch("src.main.AnthropicInterface")
 @patch("src.main.OpenAiInterface")
 @patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
-@patch("src.main.load_symbol_config", return_value="BTCUSDC")
+@patch("src.main.load_symbol_config", return_value={"symbol": "BTCUSDC", "quote_currency": "USDC"})
 @patch("src.main.load_settings", return_value=_FAKE_SETTINGS)
 def test_main_calls_runner_run(
     mock_load_settings: MagicMock,
@@ -61,7 +61,7 @@ def test_main_calls_runner_run(
 @patch("src.main.AnthropicInterface")
 @patch("src.main.OpenAiInterface")
 @patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
-@patch("src.main.load_symbol_config", return_value="BTCUSDC")
+@patch("src.main.load_symbol_config", return_value={"symbol": "BTCUSDC", "quote_currency": "USDC"})
 @patch("src.main.load_settings", return_value=_FAKE_SETTINGS)
 def test_main_creates_openai_interface_once(
     mock_load_settings: MagicMock,
@@ -87,7 +87,7 @@ def test_main_creates_openai_interface_once(
 @patch("src.main.AnthropicInterface")
 @patch("src.main.OpenAiInterface")
 @patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
-@patch("src.main.load_symbol_config", return_value="BTCUSDC")
+@patch("src.main.load_symbol_config", return_value={"symbol": "BTCUSDC", "quote_currency": "USDC"})
 @patch("src.main.load_settings", return_value=_FAKE_SETTINGS)
 def test_main_creates_anthropic_interface_once(
     mock_load_settings: MagicMock,
@@ -113,7 +113,7 @@ def test_main_creates_anthropic_interface_once(
 @patch("src.main.AnthropicInterface")
 @patch("src.main.OpenAiInterface")
 @patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
-@patch("src.main.load_symbol_config", return_value="BTCUSDC")
+@patch("src.main.load_symbol_config", return_value={"symbol": "BTCUSDC", "quote_currency": "USDC"})
 @patch("src.main.load_settings", return_value=_FAKE_SETTINGS)
 def test_main_creates_gemini_interface_once(
     mock_load_settings: MagicMock,
@@ -139,7 +139,7 @@ def test_main_creates_gemini_interface_once(
 @patch("src.main.AnthropicInterface")
 @patch("src.main.OpenAiInterface")
 @patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
-@patch("src.main.load_symbol_config", return_value="BTCUSDC")
+@patch("src.main.load_symbol_config", return_value={"symbol": "BTCUSDC", "quote_currency": "USDC"})
 @patch("src.main.load_settings", return_value=_FAKE_SETTINGS)
 def test_main_loads_three_llm_configs(
     mock_load_settings: MagicMock,
@@ -169,7 +169,7 @@ def test_main_loads_three_llm_configs(
 @patch("src.main.AnthropicInterface")
 @patch("src.main.OpenAiInterface")
 @patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
-@patch("src.main.load_symbol_config", return_value="BTCUSDC")
+@patch("src.main.load_symbol_config", return_value={"symbol": "BTCUSDC", "quote_currency": "USDC"})
 @patch("src.main.load_settings", return_value=_FAKE_SETTINGS)
 def test_main_creates_binance_client_with_settings(
     mock_load_settings: MagicMock,
@@ -185,7 +185,7 @@ def test_main_creates_binance_client_with_settings(
     """BinanceClient deve essere istanziato con le settings caricate."""
     main()
 
-    mock_binance_cls.assert_called_once_with(_FAKE_SETTINGS)
+    mock_binance_cls.assert_called_once_with(_FAKE_SETTINGS, quote_currency="USDC")
 
 
 @patch("src.main.TelegramNotifier")
@@ -195,7 +195,7 @@ def test_main_creates_binance_client_with_settings(
 @patch("src.main.AnthropicInterface")
 @patch("src.main.OpenAiInterface")
 @patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
-@patch("src.main.load_symbol_config", return_value="BTCUSDC")
+@patch("src.main.load_symbol_config", return_value={"symbol": "BTCUSDC", "quote_currency": "USDC"})
 @patch("src.main.load_settings", return_value=_FAKE_SETTINGS)
 def test_main_creates_telegram_notifier(
     mock_load_settings: MagicMock,

@@ -26,7 +26,9 @@ def main() -> None:
     logger = configure_logging(level=settings.log_level)
     event_logger = EventLogger()
 
-    symbol = load_symbol_config()
+    symbol_config = load_symbol_config()
+    symbol = symbol_config["symbol"]
+    quote_currency = symbol_config["quote_currency"]
     ma_config = load_llm_model_config("config/llm_models/market_analyst.yaml")
     dm_config = load_llm_model_config("config/llm_models/decision_maker.yaml")
     rm_config = load_llm_model_config("config/llm_models/risk_manager.yaml")
@@ -57,7 +59,7 @@ def main() -> None:
     )
 
     # Client exchange
-    exchange_client = BinanceClient(settings)
+    exchange_client = BinanceClient(settings, quote_currency=quote_currency)
 
     workflow = TradingWorkflow(
         market_analyst=MarketAnalystAgent(llm=ma_llm),

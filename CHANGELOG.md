@@ -1,6 +1,22 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.7.0 — 2026-04-14
+
+### Aggiunto
+
+- Retry automatico con `tenacity` sui 4 metodi di sola lettura di `BinanceClient` (`ping`, `get_account_info`, `get_market_snapshot`, `get_portfolio_state`): backoff esponenziale (2-30s), massimo 3 tentativi. Il retry scatta solo su errori retriabili (`BinanceRequestException`, codici 429/418/5xx). I metodi di scrittura (`place_market_order`, `place_limit_order`, `cancel_order`) restano senza retry per evitare operazioni duplicate
+- `AnthropicInterface` aggiunta agli export di `src/integrations/llm_interfaces/__init__.py`
+- Campo `quote_currency` in `config/symbols.yaml`: la quote currency ora è un valore esplicito dal config, non più hardcoded. `load_symbol_config` ritorna un `dict` con `symbol` e `quote_currency`; `BinanceClient` riceve `quote_currency` nel costruttore e lo usa in `get_portfolio_state` con `removesuffix` al posto di `replace("USDC", "")`
+- 3 nuovi test per il retry Binance e la validazione `quote_currency`
+
+### Modificato
+
+- Retry loop LLM estratto dai 3 agenti in `BaseAgent._call_llm_with_retry`: elimina la duplicazione del blocco retry identico in `market_analyst.py`, `decision_maker.py` e `risk_manager.py`. Il comportamento è invariato (4 tentativi, backoff 4s→8s→16s). Il logger è stato spostato in `BaseAgent.__init__`
+- `ping()` in `BinanceClient`: ora ritorna `False` in caso di eccezione invece di propagarla al chiamante
+
+---
+
 ## 1.6.1 — 2026-04-14
 
 ### Corretto

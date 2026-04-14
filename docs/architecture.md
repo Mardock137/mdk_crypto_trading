@@ -77,7 +77,7 @@ flowchart TD
 Contiene i 4 agenti dell'MVP e una base comune (`BaseAgent`).
 Ogni agente espone un input strutturato e un output strutturato.
 
-Tutti e 4 gli agenti sono implementati. `MarketAnalystAgent`, `DecisionMakerAgent` e `RiskManagerAgent` ricevono un `BaseLlmInterface`, leggono il prompt da disco, inviano i dati al modello, normalizzano la risposta tramite `unwrap_llm_response()` e parsano il JSON nei rispettivi contratti (`MarketAnalysis`, `TradeProposal` e `RiskAssessment`). `ExecutionTraderAgent` non usa LLM: riceve un `BaseExchangeClient` e piazza gli ordini direttamente sull'exchange.
+Tutti e 4 gli agenti sono implementati. `MarketAnalystAgent`, `DecisionMakerAgent` e `RiskManagerAgent` ricevono un `BaseLlmInterface`, leggono il prompt da disco, inviano i dati al modello tramite `BaseAgent._call_llm_with_retry()` (retry centralizzato con backoff esponenziale), normalizzano la risposta tramite `unwrap_llm_response()` e parsano il JSON nei rispettivi contratti (`MarketAnalysis`, `TradeProposal` e `RiskAssessment`). `ExecutionTraderAgent` non usa LLM: riceve un `BaseExchangeClient` e piazza gli ordini direttamente sull'exchange.
 
 ### `src/core/`
 
@@ -94,10 +94,12 @@ Tutti e 4 gli agenti sono implementati. `MarketAnalystAgent`, `DecisionMakerAgen
 
 - `ping()` / `get_account_info()`: verifica connessione e autenticazione
 - `get_market_snapshot(symbol)`: raccoglie prezzo, volume, order book, candele multi-timeframe e calcola indicatori tecnici (RSI, EMA, SMA, MACD)
-- `get_portfolio_state(symbol)`: raccoglie saldi USDC e coin, ordini aperti, ultimi trade
-- `place_market_order(symbol, side, quantity)`: piazza un ordine a mercato
-- `place_limit_order(symbol, side, quantity, price)`: piazza un ordine limit GTC
+- `get_portfolio_state(symbol)`: raccoglie saldi quote currency e coin, ordini aperti, ultimi trade. La quote currency (es. USDC) è configurabile in `symbols.yaml` e passata al costruttore
+- `place_market_order(symbol, side, quantity)`: piazza un ordine a mercato (solo BUY/SELL, altrimenti `ValueError`)
+- `place_limit_order(symbol, side, quantity, price)`: piazza un ordine limit GTC (solo BUY/SELL, altrimenti `ValueError`)
 - `cancel_order(symbol, order_id)`: cancella un ordine aperto
+
+I 4 metodi di sola lettura (`ping`, `get_account_info`, `get_market_snapshot`, `get_portfolio_state`) hanno retry automatico con backoff esponenziale tramite `tenacity` (max 3 tentativi, solo su errori retriabili). I metodi di scrittura non hanno retry per evitare operazioni duplicate.
 
 ### `src/utils/`
 
@@ -170,7 +172,7 @@ I file `data/memory/` sono esclusi da git (vedi `.gitignore`) e vengono creati a
 - I prompt di lavoro degli agenti vivono in `config/prompts/`.
 - I file in `dev_support/prompts/` restano la base di progettazione e riferimento umano.
 - Le configurazioni dei modelli LLM (provider, model, temperature, max_tokens) vivono in `config/llm_models/`.
-- Il simbolo di trading attivo è in `config/symbols.yaml`.
+- Il simbolo di trading attivo e la quote currency sono in `config/symbols.yaml`.
 - Le regole operative (es. `min_order_usdc`) vivono in `config/trading.yaml`.
 - I segreti (API key, URL, modalità) vivono nel `.env`. Le chiavi attive sono `CLAUDE_API_KEY` (Market Analyst), `OPENAI_API_KEY` (Decision Maker) e `GEMINI_API_KEY` (Risk Manager).
 

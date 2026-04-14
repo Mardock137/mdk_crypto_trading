@@ -185,7 +185,7 @@ def test_agent_retries_on_runtime_error_then_succeeds() -> None:
     agent = DecisionMakerAgent(llm=mock_llm)
     mock_prompt = MagicMock()
     mock_prompt.read_text.return_value = "system prompt"
-    with patch("src.agents.decision_maker.time.sleep"):
+    with patch("src.agents.base_agent.time.sleep"):
         with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
             result = agent.run(_make_dm_input())
 
@@ -201,7 +201,7 @@ def test_agent_retries_up_to_4_times_then_raises() -> None:
     agent = DecisionMakerAgent(llm=mock_llm)
     mock_prompt = MagicMock()
     mock_prompt.read_text.return_value = "system prompt"
-    with patch("src.agents.decision_maker.time.sleep"):
+    with patch("src.agents.base_agent.time.sleep"):
         with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
             with pytest.raises(RuntimeError):
                 agent.run(_make_dm_input())
@@ -217,7 +217,7 @@ def test_agent_retry_backoff_sleep_values() -> None:
     agent = DecisionMakerAgent(llm=mock_llm)
     mock_prompt = MagicMock()
     mock_prompt.read_text.return_value = "system prompt"
-    with patch("src.agents.decision_maker.time.sleep") as mock_sleep:
+    with patch("src.agents.base_agent.time.sleep") as mock_sleep:
         with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
             with pytest.raises(RuntimeError):
                 agent.run(_make_dm_input())
@@ -244,7 +244,7 @@ def test_agent_warning_includes_raw_response() -> None:
     agent = DecisionMakerAgent(llm=mock_llm)
     mock_prompt = MagicMock()
     mock_prompt.read_text.return_value = "system prompt"
-    with patch("src.agents.decision_maker.time.sleep"):
+    with patch("src.agents.base_agent.time.sleep"):
         with patch.object(type(agent), "prompt_path", new_callable=PropertyMock, return_value=mock_prompt):
             with patch.object(agent, "_logger") as mock_logger:
                 agent.run(_make_dm_input())
