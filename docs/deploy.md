@@ -299,6 +299,18 @@ Se necessario, svuota i log vecchi:
 find mdk_crypto_trading/logs/events/ -name "*.jsonl" -mtime +30 -delete
 ```
 
+### Errore "Permission denied" quando si cancellano log o memory
+
+I file in `logs/` e `data/memory/` vengono creati dal container Docker, che gira come `root`. L'utente SSH normale non ha i permessi per cancellarli con `rm` diretto. Usare `sudo`:
+
+```bash
+sudo rm -rf logs/events/
+sudo rm -f logs/mdk_crypto_trading.log*
+sudo rm -rf data/memory/
+```
+
+---
+
 ### La VM si riavvia e il bot non parte
 
 Con `restart: unless-stopped` in `docker-compose.yaml`, Docker riavvia il container automaticamente al reboot della VM. Se non succede, avvia Docker manualmente:
