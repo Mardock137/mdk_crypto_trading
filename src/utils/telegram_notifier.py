@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import logging
 
 import requests
@@ -42,3 +43,8 @@ class TelegramNotifier:
             response.raise_for_status()
         except Exception as exc:
             _logger.warning("Telegram: invio fallito: %s", exc)
+
+
+def escape_html(text: str) -> str:
+    """Escapa i caratteri speciali HTML per le notifiche Telegram."""
+    return html.escape(text, quote=False)

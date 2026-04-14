@@ -66,27 +66,27 @@ def load_settings(
     )
 
 
+def _load_yaml(path: str | Path) -> dict[str, Any]:
+    """Carica e ritorna il contenuto di un file YAML."""
+    resolved = Path(path)
+    if not resolved.exists():
+        raise FileNotFoundError(f"File di configurazione non trovato: {resolved}")
+    with open(resolved, encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
 def load_trading_config(
     config_path: str | Path = "config/trading.yaml",
 ) -> dict[str, Any]:
     """Carica le regole operative dal file YAML di configurazione."""
-    path = Path(config_path)
-    if not path.exists():
-        raise FileNotFoundError(f"File di configurazione non trovato: {path}")
-    with open(path, encoding="utf-8") as f:
-        data: dict[str, Any] = yaml.safe_load(f) or {}
-    return data
+    return _load_yaml(config_path)
 
 
 def load_symbol_config(
     config_path: str | Path = "config/symbols.yaml",
 ) -> dict[str, str]:
     """Carica il simbolo di trading e la quote currency dal file YAML."""
-    path = Path(config_path)
-    if not path.exists():
-        raise FileNotFoundError(f"File di configurazione non trovato: {path}")
-    with open(path, encoding="utf-8") as f:
-        data = yaml.safe_load(f) or {}
+    data = _load_yaml(config_path)
     symbol = data.get("symbol")
     quote_currency = data.get("quote_currency")
     if not symbol:
@@ -100,12 +100,7 @@ def load_llm_model_config(
     config_path: str | Path,
 ) -> dict[str, Any]:
     """Carica la configurazione di un modello LLM dal file YAML."""
-    path = Path(config_path)
-    if not path.exists():
-        raise FileNotFoundError(f"File di configurazione non trovato: {path}")
-    with open(path, encoding="utf-8") as f:
-        data: dict[str, Any] = yaml.safe_load(f) or {}
-    return data
+    return _load_yaml(config_path)
 
 
 def _require_value(env: Mapping[str, str], key: str) -> str:

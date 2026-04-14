@@ -16,7 +16,7 @@ from src.integrations.exchange.base_exchange_client import BaseExchangeClient
 from src.utils.config import AppSettings, load_trading_config
 from src.utils.event_logger import EventLogger
 from src.utils.memory_manager import MemoryManager
-from src.utils.telegram_notifier import TelegramNotifier
+from src.utils.telegram_notifier import TelegramNotifier, escape_html
 
 
 class TradingRunner:
@@ -152,7 +152,7 @@ class TradingRunner:
                 self._telegram_notifier.send_message(
                     f"<b>⚠️ Cycle ERROR</b>\n\n"
                     f"Symbol: {self._symbol}\n"
-                    f"Error: {exc}"
+                    f"Error: {escape_html(str(exc))}"
                 )
 
     def _build_cycle_input(self) -> TradingCycleInput:

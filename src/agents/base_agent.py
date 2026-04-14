@@ -87,11 +87,11 @@ def unwrap_llm_response(data: Any) -> dict[str, Any]:
         if len(data) == 1 and isinstance(data[0], dict):
             return data[0]
         raise ValueError(
-            f"Risposta LLM e una lista con {len(data)} elementi, atteso un dict singolo."
+            f"Risposta LLM è una lista con {len(data)} elementi, atteso un dict singolo."
         )
     if isinstance(data, dict):
         if not data:
-            raise ValueError("Risposta LLM e un dict vuoto.")
+            raise ValueError("Risposta LLM è un dict vuoto.")
         return data
     raise ValueError(f"Tipo di risposta LLM non atteso: {type(data).__name__}.")
 

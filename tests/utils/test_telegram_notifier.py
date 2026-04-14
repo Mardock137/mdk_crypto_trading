@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.utils.telegram_notifier import TelegramNotifier
+from src.utils.telegram_notifier import TelegramNotifier, escape_html
 
 
 # ---------- send_message — caso nominale ----------
@@ -96,3 +96,13 @@ def test_send_message_skips_if_both_missing(mock_post: MagicMock) -> None:
     notifier.send_message("Ciao")
 
     mock_post.assert_not_called()
+
+
+# ---------- escape_html ----------
+
+
+def test_escape_html_escapes_special_characters() -> None:
+    """escape_html deve convertire <, > e & nei rispettivi escape HTML."""
+    assert escape_html("<script>alert('xss')</script>") == "&lt;script&gt;alert('xss')&lt;/script&gt;"
+    assert escape_html("a & b") == "a &amp; b"
+    assert escape_html("no special chars") == "no special chars"

@@ -1,6 +1,23 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.7.2 — 2026-04-14
+
+### Corretto
+
+- `base_agent.py`: accenti mancanti nei messaggi di errore di `unwrap_llm_response` (`"e"` → `"è"`)
+
+### Aggiunto
+
+- `telegram_notifier.py`: funzione `escape_html(text)` — escapa caratteri speciali HTML (`<`, `>`, `&`) per le notifiche Telegram. Usata in `runner.py` per sanitizzare `str(exc)` nelle notifiche di errore del ciclo
+- 1 nuovo test per `escape_html` in `tests/utils/test_telegram_notifier.py`
+
+### Modificato
+
+- `config.py`: logica di caricamento YAML duplicata tra `load_trading_config`, `load_symbol_config` e `load_llm_model_config` estratta nell'helper privato `_load_yaml` — i 3 loader rimangono invariati nel comportamento esterno
+
+---
+
 ## 1.7.1 — 2026-04-14
 
 ### Corretto
