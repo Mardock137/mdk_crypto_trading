@@ -10,7 +10,7 @@
 
 ### Aggiunto
 
-- 2 nuovi test in `tests/integrations/llm_interfaces/test_anthropic_interface.py` per il retry su `InternalServerError`
+- 1 nuovo test in `tests/integrations/llm_interfaces/test_anthropic_interface.py` per il retry su `InternalServerError`
 - 1 nuovo test in `tests/integrations/llm_interfaces/test_openai_interface.py` per il retry su `InternalServerError`
 
 ### Documentazione
