@@ -83,7 +83,17 @@ Se `KILL_SWITCH=1` nel `.env`, l'Execution Trader blocca qualsiasi operazione e 
 
 ## Normalizzazione e retry su errori LLM
 
-Prima di validare la risposta JSON di un agente LLM, il sistema la normalizza tramite `unwrap_llm_response()`. Questo gestisce i casi in cui il modello restituisce il JSON corretto ma wrappato in un array (es. `[{...}]` invece di `{...}`), oppure risponde con un dict vuoto o un tipo non atteso.
+Il sistema gestisce gli errori LLM su due livelli distinti.
+
+**Livello 1 — retry API (tenacity, nelle interfacce LLM):**
+Ogni interfaccia LLM riprova automaticamente le chiamate API in caso di errori temporanei del provider, con backoff esponenziale (max 3 tentativi):
+
+- `AnthropicInterface`: `RateLimitError`, `APIConnectionError`, `APITimeoutError`, `InternalServerError` (include errori 500 e 529)
+- `OpenAiInterface`: `RateLimitError`, `APIConnectionError`, `APITimeoutError`, `InternalServerError`
+- `GeminiInterface`: `ServerError`
+
+**Livello 2 — retry parsing (BaseAgent._call_llm_with_retry):**
+Prima di validare la risposta JSON, il sistema la normalizza tramite `unwrap_llm_response()`. Questo gestisce i casi in cui il modello restituisce il JSON corretto ma wrappato in un array (es. `[{...}]` invece di `{...}`), oppure risponde con un dict vuoto o un tipo non atteso.
 
 Le interfacce LLM rilevano in anticipo le risposte problematiche e sollevano `RuntimeError` nei seguenti casi:
 

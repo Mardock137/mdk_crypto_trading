@@ -1,6 +1,24 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.7.3 — 2026-04-16
+
+### Corretto
+
+- `anthropic_interface.py`: `InternalServerError` aggiunto a `_RETRYABLE_ERRORS` — gli errori 500/529 di Anthropic ora attivano il retry automatico di tenacity (backoff esponenziale, max 3 tentativi) invece di essere propagati direttamente al retry di parsing in `base_agent`
+- `openai_interface.py`: stessa fix applicata a OpenAI — `InternalServerError` aggiunto a `_RETRYABLE_ERRORS`
+
+### Aggiunto
+
+- 2 nuovi test in `tests/integrations/llm_interfaces/test_anthropic_interface.py` per il retry su `InternalServerError`
+- 1 nuovo test in `tests/integrations/llm_interfaces/test_openai_interface.py` per il retry su `InternalServerError`
+
+### Documentazione
+
+- `docs/decision_logic.md`: sezione "Normalizzazione e retry su errori LLM" riscritta per documentare esplicitamente i due livelli di retry (tenacity al livello API e `_call_llm_with_retry` al livello agente) con l'elenco degli errori riprovabili per ogni interfaccia
+
+---
+
 ## 1.7.2 — 2026-04-14
 
 ### Corretto

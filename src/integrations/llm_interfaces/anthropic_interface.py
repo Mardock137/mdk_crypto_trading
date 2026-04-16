@@ -9,6 +9,7 @@ from anthropic import (
     APIConnectionError,
     APIStatusError,
     APITimeoutError,
+    InternalServerError,
     RateLimitError,
 )
 from tenacity import (
@@ -23,7 +24,12 @@ from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
 _logger = logging.getLogger("mdk_crypto_trading.anthropic_interface")
 
 # Eccezioni temporanee su cui fare retry automatico
-_RETRYABLE_ERRORS = (RateLimitError, APIConnectionError, APITimeoutError)
+_RETRYABLE_ERRORS = (
+    RateLimitError,
+    APIConnectionError,
+    APITimeoutError,
+    InternalServerError,
+)
 
 
 class AnthropicInterface(BaseLlmInterface):

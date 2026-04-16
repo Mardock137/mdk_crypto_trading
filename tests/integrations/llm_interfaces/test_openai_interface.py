@@ -196,3 +196,31 @@ def test_reasoning_effort_absent_when_none(mock_openai_cls: MagicMock) -> None:
 
     call_kwargs = mock_client.chat.completions.create.call_args.kwargs
     assert "reasoning_effort" not in call_kwargs
+
+
+# --- Test retry su errori server temporanei ---
+
+from openai import InternalServerError as OpenAIInternalServerError
+
+
+@patch("src.integrations.llm_interfaces.openai_interface.OpenAI")
+def test_generate_json_retries_on_internal_server_error(mock_openai_cls: MagicMock) -> None:
+    """Verifica che generate_json riprovi automaticamente su InternalServerError (500)."""
+    mock_client = mock_openai_cls.return_value
+    mock_choice = MagicMock()
+    mock_choice.message.content = '{"risultato": "ok"}'
+    mock_success = MagicMock()
+    mock_success.choices = [mock_choice]
+
+    error = OpenAIInternalServerError(
+        message="Internal server error",
+        response=MagicMock(status_code=500, headers={}),
+        body={"error": {"message": "Internal server error", "type": "server_error"}},
+    )
+    mock_client.chat.completions.create.side_effect = [error, mock_success]
+
+    interface = OpenAiInterface(api_key="fake-key", model="gpt-4o")
+    result = interface.generate_json("system prompt", {"chiave": "valore"})
+
+    assert result == {"risultato": "ok"}
+    assert mock_client.chat.completions.create.call_count == 2

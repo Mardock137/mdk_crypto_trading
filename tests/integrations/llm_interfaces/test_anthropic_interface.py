@@ -253,3 +253,31 @@ def test_generate_json_parses_response_with_text_prefix(mock_anthropic_cls: Magi
     result = interface.generate_json("system prompt", {"chiave": "valore"})
 
     assert result == {"risultato": "ok"}
+
+
+# --- Test retry su errori server temporanei ---
+
+from anthropic import InternalServerError
+
+
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_generate_json_retries_on_internal_server_error(mock_anthropic_cls: MagicMock) -> None:
+    """Verifica che generate_json riprovi automaticamente su InternalServerError (500/529)."""
+    mock_client = mock_anthropic_cls.return_value
+    mock_content_block = MagicMock()
+    mock_content_block.text = '{"risultato": "ok"}'
+    mock_success = MagicMock()
+    mock_success.content = [mock_content_block]
+
+    error = InternalServerError(
+        message="Internal server error",
+        response=MagicMock(status_code=500, headers={}),
+        body={"type": "error", "error": {"type": "api_error", "message": "Internal server error"}},
+    )
+    mock_client.messages.create.side_effect = [error, mock_success]
+
+    interface = AnthropicInterface(api_key="fake-key", model="claude-sonnet-4-6")
+    result = interface.generate_json("system prompt", {"chiave": "valore"})
+
+    assert result == {"risultato": "ok"}
+    assert mock_client.messages.create.call_count == 2
