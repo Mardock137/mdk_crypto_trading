@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -8,6 +9,25 @@ from binance.exceptions import BinanceAPIException, BinanceRequestException
 
 from src.integrations.exchange.binance_client import BinanceClient
 from src.utils.config import AppSettings, TradingMode
+
+
+def _setup_symbol_info(
+    mock_instance: MagicMock,
+    *,
+    step_size: str = "0.00001",
+    min_qty: str = "0.00001",
+    tick_size: str = "0.01",
+    min_notional: str = "10.0",
+) -> None:
+    """Configura il mock di get_symbol_info con filtri standard."""
+    mock_instance.get_symbol_info.return_value = {
+        "symbol": "BTCUSDC",
+        "filters": [
+            {"filterType": "LOT_SIZE", "stepSize": step_size, "minQty": min_qty},
+            {"filterType": "PRICE_FILTER", "tickSize": tick_size},
+            {"filterType": "NOTIONAL", "minNotional": min_notional},
+        ],
+    }
 
 
 def _make_settings(**overrides: Any) -> AppSettings:
@@ -259,13 +279,15 @@ def test_get_portfolio_state_returns_populated_state(
 def test_place_market_order_buy(mock_client_cls: MagicMock) -> None:
     """place_market_order con side BUY chiama order_market_buy."""
     mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(mock_instance)
+    mock_instance.get_symbol_ticker.return_value = {"price": "50000.0"}
     mock_instance.order_market_buy.return_value = {"orderId": "100"}
 
     client = BinanceClient(_make_settings())
     result = client.place_market_order("BTCUSDC", "BUY", 0.001)
 
     mock_instance.order_market_buy.assert_called_once_with(
-        symbol="BTCUSDC", quantity=0.001,
+        symbol="BTCUSDC", quantity=Decimal("0.00100"),
     )
     assert result == {"orderId": "100"}
 
@@ -274,13 +296,15 @@ def test_place_market_order_buy(mock_client_cls: MagicMock) -> None:
 def test_place_market_order_sell(mock_client_cls: MagicMock) -> None:
     """place_market_order con side SELL chiama order_market_sell."""
     mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(mock_instance)
+    mock_instance.get_symbol_ticker.return_value = {"price": "50000.0"}
     mock_instance.order_market_sell.return_value = {"orderId": "101"}
 
     client = BinanceClient(_make_settings())
     result = client.place_market_order("BTCUSDC", "SELL", 0.001)
 
     mock_instance.order_market_sell.assert_called_once_with(
-        symbol="BTCUSDC", quantity=0.001,
+        symbol="BTCUSDC", quantity=Decimal("0.00100"),
     )
     assert result == {"orderId": "101"}
 
@@ -289,13 +313,17 @@ def test_place_market_order_sell(mock_client_cls: MagicMock) -> None:
 def test_place_limit_order_buy(mock_client_cls: MagicMock) -> None:
     """place_limit_order con side BUY chiama order_limit_buy con timeInForce GTC."""
     mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(mock_instance)
     mock_instance.order_limit_buy.return_value = {"orderId": "200"}
 
     client = BinanceClient(_make_settings())
     result = client.place_limit_order("BTCUSDC", "BUY", 0.001, 97000.0)
 
     mock_instance.order_limit_buy.assert_called_once_with(
-        symbol="BTCUSDC", quantity=0.001, price="97000.0", timeInForce="GTC",
+        symbol="BTCUSDC",
+        quantity=Decimal("0.00100"),
+        price="97000.00",
+        timeInForce="GTC",
     )
     assert result == {"orderId": "200"}
 
@@ -304,13 +332,17 @@ def test_place_limit_order_buy(mock_client_cls: MagicMock) -> None:
 def test_place_limit_order_sell(mock_client_cls: MagicMock) -> None:
     """place_limit_order con side SELL chiama order_limit_sell con timeInForce GTC."""
     mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(mock_instance)
     mock_instance.order_limit_sell.return_value = {"orderId": "201"}
 
     client = BinanceClient(_make_settings())
     result = client.place_limit_order("BTCUSDC", "SELL", 0.001, 99000.0)
 
     mock_instance.order_limit_sell.assert_called_once_with(
-        symbol="BTCUSDC", quantity=0.001, price="99000.0", timeInForce="GTC",
+        symbol="BTCUSDC",
+        quantity=Decimal("0.00100"),
+        price="99000.00",
+        timeInForce="GTC",
     )
     assert result == {"orderId": "201"}
 
@@ -331,6 +363,91 @@ def test_place_limit_order_invalid_side_raises(mock_client_cls: MagicMock) -> No
 
     with pytest.raises(ValueError, match="Invalid order side"):
         client.place_limit_order("BTCUSDC", "HOLD", 0.001, 97000.0)
+
+
+# ---------- Verifica quantize filtri LOT_SIZE / PRICE_FILTER / NOTIONAL ----------
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_limit_order_quantizes_quantity_to_step_size(
+    mock_client_cls: MagicMock,
+) -> None:
+    """Quantity con troppe cifre decimali viene troncata al multiplo inferiore di stepSize."""
+    mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(mock_instance, step_size="0.00001", min_qty="0.00001")
+    mock_instance.order_limit_sell.return_value = {"orderId": "500"}
+
+    client = BinanceClient(_make_settings())
+    client.place_limit_order("BTCUSDC", "SELL", 0.0099905, 99000.0)
+
+    _, kwargs = mock_instance.order_limit_sell.call_args
+    assert kwargs["quantity"] == Decimal("0.00999")
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_limit_order_quantizes_price_to_tick_size(
+    mock_client_cls: MagicMock,
+) -> None:
+    """Price con troppi decimali viene troncato al multiplo inferiore di tickSize."""
+    mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(mock_instance, tick_size="0.01")
+    mock_instance.order_limit_buy.return_value = {"orderId": "501"}
+
+    client = BinanceClient(_make_settings())
+    client.place_limit_order("BTCUSDC", "BUY", 0.01, 97000.12345)
+
+    _, kwargs = mock_instance.order_limit_buy.call_args
+    assert kwargs["price"] == "97000.12"
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_limit_order_rejects_below_min_qty(
+    mock_client_cls: MagicMock,
+) -> None:
+    """Quantity sotto minQty (anche dopo rounding) deve sollevare ValueError."""
+    mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(mock_instance, step_size="0.00001", min_qty="0.001")
+
+    client = BinanceClient(_make_settings())
+    with pytest.raises(ValueError, match="minQty"):
+        client.place_limit_order("BTCUSDC", "SELL", 0.0005, 50000.0)
+
+    mock_instance.order_limit_sell.assert_not_called()
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_limit_order_rejects_below_min_notional(
+    mock_client_cls: MagicMock,
+) -> None:
+    """Ordine sotto minNotional (quantity * price) deve sollevare ValueError."""
+    mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(
+        mock_instance, step_size="0.00001", min_qty="0.00001", min_notional="10.0",
+    )
+
+    client = BinanceClient(_make_settings())
+    with pytest.raises(ValueError, match="minNotional"):
+        client.place_limit_order("BTCUSDC", "BUY", 0.0001, 50.0)
+
+    mock_instance.order_limit_buy.assert_not_called()
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_symbol_filters_are_cached(mock_client_cls: MagicMock) -> None:
+    """get_symbol_info deve essere chiamato una sola volta per simbolo."""
+    mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(mock_instance)
+    mock_instance.get_symbol_ticker.return_value = {"price": "50000.0"}
+    mock_instance.order_market_buy.return_value = {"orderId": "600"}
+    mock_instance.order_market_sell.return_value = {"orderId": "601"}
+    mock_instance.order_limit_buy.return_value = {"orderId": "602"}
+
+    client = BinanceClient(_make_settings())
+    client.place_market_order("BTCUSDC", "BUY", 0.001)
+    client.place_market_order("BTCUSDC", "SELL", 0.001)
+    client.place_limit_order("BTCUSDC", "BUY", 0.001, 50000.0)
+
+    assert mock_instance.get_symbol_info.call_count == 1
 
 
 @patch("src.integrations.exchange.binance_client.BinanceApiClient")

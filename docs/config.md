@@ -82,7 +82,7 @@ provider: openai
 model: gpt-5.4
 reasoning_effort: high
 temperature: 0.2
-max_tokens: 2048
+max_tokens: 8192
 ```
 
 **`risk_manager.yaml`** (provider: Gemini):
@@ -97,7 +97,7 @@ max_tokens: 2048
 Note:
 
 - Quando `reasoning_effort` è configurato (solo OpenAI, Decision Maker), `temperature` viene ignorata perché GPT-5.4 non li accetta insieme.
-- `max_tokens` limita la lunghezza massima della risposta del modello.
+- `max_tokens` limita la lunghezza massima della risposta del modello. Per il Decision Maker il valore è alzato a `8192` perché con `reasoning_effort: high` i reasoning tokens interni consumano una quota significativa del budget: un limite troppo basso satura il budget e produce risposte vuote (`finish_reason: length`).
 
 ### `config/prompts/`
 

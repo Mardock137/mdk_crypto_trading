@@ -1,6 +1,23 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.7.4 — 2026-04-20
+
+### Corretto
+
+- `binance_client.py`: `place_market_order` e `place_limit_order` ora leggono i filtri del simbolo da `exchangeInfo` (con cache in memoria) e troncano `quantity` a `stepSize` e `price` a `tickSize` prima di inviare l'ordine. Vengono inoltre validati `minQty` e `minNotional`: se la quantity dopo il rounding non rispetta questi vincoli, viene sollevato un `ValueError` con messaggio chiaro. Questo risolve i fallimenti ricorrenti `Filter failure: LOT_SIZE` che impedivano l'esecuzione dei SELL proposti dal Decision Maker. I calcoli usano `decimal.Decimal` per evitare imprecisioni floating-point
+- `config/llm_models/decision_maker.yaml`: `max_tokens` alzato da `2048` a `8192`. Con `reasoning_effort: high` il budget precedente veniva saturato dai reasoning tokens interni, producendo risposte vuote (`finish_reason: length`) e cicli falliti. Il nuovo limite lascia ampio margine sia al reasoning sia all'output JSON
+
+### Aggiunto
+
+- 5 nuovi test in `tests/integrations/exchange/test_binance_client.py`: rounding di `quantity` a `stepSize`, rounding di `price` a `tickSize`, rifiuto sotto `minQty`, rifiuto sotto `minNotional`, cache dei filtri (una sola chiamata `get_symbol_info` per simbolo)
+
+### Manutenzione
+
+- `requirements.txt`: pytest aggiornato da `9.0.2` a `9.0.3` (bump Dependabot).
+
+---
+
 ## 1.7.3 — 2026-04-16
 
 ### Corretto

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import ROUND_DOWN, Decimal
 from typing import Any
 
 from binance.client import Client as BinanceApiClient
@@ -33,6 +34,7 @@ class BinanceClient(BaseExchangeClient):
 
     def __init__(self, settings: AppSettings, *, quote_currency: str = "USDC") -> None:
         self._quote_currency = quote_currency
+        self._symbol_filters_cache: dict[str, dict[str, Decimal]] = {}
         if settings.trading_mode == TradingMode.DEMO:
             if not settings.binance_demo_api_key or not settings.binance_demo_secret_key:
                 raise ValueError(
@@ -150,34 +152,49 @@ class BinanceClient(BaseExchangeClient):
         self, symbol: str, side: str, quantity: float,
     ) -> dict[str, Any]:
         normalized = side.upper()
+        if normalized not in ("BUY", "SELL"):
+            raise ValueError(f"Invalid order side: {side!r}. Expected 'BUY' or 'SELL'.")
+
+        # Per i MARKET order usiamo il prezzo corrente per validare minNotional.
+        reference_price = Decimal(
+            str(self._client.get_symbol_ticker(symbol=symbol)["price"])
+        )
+        adjusted_qty = self._quantize_quantity(
+            symbol, Decimal(str(quantity)), reference_price,
+        )
+
         if normalized == "BUY":
             result: dict[str, Any] = self._client.order_market_buy(
-                symbol=symbol, quantity=quantity,
-            )
-        elif normalized == "SELL":
-            result = self._client.order_market_sell(
-                symbol=symbol, quantity=quantity,
+                symbol=symbol, quantity=adjusted_qty,
             )
         else:
-            raise ValueError(f"Invalid order side: {side!r}. Expected 'BUY' or 'SELL'.")
+            result = self._client.order_market_sell(
+                symbol=symbol, quantity=adjusted_qty,
+            )
         return result
 
     def place_limit_order(
         self, symbol: str, side: str, quantity: float, price: float,
     ) -> dict[str, Any]:
         normalized = side.upper()
+        if normalized not in ("BUY", "SELL"):
+            raise ValueError(f"Invalid order side: {side!r}. Expected 'BUY' or 'SELL'.")
+
+        adjusted_price = self._quantize_price(symbol, Decimal(str(price)))
+        adjusted_qty = self._quantize_quantity(
+            symbol, Decimal(str(quantity)), adjusted_price,
+        )
+
         if normalized == "BUY":
             result: dict[str, Any] = self._client.order_limit_buy(
-                symbol=symbol, quantity=quantity, price=str(price),
-                timeInForce="GTC",
-            )
-        elif normalized == "SELL":
-            result = self._client.order_limit_sell(
-                symbol=symbol, quantity=quantity, price=str(price),
+                symbol=symbol, quantity=adjusted_qty, price=str(adjusted_price),
                 timeInForce="GTC",
             )
         else:
-            raise ValueError(f"Invalid order side: {side!r}. Expected 'BUY' or 'SELL'.")
+            result = self._client.order_limit_sell(
+                symbol=symbol, quantity=adjusted_qty, price=str(adjusted_price),
+                timeInForce="GTC",
+            )
         return result
 
     def cancel_order(self, symbol: str, order_id: str) -> dict[str, Any]:
@@ -187,6 +204,99 @@ class BinanceClient(BaseExchangeClient):
         return result
 
     # ---- Helper privati ----
+
+    def _get_symbol_filters(self, symbol: str) -> dict[str, Decimal]:
+        """Recupera e mette in cache i filtri Binance per il simbolo.
+
+        Filtri estratti: stepSize e minQty (LOT_SIZE), tickSize (PRICE_FILTER),
+        minNotional (NOTIONAL o MIN_NOTIONAL). I valori sono Decimal per
+        evitare errori floating-point nel rounding.
+        """
+        cached = self._symbol_filters_cache.get(symbol)
+        if cached is not None:
+            return cached
+
+        info = self._client.get_symbol_info(symbol)
+        if not info:
+            raise ValueError(f"Symbol info not found for {symbol!r}")
+
+        filters = {f["filterType"]: f for f in info.get("filters", [])}
+
+        lot_size = filters.get("LOT_SIZE", {})
+        price_filter = filters.get("PRICE_FILTER", {})
+        notional = filters.get("NOTIONAL") or filters.get("MIN_NOTIONAL") or {}
+
+        step_size = Decimal(str(lot_size.get("stepSize", "0")))
+        min_qty = Decimal(str(lot_size.get("minQty", "0")))
+        tick_size = Decimal(str(price_filter.get("tickSize", "0")))
+        min_notional = Decimal(
+            str(notional.get("minNotional") or notional.get("notional") or "0")
+        )
+
+        parsed: dict[str, Decimal] = {
+            "stepSize": step_size,
+            "minQty": min_qty,
+            "tickSize": tick_size,
+            "minNotional": min_notional,
+        }
+        self._symbol_filters_cache[symbol] = parsed
+        return parsed
+
+    @staticmethod
+    def _quantize_down(value: Decimal, step: Decimal) -> Decimal:
+        """Tronca `value` al multiplo inferiore piu vicino di `step`."""
+        if step <= 0:
+            return value
+        quantized = (value / step).to_integral_value(rounding=ROUND_DOWN) * step
+        # Normalizza il numero di decimali a quello di `step` per evitare
+        # stringhe come "0.00100000000" quando poi viene passato a Binance.
+        return quantized.quantize(step)
+
+    def _quantize_quantity(
+        self, symbol: str, quantity: Decimal, reference_price: Decimal,
+    ) -> Decimal:
+        """Tronca la quantity a `stepSize` e valida `minQty` / `minNotional`."""
+        filters = self._get_symbol_filters(symbol)
+        step = filters["stepSize"]
+        min_qty = filters["minQty"]
+        min_notional = filters["minNotional"]
+
+        adjusted = self._quantize_down(quantity, step) if step > 0 else quantity
+
+        if adjusted <= 0:
+            raise ValueError(
+                f"Quantity {quantity} per {symbol} troppo piccola: "
+                f"dopo il rounding a stepSize={step} risulta {adjusted}."
+            )
+        if min_qty > 0 and adjusted < min_qty:
+            raise ValueError(
+                f"Quantity {adjusted} per {symbol} sotto il minQty {min_qty} "
+                f"imposto da Binance."
+            )
+        if (
+            min_notional > 0
+            and reference_price > 0
+            and adjusted * reference_price < min_notional
+        ):
+            raise ValueError(
+                f"Valore ordine {adjusted * reference_price} USDC per {symbol} "
+                f"sotto il minNotional {min_notional} imposto da Binance."
+            )
+        return adjusted
+
+    def _quantize_price(self, symbol: str, price: Decimal) -> Decimal:
+        """Tronca il price a `tickSize`."""
+        filters = self._get_symbol_filters(symbol)
+        tick = filters["tickSize"]
+        if tick <= 0:
+            return price
+        adjusted = self._quantize_down(price, tick)
+        if adjusted <= 0:
+            raise ValueError(
+                f"Price {price} per {symbol} troppo piccolo: "
+                f"dopo il rounding a tickSize={tick} risulta {adjusted}."
+            )
+        return adjusted
 
     def _fetch_candles(self, symbol: str) -> dict[str, Any]:
         """Recupera le candele per i timeframe richiesti dal Market Analyst."""
