@@ -44,11 +44,31 @@ Vedi `.env.example` per un template completo.
 
 ### `config/trading.yaml`
 
-Regole operative statiche del sistema.
+Regole operative statiche del sistema e mandato di investimento.
 
 ```yaml
 min_order_usdc: 10.0
+
+mandate:
+  objective: "Generare rendimento sul capitale"
+  min_monthly_return_pct: 2.0
+  max_drawdown_pct: 15.0
+  horizon: "Intraday to swing (ore → giorni)"
+  max_position_pct: 100.0
+  min_trades_per_week: 3
 ```
+
+Campi:
+
+- `min_order_usdc`: valore minimo interno consentito per un ordine, in USDC.
+- `mandate.objective`: descrizione testuale dell'obiettivo strategico del sistema.
+- `mandate.min_monthly_return_pct`: rendimento mensile minimo atteso in percentuale.
+- `mandate.max_drawdown_pct`: drawdown massimo tollerato in percentuale.
+- `mandate.horizon`: orizzonte temporale tipico delle operazioni (es. intraday, swing).
+- `mandate.max_position_pct`: percentuale massima del capitale allocabile sulla singola posizione. Finché il bot è mono-simbolo è tipicamente `100.0`; il campo esiste già in vista del multi-simbolo.
+- `mandate.min_trades_per_week`: numero minimo di trade attesi per settimana. È usato dal Decision Maker come indicatore per evitare di ripiegare su `HOLD` "nel dubbio".
+
+Il mandate viene caricato all'avvio del runner tramite `load_mandate(trading_config)` in `src/utils/config.py` e propagato a ogni ciclo dentro `TradingCycleInput`. Se la sezione `mandate` manca o ha campi incompleti, il runner fallisce in fase di boot con un `ValueError` esplicito.
 
 ### `config/symbols.yaml`
 

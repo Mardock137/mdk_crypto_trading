@@ -1,6 +1,30 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.8.0 — 2026-04-20
+
+### Aggiunto
+
+- Nuova sezione `mandate` in `config/trading.yaml` che definisce l'investment mandate del sistema (obiettivo, rendimento mensile minimo, drawdown massimo, orizzonte, posizione massima, trade minimi per settimana). Il mandato funge da "bussola" operativa per il Decision Maker
+- Nuovo dataclass `InvestmentMandate` in `src/core/contracts.py` che tipizza i campi del mandato
+- Nuova funzione `load_mandate(trading_config)` in `src/utils/config.py` che legge e valida la sezione `mandate`: se manca o ha campi incompleti, il runner fallisce in fase di boot con un `ValueError` esplicito
+- 4 nuovi test: `test_investment_mandate_stores_all_fields` in `tests/core/test_contracts.py` e 3 test per `load_mandate` in `tests/utils/test_config.py` (happy path, sezione mancante, campo mancante)
+
+### Modificato
+
+- `config/prompts/decision_maker.md`: rimossa la regola "Se il segnale non è chiaro... scegli HOLD" che generava un bias eccessivo verso l'inazione. Sostituita con un'istruzione che invita a valutare il mandato nell'ambiguità e ribadisce che `HOLD` resta legittimo solo quando il mercato è fermo o i rischi sono concreti. Aggiunta una nuova sezione "Mandato operativo" che descrive i 6 campi del mandate. Riscritta la sezione "Memoria e performance" per rendere obbligatorio l'uso di `ia_memory`, `performance_summary` e `recent_performance` prima di decidere
+- `src/core/contracts.py`: `DecisionMakerInput` e `TradingCycleInput` estesi con un campo obbligatorio `mandate: InvestmentMandate`
+- `src/core/runner.py`: il mandate viene caricato all'avvio tramite `load_mandate` e propagato a ogni ciclo dentro `TradingCycleInput`
+- `src/core/workflow.py`: il mandate viene passato dal `TradingCycleInput` al `DecisionMakerInput`
+- `src/agents/decision_maker.py`: il mandate viene incluso nel payload passato al LLM
+
+### Documentazione
+
+- `docs/config.md`: sezione `config/trading.yaml` aggiornata con la descrizione di tutti i campi del mandate e del flusso di caricamento
+- `docs/decision_logic.md`: sezione Decision Maker riscritta per spiegare come il mandate guida il ragionamento e come memoria/performance vengono ora consultate prima di ogni decisione
+
+---
+
 ## 1.7.4 — 2026-04-20
 
 ### Corretto

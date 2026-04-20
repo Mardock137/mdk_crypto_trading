@@ -9,6 +9,8 @@ from typing import Any, Mapping
 import yaml
 from dotenv import load_dotenv
 
+from src.core.contracts import InvestmentMandate
+
 
 class TradingMode(str, Enum):
     DEMO = "DEMO"
@@ -80,6 +82,38 @@ def load_trading_config(
 ) -> dict[str, Any]:
     """Carica le regole operative dal file YAML di configurazione."""
     return _load_yaml(config_path)
+
+
+def load_mandate(trading_config: Mapping[str, Any]) -> InvestmentMandate:
+    """Estrae e valida la sezione `mandate` dal dict di trading.yaml."""
+    raw = trading_config.get("mandate")
+    if not isinstance(raw, Mapping):
+        raise ValueError(
+            "Sezione 'mandate' mancante o non valida in trading.yaml"
+        )
+
+    required = (
+        "objective",
+        "min_monthly_return_pct",
+        "max_drawdown_pct",
+        "horizon",
+        "max_position_pct",
+        "min_trades_per_week",
+    )
+    missing = [k for k in required if k not in raw]
+    if missing:
+        raise ValueError(
+            f"Campi mancanti nella sezione 'mandate' di trading.yaml: {missing}"
+        )
+
+    return InvestmentMandate(
+        objective=str(raw["objective"]),
+        min_monthly_return_pct=float(raw["min_monthly_return_pct"]),
+        max_drawdown_pct=float(raw["max_drawdown_pct"]),
+        horizon=str(raw["horizon"]),
+        max_position_pct=float(raw["max_position_pct"]),
+        min_trades_per_week=int(raw["min_trades_per_week"]),
+    )
 
 
 def load_symbol_config(

@@ -42,13 +42,15 @@ Analizza i dati di mercato e produce un segnale. Non decide operazioni.
 
 ## Decision Maker
 
-Riceve il segnale del Market Analyst e formula una proposta operativa.
+Riceve il segnale del Market Analyst e formula una proposta operativa usando come bussola il **mandato di investimento** definito in `config/trading.yaml`.
 
 - **Azioni possibili**: `BUY`, `SELL`, `HOLD`, `CANCEL_AND_REPLACE_ORDER`
 - **Tipi di ordine**: `MARKET`, `LIMIT`, `NONE` (solo per HOLD)
-- Se il segnale non è chiaro o i dati sono insufficienti → `HOLD`
-- Non propone ordini sotto `min_order_usdc`
-- Non propone ordini duplicati se ci sono già ordini aperti sulla stessa coppia
+- Usa il mandato (obiettivo, rendimento mensile minimo, drawdown massimo, orizzonte, posizione massima, trade minimi per settimana) come riferimento per valutare se l'operato recente è allineato.
+- Valuta esplicitamente memoria (`ia_memory`) e performance (`performance_summary`, `recent_performance`) **prima** di decidere: una sequenza di `HOLD` o un rendimento sotto target sono indizi che il DM sta esitando.
+- Nell'ambiguità propende per l'azione coerente con il mandato, non per un `HOLD` di default. `HOLD` resta legittimo quando il mercato è fermo o i rischi sono concreti.
+- Non propone ordini sotto `min_order_usdc`.
+- Non propone ordini duplicati se ci sono già ordini aperti sulla stessa coppia.
 
 ---
 
@@ -108,7 +110,8 @@ L'intera operazione — chiamata al modello, normalizzazione e parsing — è ra
 ## 📚 Riferimenti
 
 - **Codice**:
-  - `src/core/contracts.py` — strutture dati condivise (MarketAnalysis, TradeProposal, RiskAssessment, ExecutionReport)
+  - `src/core/contracts.py` — strutture dati condivise (MarketAnalysis, TradeProposal, RiskAssessment, ExecutionReport, InvestmentMandate)
   - `src/core/workflow.py` — orchestrazione della catena di agenti
   - `src/agents/` — implementazione dei 4 agenti
+  - `src/utils/config.py` — `load_mandate` carica e valida il mandato da `config/trading.yaml`
 - **Doc correlati**: `docs/architecture.md`, `docs/hierarchy_and_roles.md`

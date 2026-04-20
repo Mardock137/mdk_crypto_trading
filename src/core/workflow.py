@@ -42,6 +42,7 @@ class TradingWorkflow:
                 portfolio=cycle_input.portfolio,
                 market_analysis=market_analysis,
                 constraints=cycle_input.constraints,
+                mandate=cycle_input.mandate,
                 ia_memory=cycle_input.ia_memory,
                 performance_summary=cycle_input.performance_summary,
                 recent_performance=cycle_input.recent_performance,

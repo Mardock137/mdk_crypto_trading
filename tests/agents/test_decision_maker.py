@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 from src.agents.decision_maker import DecisionMakerAgent, _parse_trade_proposal
 from src.core.contracts import (
     DecisionMakerInput,
+    InvestmentMandate,
     MarketAnalysis,
     MarketBias,
     OperationConstraints,
@@ -17,6 +18,17 @@ from src.core.contracts import (
     SuggestedAction,
     TradeAction,
 )
+
+
+def _make_mandate() -> InvestmentMandate:
+    return InvestmentMandate(
+        objective="Rendimento sul capitale",
+        min_monthly_return_pct=2.0,
+        max_drawdown_pct=15.0,
+        horizon="Intraday to swing",
+        max_position_pct=100.0,
+        min_trades_per_week=3,
+    )
 
 
 # --- BUY MARKET ---
@@ -164,6 +176,7 @@ def _make_dm_input() -> DecisionMakerInput:
             suggested_action=SuggestedAction.NO_TRADE_BIAS,
         ),
         constraints=OperationConstraints(cycle_interval_seconds=3600, min_order_usdc=10.0),
+        mandate=_make_mandate(),
     )
 
 

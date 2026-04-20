@@ -78,6 +78,18 @@ class OperationConstraints:
 
 
 @dataclass(slots=True)
+class InvestmentMandate:
+    """Mandato operativo: obiettivi e vincoli imposti al Decision Maker."""
+
+    objective: str
+    min_monthly_return_pct: float
+    max_drawdown_pct: float
+    horizon: str
+    max_position_pct: float
+    min_trades_per_week: int
+
+
+@dataclass(slots=True)
 class MarketAnalysis:
     market_bias: MarketBias
     signal_strength: float
@@ -157,6 +169,7 @@ class DecisionMakerInput:
     portfolio: PortfolioState
     market_analysis: MarketAnalysis
     constraints: OperationConstraints
+    mandate: InvestmentMandate
     ia_memory: list[dict[str, Any]] = field(default_factory=list)
     performance_summary: str = ""
     recent_performance: list[dict[str, Any]] = field(default_factory=list)
@@ -188,6 +201,7 @@ class TradingCycleInput:
     market_data: MarketDataSnapshot
     portfolio: PortfolioState
     constraints: OperationConstraints
+    mandate: InvestmentMandate
     ia_memory: list[dict[str, Any]] = field(default_factory=list)
     performance_summary: str = ""
     recent_performance: list[dict[str, Any]] = field(default_factory=list)

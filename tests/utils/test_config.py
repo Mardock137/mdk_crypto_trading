@@ -5,6 +5,7 @@ import pytest
 from src.utils.config import (
     TradingMode,
     load_llm_model_config,
+    load_mandate,
     load_settings,
     load_symbol_config,
     load_trading_config,
@@ -112,6 +113,46 @@ def test_load_symbol_config_raises_if_quote_currency_missing(tmp_path: Path) -> 
 def test_load_symbol_config_raises_if_file_missing(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         load_symbol_config(tmp_path / "non_esistente.yaml")
+
+
+# ---------- load_mandate ----------
+
+
+def _valid_mandate_dict() -> dict:
+    return {
+        "objective": "Generare rendimento",
+        "min_monthly_return_pct": 2.0,
+        "max_drawdown_pct": 15.0,
+        "horizon": "Intraday to swing",
+        "max_position_pct": 100.0,
+        "min_trades_per_week": 3,
+    }
+
+
+def test_load_mandate_returns_investment_mandate() -> None:
+    config = {"min_order_usdc": 10.0, "mandate": _valid_mandate_dict()}
+
+    mandate = load_mandate(config)
+
+    assert mandate.objective == "Generare rendimento"
+    assert mandate.min_monthly_return_pct == pytest.approx(2.0)
+    assert mandate.max_drawdown_pct == pytest.approx(15.0)
+    assert mandate.horizon == "Intraday to swing"
+    assert mandate.max_position_pct == pytest.approx(100.0)
+    assert mandate.min_trades_per_week == 3
+
+
+def test_load_mandate_raises_if_section_missing() -> None:
+    with pytest.raises(ValueError, match="mandate"):
+        load_mandate({"min_order_usdc": 10.0})
+
+
+def test_load_mandate_raises_if_field_missing() -> None:
+    partial = _valid_mandate_dict()
+    del partial["horizon"]
+
+    with pytest.raises(ValueError, match="horizon"):
+        load_mandate({"mandate": partial})
 
 
 # ---------- load_llm_model_config ----------
