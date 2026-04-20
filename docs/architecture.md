@@ -1,7 +1,7 @@
 # Architettura
 
 MDK Crypto Trading è progettato come un sistema multi-agente per il trading crypto spot.
-L'MVP separa chiaramente analisi, decisione, controllo del rischio ed esecuzione, in modo da evitare che un singolo componente faccia tutto da solo.
+L'MVP separa chiaramente analisi, decisione, controllo del rischio ed esecuzione, in modo da evitare che un singolo componente faccia tutto da solo. Un quinto agente consultivo (`Performance Reviewer`) sta fuori dalla catena decisionale e alimenta il Decision Maker con un giudizio giornaliero sulle performance recenti.
 
 ---
 
@@ -22,6 +22,7 @@ L'MVP separa chiaramente analisi, decisione, controllo del rischio ed esecuzione
 
 ```mermaid
 flowchart TD
+    reviewer["Performance Reviewer<br/>(1/day, fuori catena)"] -.->|report markdown| decisionMaker
     marketAnalyst["Market Analyst"] --> decisionMaker["Decision Maker"]
     decisionMaker --> riskManager["Risk Manager"]
     riskManager --> executionTrader["Execution Trader"]
@@ -68,16 +69,29 @@ flowchart TD
 - Se l'exchange lancia un'eccezione → `FAILED`.
 - Non rivaluta strategia o rischio.
 
+### Performance Reviewer
+
+- Agente consultivo, **fuori dalla catena decisionale**: non valuta né approva i trade del momento.
+- Gira una volta al giorno: all'inizio del primo ciclo della giornata, se non esiste già un report per oggi in `data/performance_reports/`.
+- Riceve statistiche deterministiche pre-calcolate in Python (`build_performance_stats` su 7 giorni di eventi) + il mandato operativo.
+- Invia i dati a Claude Sonnet 4.6 che produce un `PerformanceReview` strutturato (summary, aderenza al mandato `ALIGNED`/`DRIFTING`/`MISALIGNED`, 1-3 suggerimenti concreti).
+- Il risultato viene serializzato in markdown in `data/performance_reports/YYYY-MM-DD.md` e letto dal Decision Maker nei cicli successivi (campo `latest_performance_review`).
+- Errori del Reviewer sono non-bloccanti: se fallisce, il ciclo prosegue normalmente e il DM riceve stringa vuota.
+- Modello LLM e parametri configurati in `config/llm_models/performance_reviewer.yaml`.
+- Prompt operativo in `config/prompts/performance_reviewer.md`.
+
 ---
 
 ## Strati principali
 
 ### `src/agents/`
 
-Contiene i 4 agenti dell'MVP e una base comune (`BaseAgent`).
+Contiene i 5 agenti del sistema e una base comune (`BaseAgent`).
 Ogni agente espone un input strutturato e un output strutturato.
 
-Tutti e 4 gli agenti sono implementati. `MarketAnalystAgent`, `DecisionMakerAgent` e `RiskManagerAgent` ricevono un `BaseLlmInterface`, leggono il prompt da disco, inviano i dati al modello tramite `BaseAgent._call_llm_with_retry()` (retry centralizzato con backoff esponenziale), normalizzano la risposta tramite `unwrap_llm_response()` e parsano il JSON nei rispettivi contratti (`MarketAnalysis`, `TradeProposal` e `RiskAssessment`). `ExecutionTraderAgent` non usa LLM: riceve un `BaseExchangeClient` e piazza gli ordini direttamente sull'exchange.
+I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent`, `ExecutionTraderAgent`) formano la catena decisionale lineare. `PerformanceReviewerAgent` sta fuori dalla catena e viene invocato solo una volta al giorno dal runner.
+
+`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent` e `PerformanceReviewerAgent` ricevono un `BaseLlmInterface`, leggono il prompt da disco, inviano i dati al modello tramite `BaseAgent._call_llm_with_retry()` (retry centralizzato con backoff esponenziale), normalizzano la risposta tramite `unwrap_llm_response()` e parsano il JSON nei rispettivi contratti (`MarketAnalysis`, `TradeProposal`, `RiskAssessment`, `PerformanceReview`). `ExecutionTraderAgent` non usa LLM: riceve un `BaseExchangeClient` e piazza gli ordini direttamente sull'exchange.
 
 ### `src/core/`
 
@@ -103,11 +117,13 @@ I 4 metodi di sola lettura (`ping`, `get_account_info`, `get_market_snapshot`, `
 
 ### `src/utils/`
 
-- `config.py`: caricamento variabili d'ambiente (`.env`) e file YAML (`trading.yaml`, `symbols.yaml`, configurazioni LLM)
+- `config.py`: caricamento variabili d'ambiente (`.env`) e file YAML (`trading.yaml`, `symbols.yaml`, configurazioni LLM); include `load_mandate` per parsare l'investment mandate
 - `indicators.py`: funzioni pure per il calcolo di RSI, EMA, SMA, MACD da una serie di prezzi di chiusura
 - `logging_config.py`: logging su console (Rich) e su file con rotazione automatica (5 MB, 5 backup)
 - `event_logger.py`: log JSON strutturato per le decisioni di ogni ciclo operativo
+- `event_log_reader.py`: `load_recent_events` legge i file JSONL degli ultimi N giorni filtrati per simbolo (usato dal Performance Reviewer)
 - `memory_manager.py`: persistenza e recupero della memoria operativa del sistema (vedi sotto)
+- `performance_stats.py`: `build_performance_stats` calcola in modo deterministico (zero LLM) le statistiche operative degli ultimi N giorni; `write_performance_report` serializza il giudizio del Reviewer in markdown
 - `telegram_notifier.py`: notifiche Telegram opzionali via Bot API — avvio/stop del bot, ordini eseguiti, errori nei cicli
 
 Per i dettagli completi sul sistema di logging, vedi `docs/observability.md`.
@@ -127,6 +143,8 @@ I contratti principali sono:
 - `TradeProposal`: output del `Decision Maker`
 - `RiskAssessment`: output del `Risk Manager`
 - `ExecutionReport`: output del `Execution Trader`
+- `PerformanceStats` / `PerformanceReview`: input/output del `Performance Reviewer`
+- `InvestmentMandate`: mandato operativo (caricato da `trading.yaml`)
 - `TradingCycleInput` / `TradingCycleResult`: input e output del ciclo completo
 
 ---
@@ -141,7 +159,7 @@ Il ciclo operativo è gestito da due componenti complementari:
 Il runner:
 
 1. Logga l'avvio e lo stato del kill switch
-2. Ad ogni iterazione: raccoglie dati da Binance → legge la memoria storica → costruisce `TradingCycleInput` → esegue il workflow → logga il risultato → salva il ciclo in memoria
+2. Ad ogni iterazione: eventualmente genera il report giornaliero (`_maybe_run_performance_review`) → raccoglie dati da Binance → legge la memoria storica e l'ultimo report → costruisce `TradingCycleInput` → esegue il workflow → logga il risultato → salva il ciclo in memoria
 3. In caso di errore: logga l'eccezione, registra l'evento e continua
 4. Su `Ctrl+C`: termina in modo pulito
 
@@ -174,7 +192,7 @@ I file `data/memory/` sono esclusi da git (vedi `.gitignore`) e vengono creati a
 - Le configurazioni dei modelli LLM (provider, model, temperature, max_tokens) vivono in `config/llm_models/`.
 - Il simbolo di trading attivo e la quote currency sono in `config/symbols.yaml`.
 - Le regole operative (es. `min_order_usdc`) vivono in `config/trading.yaml`.
-- I segreti (API key, URL, modalità) vivono nel `.env`. Le chiavi attive sono `CLAUDE_API_KEY` (Market Analyst), `OPENAI_API_KEY` (Decision Maker) e `GEMINI_API_KEY` (Risk Manager).
+- I segreti (API key, URL, modalità) vivono nel `.env`. Le chiavi attive sono `CLAUDE_API_KEY` (Market Analyst + Performance Reviewer), `OPENAI_API_KEY` (Decision Maker) e `GEMINI_API_KEY` (Risk Manager).
 
 Per i dettagli, vedi `docs/config.md`.
 

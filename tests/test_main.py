@@ -100,10 +100,10 @@ def test_main_creates_anthropic_interface_once(
     mock_runner_cls: MagicMock,
     mock_telegram_cls: MagicMock,
 ) -> None:
-    """AnthropicInterface deve essere istanziata 1 volta (Market Analyst)."""
+    """AnthropicInterface deve essere istanziata 2 volte (Market Analyst + Performance Reviewer)."""
     main()
 
-    mock_anthropic_cls.assert_called_once()
+    assert mock_anthropic_cls.call_count == 2
 
 
 @patch("src.main.TelegramNotifier")
@@ -152,14 +152,15 @@ def test_main_loads_three_llm_configs(
     mock_runner_cls: MagicMock,
     mock_telegram_cls: MagicMock,
 ) -> None:
-    """load_llm_model_config deve essere chiamata 3 volte (MA, DM, RM)."""
+    """load_llm_model_config deve essere chiamata 4 volte (MA, DM, RM, PR)."""
     main()
 
-    assert mock_load_llm.call_count == 3
+    assert mock_load_llm.call_count == 4
     paths_called = [c.args[0] for c in mock_load_llm.call_args_list]
     assert any("market_analyst" in p for p in paths_called)
     assert any("decision_maker" in p for p in paths_called)
     assert any("risk_manager" in p for p in paths_called)
+    assert any("performance_reviewer" in p for p in paths_called)
 
 
 @patch("src.main.TelegramNotifier")

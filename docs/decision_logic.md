@@ -48,6 +48,7 @@ Riceve il segnale del Market Analyst e formula una proposta operativa usando com
 - **Tipi di ordine**: `MARKET`, `LIMIT`, `NONE` (solo per HOLD)
 - Usa il mandato (obiettivo, rendimento mensile minimo, drawdown massimo, orizzonte, posizione massima, trade minimi per settimana) come riferimento per valutare se l'operato recente è allineato.
 - Valuta esplicitamente memoria (`ia_memory`) e performance (`performance_summary`, `recent_performance`) **prima** di decidere: una sequenza di `HOLD` o un rendimento sotto target sono indizi che il DM sta esitando.
+- Riceve anche `latest_performance_review`: il report giornaliero del `Performance Reviewer` con giudizio sull'aderenza al mandato (`ALIGNED`, `DRIFTING`, `MISALIGNED`) e 1-3 suggerimenti concreti. Se il Reviewer segnala `DRIFTING` o `MISALIGNED`, i suggerimenti vanno incorporati attivamente nella decisione.
 - Nell'ambiguità propende per l'azione coerente con il mandato, non per un `HOLD` di default. `HOLD` resta legittimo quando il mercato è fermo o i rischi sono concreti.
 - Non propone ordini sotto `min_order_usdc`.
 - Non propone ordini duplicati se ci sono già ordini aperti sulla stessa coppia.
@@ -74,6 +75,21 @@ Esegue la proposta se approvata. Nessuna decisione strategica.
 - Se l'azione è `HOLD` → non esegue
 - Se `CANCEL_AND_REPLACE_ORDER` → cancella l'ordine vecchio, poi piazza il nuovo
 - Se l'esecuzione fallisce → segnala `FAILED` nel report
+
+---
+
+## Performance Reviewer
+
+Agente consultivo fuori dalla catena decisionale. Gira **una volta al giorno**, all'inizio del primo ciclo della giornata in cui non esiste già un report in `data/performance_reports/`.
+
+- Il runner chiama `_maybe_run_performance_review()` a inizio ciclo: se il file `YYYY-MM-DD.md` esiste già per oggi, ritorna subito senza costi.
+- Altrimenti:
+  1. `load_recent_events` legge i log JSONL degli ultimi 7 giorni filtrati per simbolo.
+  2. `build_performance_stats` calcola statistiche **deterministiche** (zero LLM): `total_cycles`, `hold_ratio`, `strong_bullish_ignored`, `sell_failed`, `realized_pnl_usdc`, `days_without_executed_trade`, ecc.
+  3. `PerformanceReviewerAgent` (Claude Sonnet 4.6) riceve stats + mandato e produce un `PerformanceReview`: summary conciso, `mandate_adherence` (`ALIGNED` / `DRIFTING` / `MISALIGNED`) e 1-3 suggerimenti concreti.
+  4. Il risultato viene serializzato in markdown in `data/performance_reports/YYYY-MM-DD.md`.
+- Nei cicli successivi, `_load_latest_performance_review` legge il file più recente e lo passa al Decision Maker come stringa (`latest_performance_review`).
+- **Errori non bloccano il ciclo**: se il Reviewer fallisce (LLM down, stats non calcolabili, ecc.), viene loggato un warning e il DM riceve stringa vuota come fallback.
 
 ---
 

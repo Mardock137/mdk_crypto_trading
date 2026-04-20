@@ -8,6 +8,7 @@ MDK Crypto Trading produce due tipi di log complementari: un log testuale per il
 
 - [Log testuale (`logs/mdk_crypto_trading.log`)](#log-testuale-logsmdk_crypto_tradinglog)
 - [Log eventi JSON (`logs/events/`)](#log-eventi-json-logsevents)
+- [Report performance (`data/performance_reports/`)](#report-performance-dataperformance_reports)
 - [Struttura della cartella `logs/`](#struttura-della-cartella-logs)
 - [🔧 Configurazione](#-configurazione)
 - [📱 Notifiche Telegram](#-notifiche-telegram)
@@ -81,6 +82,24 @@ Log strutturato che registra le decisioni di ogni ciclo operativo in formato mac
   "error": "Connessione a Binance fallita: timeout"
 }
 ```
+
+---
+
+## Report performance (`data/performance_reports/`)
+
+Il `Performance Reviewer` genera **un report markdown al giorno** sintetico e leggibile dal Chief, salvato in `data/performance_reports/YYYY-MM-DD.md`.
+
+Ogni report contiene:
+
+- Sintesi testuale del Reviewer (giudizio LLM, max 400 caratteri)
+- Aderenza al mandato: `ALIGNED`, `DRIFTING` o `MISALIGNED`
+- Mandato operativo di riferimento (obiettivo, rendimento minimo, drawdown, orizzonte, trade/settimana)
+- Statistiche deterministiche calcolate in Python (zero LLM): cicli totali, HOLD ratio, BUY/SELL eseguiti, SELL falliti, segnali forti ignorati, giorni senza trade eseguito, P&L realizzato e medio percentuale
+- 1-3 suggerimenti concreti per il Decision Maker
+
+Questo stesso file viene letto dal DM nei cicli successivi (campo `latest_performance_review`). La cartella `data/` è ignorata da git: i report restano locali alla VM.
+
+Il trigger è giornaliero: se il file del giorno esiste già, il Reviewer non viene chiamato (zero costo LLM).
 
 ---
 

@@ -51,7 +51,7 @@ class MemoryManager:
 
         Ritorna stringa vuota se non ci sono vendite realizzate.
         """
-        fifo_trades = self._compute_fifo_trades(symbol)
+        fifo_trades = self.compute_fifo_trades(symbol)
         if not fifo_trades:
             return ""
 
@@ -218,7 +218,7 @@ class MemoryManager:
 
         return results
 
-    def _compute_fifo_trades(self, symbol: str) -> list[dict]:
+    def compute_fifo_trades(self, symbol: str) -> list[dict]:
         """Calcola le vendite realizzate usando il metodo FIFO.
 
         Ritorna lista di dict con: sell_price, avg_cost_basis, quantity,

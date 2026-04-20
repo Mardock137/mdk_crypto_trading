@@ -4,19 +4,28 @@ import logging
 import signal
 import threading
 import types
+from datetime import date
+from pathlib import Path
 
+from src.agents.performance_reviewer import PerformanceReviewerAgent
 from src.core.contracts import (
     OperationConstraints,
     OrderType,
+    PerformanceReviewerInput,
     TradingCycleInput,
     TradingCycleResult,
 )
 from src.core.workflow import TradingWorkflow
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
 from src.utils.config import AppSettings, load_mandate, load_trading_config
+from src.utils.event_log_reader import load_recent_events
 from src.utils.event_logger import EventLogger
 from src.utils.memory_manager import MemoryManager
+from src.utils.performance_stats import build_performance_stats, write_performance_report
 from src.utils.telegram_notifier import TelegramNotifier, escape_html
+
+_PERFORMANCE_REVIEW_DAYS = 7
+_PERFORMANCE_REPORTS_DIR = Path("data/performance_reports")
 
 
 class TradingRunner:
@@ -31,7 +40,9 @@ class TradingRunner:
         symbol: str,
         exchange_client: BaseExchangeClient,
         memory_manager: MemoryManager,
+        performance_reviewer: PerformanceReviewerAgent,
         telegram_notifier: TelegramNotifier | None = None,
+        performance_reports_dir: Path = _PERFORMANCE_REPORTS_DIR,
     ) -> None:
         self._workflow = workflow
         self._event_logger = event_logger
@@ -40,7 +51,9 @@ class TradingRunner:
         self._symbol = symbol
         self._exchange_client = exchange_client
         self._memory_manager = memory_manager
+        self._performance_reviewer = performance_reviewer
         self._telegram_notifier = telegram_notifier
+        self._performance_reports_dir = performance_reports_dir
         self._trading_config = load_trading_config()
         self._mandate = load_mandate(self._trading_config)
         self._shutdown_requested = False
@@ -99,6 +112,7 @@ class TradingRunner:
     def _run_single_cycle(self) -> None:
         """Esegue un singolo ciclo operativo con gestione degli errori."""
         self._logger.info("Inizio ciclo operativo")
+        self._maybe_run_performance_review()
         try:
             cycle_input = self._build_cycle_input()
             result = self._workflow.run_cycle(cycle_input)
@@ -173,7 +187,67 @@ class TradingRunner:
             ia_memory=self._memory_manager.get_memory(self._symbol),
             performance_summary=self._memory_manager.get_performance_summary(self._symbol),
             recent_performance=self._memory_manager.get_recent_performance(self._symbol),
+            latest_performance_review=self._load_latest_performance_review(),
         )
+
+    def _maybe_run_performance_review(self) -> None:
+        """Genera il report giornaliero se non esiste gia per oggi.
+
+        Errori del Reviewer non bloccano il ciclo: vengono loggati come warning
+        e il DM riceve stringa vuota (fallback sicuro).
+        """
+        today = date.today()
+        today_report = self._performance_reports_dir / f"{today.isoformat()}.md"
+        if today_report.exists():
+            return
+
+        try:
+            events = load_recent_events(
+                self._symbol, days=_PERFORMANCE_REVIEW_DAYS,
+            )
+            stats = build_performance_stats(
+                symbol=self._symbol,
+                memory_manager=self._memory_manager,
+                events=events,
+                days=_PERFORMANCE_REVIEW_DAYS,
+            )
+            review = self._performance_reviewer.run(
+                PerformanceReviewerInput(
+                    symbol=self._symbol,
+                    mandate=self._mandate,
+                    stats=stats,
+                    days_analyzed=_PERFORMANCE_REVIEW_DAYS,
+                )
+            )
+            write_performance_report(
+                symbol=self._symbol,
+                mandate=self._mandate,
+                stats=stats,
+                review=review,
+                days_analyzed=_PERFORMANCE_REVIEW_DAYS,
+                reports_dir=self._performance_reports_dir,
+            )
+            self._logger.info(
+                "Performance Reviewer → %s (%d suggerimenti)",
+                review.mandate_adherence.value,
+                len(review.suggestions),
+            )
+        except Exception as exc:
+            self._logger.warning(
+                "Performance Reviewer fallito (ciclo continua): %s", exc,
+            )
+
+    def _load_latest_performance_review(self) -> str:
+        """Ritorna il contenuto del report piu recente, o stringa vuota."""
+        if not self._performance_reports_dir.exists():
+            return ""
+        files = sorted(self._performance_reports_dir.glob("*.md"))
+        if not files:
+            return ""
+        try:
+            return files[-1].read_text(encoding="utf-8")
+        except OSError:
+            return ""
 
     def _build_order_notification(self, result: TradingCycleResult) -> str:
         """Costruisce il testo della notifica per un ordine eseguito."""

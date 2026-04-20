@@ -3,7 +3,7 @@
 [![CI](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml/badge.svg)](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml)
 
 - **Versione Python**: `3.14.4`
-- **Versione MDK Crypto Trading**: `1.8.0`
+- **Versione MDK Crypto Trading**: `1.9.0`
 
 ## 📋 Indice
 
@@ -18,27 +18,29 @@
 
 MDK Crypto Trading è un sistema autonomo di trading spot su criptovalute, strutturato come una società di investimenti gestita interamente da agenti IA.
 
-4 agenti collaborano in sequenza: uno analizza il mercato, uno decide l'operazione, uno controlla il rischio e l'ultimo esegue l'ordine su Binance. Il sistema gira in loop continuo a intervalli configurabili, opera in modalità DEMO (Binance Demo Trading) o REAL, e registra ogni decisione in log strutturati JSON.
+4 agenti operativi collaborano in sequenza (uno analizza il mercato, uno decide l'operazione, uno controlla il rischio e l'ultimo esegue l'ordine su Binance), mentre un quinto agente consultivo produce un report giornaliero sulle performance. Il sistema gira in loop continuo a intervalli configurabili, opera in modalità DEMO (Binance Demo Trading) o REAL, e registra ogni decisione in log strutturati JSON.
 
 ## 👥 Agenti e modelli
 
-| Agente               | Ruolo                                                                 | Modello           |
-|----------------------|-----------------------------------------------------------------------|-------------------|
-| **Market Analyst**   | Analizza indicatori tecnici e genera un segnale di mercato            | Claude Sonnet 4.6 |
-| **Decision Maker**   | Valuta il segnale e formula una proposta operativa (BUY, SELL, HOLD)  | GPT-5.4           |
-| **Risk Manager**     | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche | Gemini 3.1 Pro    |
-| **Execution Trader** | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)        | —                 |
+| Agente                   | Ruolo                                                                           | Modello           |
+|--------------------------|---------------------------------------------------------------------------------|-------------------|
+| **Market Analyst**       | Analizza indicatori tecnici e genera un segnale di mercato                      | Claude Sonnet 4.6 |
+| **Decision Maker**       | Valuta il segnale e formula una proposta operativa (BUY, SELL, HOLD)            | GPT-5.4           |
+| **Risk Manager**         | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche           | Gemini 3.1 Pro    |
+| **Execution Trader**     | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)                  | —                 |
+| **Performance Reviewer** | Ruolo consultivo, fuori catena: genera un report giornaliero letto dal DM       | Claude Sonnet 4.6 |
 
 ## 🔄 Come funziona
 
 Ogni ciclo operativo segue questa sequenza:
 
-1. Raccolta dati di mercato e portafoglio da Binance
-2. `Market Analyst` → analisi e segnale
-3. `Decision Maker` → proposta operativa
-4. `Risk Manager` → approvazione o blocco
-5. `Execution Trader` → esecuzione su Binance (solo se approvata)
-6. Log del ciclo completo in `logs/events/`
+1. Una volta al giorno: il `Performance Reviewer` analizza gli ultimi 7 giorni e genera un report letto dal `Decision Maker` nei cicli successivi
+2. Raccolta dati di mercato e portafoglio da Binance
+3. `Market Analyst` → analisi e segnale
+4. `Decision Maker` → proposta operativa (legge il report del Reviewer)
+5. `Risk Manager` → approvazione o blocco
+6. `Execution Trader` → esecuzione su Binance (solo se approvata)
+7. Log del ciclo completo in `logs/events/`
 
 L'intervallo tra i cicli è configurabile da `.env` (`CYCLE_INTERVAL_SECONDS`).
 
@@ -56,7 +58,7 @@ python dev_support/verify_connections.py
 
 ## 🤖 API integrate
 
-- **Anthropic API** (`Claude Sonnet 4.6`): Market Analyst
+- **Anthropic API** (`Claude Sonnet 4.6`): Market Analyst e Performance Reviewer
 - **OpenAI API** (`GPT-5.4`): Decision Maker
 - **Gemini API** (`Gemini 3.1 Pro`): Risk Manager
 - **Binance API**: dati di mercato, portafoglio, ordini aperti, esecuzione ordini (DEMO e REAL)

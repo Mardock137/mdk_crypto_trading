@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import signal
 import threading
+from datetime import date
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -11,7 +13,10 @@ import pytest
 from src.core.contracts import (
     ExecutionReport,
     ExecutionStatus,
+    MandateAdherence,
     OrderType,
+    PerformanceReview,
+    PerformanceStats,
     TradeAction,
     TradeProposal,
     TradeProposalDetails,
@@ -61,7 +66,9 @@ def _make_runner(
     event_logger: MagicMock | None = None,
     exchange_client: MagicMock | None = None,
     memory_manager: MemoryManager | None = None,
+    performance_reviewer: MagicMock | None = None,
     telegram_notifier: TelegramNotifier | None = None,
+    performance_reports_dir: Path | None = None,
 ) -> TradingRunner:
     with patch("src.core.runner.load_trading_config", return_value=_MOCK_TRADING_CONFIG):
         return TradingRunner(
@@ -72,7 +79,13 @@ def _make_runner(
             symbol="BTCUSDC",
             exchange_client=exchange_client or MagicMock(),
             memory_manager=memory_manager or MagicMock(spec=MemoryManager),
+            performance_reviewer=performance_reviewer or MagicMock(),
             telegram_notifier=telegram_notifier,
+            performance_reports_dir=(
+                performance_reports_dir
+                if performance_reports_dir is not None
+                else Path("data/performance_reports")
+            ),
         )
 
 
@@ -253,3 +266,110 @@ def test_run_does_not_send_order_notification_when_not_executed(
 
     texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
     assert not any("ESEGUITO" in t for t in texts)
+
+
+# ---------- Performance Reviewer trigger ----------
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_maybe_run_performance_review_skips_if_today_report_exists(
+    mock_wait: MagicMock, tmp_path: Path,
+) -> None:
+    """Se il report di oggi esiste gia, il Reviewer non viene chiamato."""
+    today_file = tmp_path / f"{date.today().isoformat()}.md"
+    today_file.write_text("existing report", encoding="utf-8")
+
+    mock_reviewer = MagicMock()
+    runner = _make_runner(
+        performance_reviewer=mock_reviewer,
+        performance_reports_dir=tmp_path,
+    )
+
+    runner.run()
+
+    mock_reviewer.run.assert_not_called()
+
+
+@patch("src.core.runner.build_performance_stats")
+@patch("src.core.runner.load_recent_events", return_value=[])
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_maybe_run_performance_review_writes_report_when_missing(
+    mock_wait: MagicMock,
+    mock_events: MagicMock,
+    mock_build: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """Se non c'e report per oggi, il Reviewer viene eseguito e il file viene scritto."""
+    mock_build.return_value = PerformanceStats(
+        period_start="2026-04-14",
+        period_end="2026-04-20",
+        total_cycles=10,
+        buy_executed=1,
+        sell_executed=0,
+        hold_count=9,
+        sell_failed=0,
+        hold_ratio=0.9,
+        strong_bullish_ignored=0,
+        strong_bearish_ignored=0,
+        realized_pnl_usdc=0.0,
+        avg_pnl_pct=0.0,
+        days_without_executed_trade=3,
+    )
+    mock_reviewer = MagicMock()
+    mock_reviewer.run.return_value = PerformanceReview(
+        summary="Test review",
+        mandate_adherence=MandateAdherence.ALIGNED,
+        suggestions=["s1"],
+    )
+
+    runner = _make_runner(
+        performance_reviewer=mock_reviewer,
+        performance_reports_dir=tmp_path,
+    )
+
+    runner.run()
+
+    mock_reviewer.run.assert_called_once()
+    today_file = tmp_path / f"{date.today().isoformat()}.md"
+    assert today_file.exists()
+
+
+@patch("src.core.runner.load_recent_events", side_effect=RuntimeError("boom"))
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_maybe_run_performance_review_failure_does_not_block_cycle(
+    mock_wait: MagicMock,
+    mock_events: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """Se il Reviewer fallisce, il ciclo procede comunque."""
+    mock_workflow = MagicMock()
+    mock_result = mock_workflow.run_cycle.return_value
+    mock_result.execution_report.was_executed = False
+
+    runner = _make_runner(
+        workflow=mock_workflow,
+        performance_reports_dir=tmp_path,
+    )
+
+    runner.run()
+
+    mock_workflow.run_cycle.assert_called_once()
+
+
+def test_load_latest_performance_review_returns_empty_if_dir_missing(
+    tmp_path: Path,
+) -> None:
+    runner = _make_runner(performance_reports_dir=tmp_path / "missing")
+
+    assert runner._load_latest_performance_review() == ""
+
+
+def test_load_latest_performance_review_returns_file_content(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "2026-04-18.md").write_text("older", encoding="utf-8")
+    (tmp_path / "2026-04-19.md").write_text("latest content", encoding="utf-8")
+
+    runner = _make_runner(performance_reports_dir=tmp_path)
+
+    assert runner._load_latest_performance_review() == "latest content"

@@ -32,6 +32,7 @@ class DecisionMakerAgent(BaseAgent[DecisionMakerInput, TradeProposal]):
             "ia_memory": agent_input.ia_memory,
             "performance_summary": agent_input.performance_summary,
             "recent_performance": agent_input.recent_performance,
+            "latest_performance_review": agent_input.latest_performance_review,
         }
 
         return self._call_llm_with_retry(

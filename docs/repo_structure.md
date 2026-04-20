@@ -9,19 +9,22 @@
  ├── 📁 .venv/                                               # Ambiente virtuale con tutte le dipendenze installate.
  │
  ├── 📁 data/                                                # Dati persistenti del sistema (ignorata da git).
- │    └── 📁 memory/                                         # Memoria decisionale per simbolo (un file JSONL per coppia).
+ │    ├── 📁 memory/                                         # Memoria decisionale per simbolo (un file JSONL per coppia).
+ │    └── 📁 performance_reports/                            # Report giornalieri del Performance Reviewer (YYYY-MM-DD.md).
  │
  ├── 📁 config/                                              # Configurazioni statiche del sistema.
  │    ├── 📁 llm_models/                                     # Configurazione dei modelli IA (model, temperature, max token, ecc.).
  │    │    ├── 📄 decision_maker.yaml                        # Configurazione LLM per il Decision Maker (GPT-5.4).
  │    │    ├── 📄 market_analyst.yaml                        # Configurazione LLM per il Market Analyst (Claude Sonnet 4.6).
+ │    │    ├── 📄 performance_reviewer.yaml                  # Configurazione LLM per il Performance Reviewer (Claude Sonnet 4.6).
  │    │    └── 📄 risk_manager.yaml                          # Configurazione LLM per il Risk Manager (Gemini 3.1 Pro).
  │    ├── 📁 prompts/                                        # Prompt runtime usati dagli agenti.
  │    │    ├── 📄 decision_maker.md                          # Prompt operativo del Decision Maker.
  │    │    ├── 📄 market_analyst.md                          # Prompt operativo del Market Analyst.
+ │    │    ├── 📄 performance_reviewer.md                    # Prompt operativo del Performance Reviewer.
  │    │    └── 📄 risk_manager.md                            # Prompt operativo del Risk Manager.
  │    ├── 📄 symbols.yaml                                    # Simbolo di trading attivo e quote currency (es. BTCUSDC / USDC).
- │    └── 📄 trading.yaml                                    # Regole operative statiche del sistema (es. min_order_usdc).
+ │    └── 📄 trading.yaml                                    # Regole operative statiche del sistema (min_order_usdc + investment mandate).
  │
  ├── 📁 dev_support/                                         # Materiale di supporto per Chief Mardock e Cursor.
  │    ├── 📁 prompts/                                        # Prompt di progettazione e riferimento.
@@ -56,6 +59,7 @@
  │    │    ├── 📄 decision_maker.py                          # Agente che formula la proposta operativa.
  │    │    ├── 📄 execution_trader.py                        # Agente che esegue la proposta approvata.
  │    │    ├── 📄 market_analyst.py                          # Agente di analisi del mercato.
+ │    │    ├── 📄 performance_reviewer.py                    # Agente consultivo: giudizio giornaliero sulle performance recenti.
  │    │    └── 📄 risk_manager.py                            # Agente di controllo rischio.
  │    ├── 📁 core/                                           # Contratti condivisi e orchestrazione del workflow.
  │    │    ├── 📄 contracts.py                               # Schemi condivisi per input/output degli agenti.
@@ -72,10 +76,12 @@
  │    │         └── 📄 openai_interface.py                   # Client LLM per OpenAI (con retry automatico).
  │    ├── 📁 utils/                                          # Utility comuni e configurazione tecnica.
  │    │    ├── 📄 config.py                                  # Caricamento variabili d'ambiente, YAML e configurazioni.
+ │    │    ├── 📄 event_log_reader.py                        # Lettura eventi JSONL recenti usata dal Performance Reviewer.
  │    │    ├── 📄 event_logger.py                            # Logger JSON strutturato per le decisioni di ogni ciclo.
  │    │    ├── 📄 indicators.py                              # Indicatori tecnici: RSI, EMA, SMA, MACD.
  │    │    ├── 📄 logging_config.py                          # Configurazione centralizzata del logging (console + file).
  │    │    ├── 📄 memory_manager.py                          # Persistenza e recupero delle decisioni passate (JSONL) per la memoria del Decision Maker.
+ │    │    ├── 📄 performance_stats.py                       # build_performance_stats deterministica + writer del report markdown.
  │    │    └── 📄 telegram_notifier.py                       # Notifiche Telegram opzionali (avvio/stop, ordini eseguiti, errori).
  │    └── 📄 main.py                                         # Entry point del sistema: bootstrap e avvio del runner.
  │
@@ -85,6 +91,7 @@
  │    │    ├── 📄 test_decision_maker.py
  │    │    ├── 📄 test_execution_trader.py
  │    │    ├── 📄 test_market_analyst.py
+ │    │    ├── 📄 test_performance_reviewer.py
  │    │    └── 📄 test_risk_manager.py
  │    ├── 📁 core/                                           # Test dei contratti, workflow e runner.
  │    │    ├── 📄 test_contracts.py
@@ -100,10 +107,12 @@
  │    │         └── 📄 test_gemini_interface.py
  │    ├── 📁 utils/                                          # Test delle utility.
  │    │    ├── 📄 test_config.py
+ │    │    ├── 📄 test_event_log_reader.py
  │    │    ├── 📄 test_event_logger.py
  │    │    ├── 📄 test_indicators.py
  │    │    ├── 📄 test_logging_config.py
  │    │    ├── 📄 test_memory_manager.py
+ │    │    ├── 📄 test_performance_stats.py
  │    │    └── 📄 test_telegram_notifier.py
  │    └── 📄 test_main.py
  │

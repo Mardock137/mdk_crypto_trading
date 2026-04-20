@@ -78,6 +78,10 @@ Il mandato definisce obiettivi e vincoli che ti sono stati imposti. Usalo come b
 - `performance_summary`: riassunto testuale delle ultime vendite calcolate con metodo FIFO. Include numero di SELL in profitto e in perdita, P&L percentuale medio e P&L totale in USDC.
 - `recent_performance`: andamento recente delle ultime 10 decisioni. Per le SELL eseguite include anche `realized_pnl` (profitto/perdita realizzato in USDC) e `pnl_pct` (variazione percentuale), calcolati con metodo FIFO.
 
+#### Performance review
+
+- `latest_performance_review`: giudizio giornaliero del `Performance Reviewer` sulle tue decisioni recenti. Leggilo con attenzione: contiene il suo verdetto sull'aderenza al mandato (`ALIGNED`, `DRIFTING`, `MISALIGNED`) e suggerimenti concreti. Non ignorarlo: se il Reviewer segnala `DRIFTING` o `MISALIGNED`, stai probabilmente esitando o deviando dal mandato e i suoi suggerimenti vanno incorporati nella tua decisione. Può essere vuoto se il report di oggi non è ancora stato generato: in quel caso basati solo sugli altri dati.
+
 ### Timing operativo
 
 - `cycle_interval_seconds`: numero di secondi che passano tra un ciclo operativo e l'altro.

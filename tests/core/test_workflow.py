@@ -47,6 +47,7 @@ class DummyDecisionMaker:
         self.call_order.append("decision_maker")
         assert agent_input.market_analysis.market_bias is MarketBias.BULLISH
         assert agent_input.mandate.min_trades_per_week == 3
+        assert agent_input.latest_performance_review == "fake review content"
         return TradeProposal(
             action=TradeAction.BUY,
             order_type=OrderType.MARKET,
@@ -117,6 +118,7 @@ def test_workflow_runs_agents_in_expected_order() -> None:
             max_position_pct=100.0,
             min_trades_per_week=3,
         ),
+        latest_performance_review="fake review content",
     )
 
     result = workflow.run_cycle(cycle_input)

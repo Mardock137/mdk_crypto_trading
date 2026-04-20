@@ -47,6 +47,12 @@ class ExecutionStatus(str, Enum):
     FAILED = "FAILED"
 
 
+class MandateAdherence(str, Enum):
+    ALIGNED = "ALIGNED"
+    DRIFTING = "DRIFTING"
+    MISALIGNED = "MISALIGNED"
+
+
 @dataclass(slots=True)
 class MarketDataSnapshot:
     symbol: str
@@ -158,9 +164,45 @@ class ExecutionReport:
 
 
 @dataclass(slots=True)
+class PerformanceStats:
+    """Statistiche deterministiche calcolate dai cicli recenti (zero LLM)."""
+
+    period_start: str
+    period_end: str
+    total_cycles: int
+    buy_executed: int
+    sell_executed: int
+    hold_count: int
+    sell_failed: int
+    hold_ratio: float
+    strong_bullish_ignored: int
+    strong_bearish_ignored: int
+    realized_pnl_usdc: float
+    avg_pnl_pct: float
+    days_without_executed_trade: int
+
+
+@dataclass(slots=True)
+class PerformanceReview:
+    """Giudizio qualitativo prodotto dal Performance Reviewer (LLM)."""
+
+    summary: str
+    mandate_adherence: MandateAdherence
+    suggestions: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
 class MarketAnalystInput:
     symbol: str
     market_data: MarketDataSnapshot
+
+
+@dataclass(slots=True)
+class PerformanceReviewerInput:
+    symbol: str
+    mandate: InvestmentMandate
+    stats: PerformanceStats
+    days_analyzed: int
 
 
 @dataclass(slots=True)
@@ -173,6 +215,7 @@ class DecisionMakerInput:
     ia_memory: list[dict[str, Any]] = field(default_factory=list)
     performance_summary: str = ""
     recent_performance: list[dict[str, Any]] = field(default_factory=list)
+    latest_performance_review: str = ""
 
 
 @dataclass(slots=True)
@@ -205,6 +248,7 @@ class TradingCycleInput:
     ia_memory: list[dict[str, Any]] = field(default_factory=list)
     performance_summary: str = ""
     recent_performance: list[dict[str, Any]] = field(default_factory=list)
+    latest_performance_review: str = ""
 
 
 @dataclass(slots=True)

@@ -3,6 +3,7 @@ from __future__ import annotations
 from src.agents.decision_maker import DecisionMakerAgent
 from src.agents.execution_trader import ExecutionTraderAgent
 from src.agents.market_analyst import MarketAnalystAgent
+from src.agents.performance_reviewer import PerformanceReviewerAgent
 from src.agents.risk_manager import RiskManagerAgent
 from src.core.runner import TradingRunner
 from src.core.workflow import TradingWorkflow
@@ -32,6 +33,7 @@ def main() -> None:
     ma_config = load_llm_model_config("config/llm_models/market_analyst.yaml")
     dm_config = load_llm_model_config("config/llm_models/decision_maker.yaml")
     rm_config = load_llm_model_config("config/llm_models/risk_manager.yaml")
+    pr_config = load_llm_model_config("config/llm_models/performance_reviewer.yaml")
 
     # Client LLM per il Market Analyst
     ma_llm = AnthropicInterface(
@@ -58,6 +60,14 @@ def main() -> None:
         max_tokens=rm_config.get("max_tokens"),
     )
 
+    # Client LLM per il Performance Reviewer (riutilizza AnthropicInterface)
+    pr_llm = AnthropicInterface(
+        api_key=settings.claude_api_key or "",
+        model=pr_config["model"],
+        temperature=float(pr_config.get("temperature", 0.3)),
+        max_tokens=pr_config.get("max_tokens"),
+    )
+
     # Client exchange
     exchange_client = BinanceClient(settings, quote_currency=quote_currency)
 
@@ -72,6 +82,7 @@ def main() -> None:
     )
 
     memory_manager = MemoryManager()
+    performance_reviewer = PerformanceReviewerAgent(llm=pr_llm)
 
     telegram_notifier = TelegramNotifier(
         bot_token=settings.telegram_bot_token,
@@ -86,6 +97,7 @@ def main() -> None:
         symbol=symbol,
         exchange_client=exchange_client,
         memory_manager=memory_manager,
+        performance_reviewer=performance_reviewer,
         telegram_notifier=telegram_notifier,
     )
 

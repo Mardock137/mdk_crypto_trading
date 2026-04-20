@@ -46,6 +46,7 @@ class TradingWorkflow:
                 ia_memory=cycle_input.ia_memory,
                 performance_summary=cycle_input.performance_summary,
                 recent_performance=cycle_input.recent_performance,
+                latest_performance_review=cycle_input.latest_performance_review,
             )
         )
 

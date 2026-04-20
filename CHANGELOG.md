@@ -1,6 +1,35 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.9.0 — 2026-04-20
+
+### Aggiunto
+
+- Nuovo agente `Performance Reviewer` (5° agente) in `src/agents/performance_reviewer.py`. Ruolo consultivo, fuori dalla catena decisionale: analizza i cicli degli ultimi 7 giorni e produce un giudizio giornaliero (summary, aderenza al mandato `ALIGNED`/`DRIFTING`/`MISALIGNED`, 1-3 suggerimenti concreti) letto dal Decision Maker nei cicli successivi. Usa Claude Sonnet 4.6 riciclando `AnthropicInterface` (zero nuovo codice di integrazione)
+- Nuovo prompt `config/prompts/performance_reviewer.md` e nuova config `config/llm_models/performance_reviewer.yaml`
+- Nuova funzione `load_recent_events` in `src/utils/event_log_reader.py` che legge gli eventi JSONL degli ultimi N giorni filtrandoli per simbolo
+- Nuova funzione `build_performance_stats` in `src/utils/performance_stats.py`: calcolo deterministico (zero LLM) di statistiche operative (HOLD ratio, segnali forti ignorati, SELL falliti, P&L FIFO, giorni senza trade eseguito, ecc.)
+- Nuovo helper `write_performance_report` che serializza il report in markdown e lo salva in `data/performance_reports/YYYY-MM-DD.md`
+- Nuovo dataclass `PerformanceStats`, `PerformanceReview`, `PerformanceReviewerInput` e enum `MandateAdherence` in `src/core/contracts.py`
+- `TradingCycleInput` e `DecisionMakerInput` estesi con `latest_performance_review: str` (default vuoto: se il report di oggi non c'è, il DM riceve stringa vuota e non si altera)
+- Trigger giornaliero nel runner: nuovi metodi `_maybe_run_performance_review` (genera il report una volta al giorno, errori non bloccano il ciclo) e `_load_latest_performance_review` (legge il file più recente)
+- 13 nuovi test: `tests/utils/test_event_log_reader.py` (4), `tests/utils/test_performance_stats.py` (6 + 1 writer), `tests/agents/test_performance_reviewer.py` (7), più 5 test aggiunti a `tests/core/test_runner.py` per il trigger giornaliero
+
+### Modificato
+
+- `config/prompts/decision_maker.md`: nuova sottosezione "Performance review" che descrive il campo `latest_performance_review` e impone al DM di leggerlo e incorporarlo nelle decisioni quando il Reviewer segnala `DRIFTING` o `MISALIGNED`
+- `src/core/runner.py`: costruttore esteso con `performance_reviewer` e `performance_reports_dir`; `_run_single_cycle` chiama `_maybe_run_performance_review` a inizio ciclo; `_build_cycle_input` popola `latest_performance_review` col contenuto del file più recente
+- `src/core/workflow.py`: `latest_performance_review` viene propagato dal `TradingCycleInput` al `DecisionMakerInput`
+- `src/agents/decision_maker.py`: `latest_performance_review` viene incluso nel payload passato al LLM
+- `src/main.py`: caricamento di `performance_reviewer.yaml`, istanziazione di `AnthropicInterface` e `PerformanceReviewerAgent`, passaggio al runner
+
+### Documentazione
+
+- README.md: bump versione `1.8.0` → `1.9.0`; tabella agenti aggiornata con `Performance Reviewer`; sezione "Come funziona" riscritta per includere il trigger giornaliero
+- `docs/decision_logic.md`, `docs/architecture.md`, `docs/hierarchy_and_roles.md`, `docs/observability.md`, `docs/repo_structure.md`: aggiornati per descrivere il Performance Reviewer, il nuovo campo `latest_performance_review`, la nuova cartella `data/performance_reports/` e i nuovi file nella repo
+
+---
+
 ## 1.8.0 — 2026-04-20
 
 ### Aggiunto

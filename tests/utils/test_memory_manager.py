@@ -272,7 +272,7 @@ def test_get_performance_summary_contains_fifo_label(tmp_path: Path) -> None:
 
 
 # ------------------------------------------------------------------
-# _compute_fifo_trades — scenari FIFO dettagliati
+# compute_fifo_trades — scenari FIFO dettagliati
 # ------------------------------------------------------------------
 
 
@@ -298,7 +298,7 @@ def test_fifo_multiple_buys_uses_oldest_first(tmp_path: Path) -> None:
         current_price=83000.0,
     )
 
-    trades = mm._compute_fifo_trades("BTCUSDC")
+    trades = mm.compute_fifo_trades("BTCUSDC")
     assert len(trades) == 1
     assert trades[0]["avg_cost_basis"] == pytest.approx(80000.0)
     assert trades[0]["realized_pnl"] == pytest.approx(3.0, rel=1e-3)
@@ -327,7 +327,7 @@ def test_fifo_partial_sell_leaves_residual_lot(tmp_path: Path) -> None:
         current_price=82000.0,
     )
 
-    trades = mm._compute_fifo_trades("BTCUSDC")
+    trades = mm.compute_fifo_trades("BTCUSDC")
     assert len(trades) == 2
     # Prima SELL: (84000 - 80000) * 0.001 = +4.0
     assert trades[0]["realized_pnl"] == pytest.approx(4.0, rel=1e-3)
@@ -359,7 +359,7 @@ def test_fifo_sell_across_multiple_lots(tmp_path: Path) -> None:
         current_price=88000.0,
     )
 
-    trades = mm._compute_fifo_trades("BTCUSDC")
+    trades = mm.compute_fifo_trades("BTCUSDC")
     assert len(trades) == 1
     assert trades[0]["avg_cost_basis"] == pytest.approx(85000.0, rel=1e-6)
     assert trades[0]["realized_pnl"] == pytest.approx(6.0, rel=1e-3)
@@ -375,7 +375,7 @@ def test_fifo_sell_without_buy_is_ignored(tmp_path: Path) -> None:
         current_price=83000.0,
     )
 
-    trades = mm._compute_fifo_trades("BTCUSDC")
+    trades = mm.compute_fifo_trades("BTCUSDC")
     assert trades == []
 
 
@@ -395,7 +395,7 @@ def test_fifo_ignores_records_with_none_quantity(tmp_path: Path) -> None:
         current_price=83000.0,
     )
 
-    trades = mm._compute_fifo_trades("BTCUSDC")
+    trades = mm.compute_fifo_trades("BTCUSDC")
     assert trades == []
 
 
@@ -415,7 +415,7 @@ def test_fifo_ignores_non_executed_records(tmp_path: Path) -> None:
         current_price=83000.0,
     )
 
-    trades = mm._compute_fifo_trades("BTCUSDC")
+    trades = mm.compute_fifo_trades("BTCUSDC")
     assert trades == []
 
 
@@ -446,7 +446,7 @@ def test_fifo_multiple_sell_cycles_accumulate(tmp_path: Path) -> None:
         current_price=83000.0,
     )
 
-    trades = mm._compute_fifo_trades("BTCUSDC")
+    trades = mm.compute_fifo_trades("BTCUSDC")
     assert len(trades) == 2
     assert trades[0]["realized_pnl"] == pytest.approx(2.0, rel=1e-3)
     assert trades[1]["realized_pnl"] == pytest.approx(-2.0, rel=1e-3)
