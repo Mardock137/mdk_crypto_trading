@@ -75,6 +75,55 @@ def test_parse_sell_limit() -> None:
     assert result.details.side is None
 
 
+# --- Scaling in: prima tranche (BUY MARKET con quantity frazionale) ---
+
+def test_parse_buy_market_scaling_in_first_tranche() -> None:
+    """Il DM può proporre una quantity piccola come prima tranche di scaling in.
+
+    Il parser non distingue tra ingresso pieno e frazionale: il comportamento
+    frazionale è guidato dal prompt. Questo test verifica che una quantity
+    piccola venga accettata correttamente nel parsing.
+    """
+    data = {
+        "action": "BUY",
+        "order_type": "MARKET",
+        "confidence": 0.78,
+        "reason": "scaling in, prima tranche 40% su breakout confermato",
+        "details": {"quantity": 0.004},
+    }
+    result = _parse_trade_proposal(data)
+
+    assert result.action is TradeAction.BUY
+    assert result.order_type is OrderType.MARKET
+    assert result.details.quantity == pytest.approx(0.004)
+    assert "scaling in" in result.reason
+
+
+# --- Take profit parziale (SELL LIMIT con quantity parziale) ---
+
+def test_parse_sell_limit_partial_take_profit() -> None:
+    """Il DM può proporre un SELL LIMIT con quantity parziale come TP.
+
+    Il prezzo del LIMIT è sopra il prezzo corrente (tipico del TP parziale);
+    qui il parser verifica solo la struttura del JSON, la logica di business
+    è nel prompt.
+    """
+    data = {
+        "action": "SELL",
+        "order_type": "LIMIT",
+        "confidence": 0.74,
+        "reason": "TP parziale 50% a +12% dall'ingresso medio",
+        "details": {"quantity": 0.005, "price": 82500},
+    }
+    result = _parse_trade_proposal(data)
+
+    assert result.action is TradeAction.SELL
+    assert result.order_type is OrderType.LIMIT
+    assert result.details.quantity == pytest.approx(0.005)
+    assert result.details.price == pytest.approx(82500)
+    assert "TP parziale" in result.reason
+
+
 # --- HOLD ---
 
 def test_parse_hold() -> None:

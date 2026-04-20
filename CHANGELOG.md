@@ -1,6 +1,31 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.10.0 — 2026-04-20
+
+### Modificato
+
+- `config/prompts/decision_maker.md`: nuova sezione "Gestione dinamica della posizione" che abilita **scaling in** (ingresso in 2-3 tranche con `MARKET BUY` + `LIMIT BUY` successivi) e **take profit parziali** (`LIMIT SELL` sopra il prezzo corrente con `quantity` frazionale). I riferimenti numerici (30-50% per tranche, +10/+15% per TP) sono indicativi di buona pratica, non vincoli rigidi: il DM resta libero di adattarli al contesto
+- `config/prompts/decision_maker.md`: aggiunta regola esplicita che chiarisce come le `quantity` possano essere frazionali rispetto al portafoglio (non più solo "tutto dentro / tutto fuori")
+- `config/prompts/decision_maker.md`: aggiunto divieto esplicito di usare `LIMIT SELL` sotto il prezzo corrente come finto stop loss — su Binance spot un limit sotto mercato viene eseguito immediatamente. Finché non saranno introdotti i tipi di ordine avanzati, il DM deve usare `MARKET SELL` (totale o parziale) per uscire in perdita
+
+### Aggiunto
+
+- 2 nuovi esempi JSON nello schema risposta del prompt DM: "Scaling in — prima tranche" (`BUY MARKET` con quantity parziale) e "Take profit parziale" (`SELL LIMIT` sopra mercato con quantity parziale)
+- 2 nuovi test dimostrativi in `tests/agents/test_decision_maker.py`: `test_parse_buy_market_scaling_in_first_tranche` e `test_parse_sell_limit_partial_take_profit`. Il parser supportava già quantity frazionali: questi test esplicitano l'intento della Fase 3 e fanno da regressione
+
+### Configurazione
+
+- `config/llm_models/market_analyst.yaml`, `risk_manager.yaml`, `performance_reviewer.yaml`: `max_tokens` alzato da `2048` a `4096`. Per Gemini 3.1 Pro i thinking tokens consumano parte del budget output (come GPT-5.4): il margine precedente era troppo stretto per proposte complesse. Per Claude il thinking è separato da `max_tokens`, ma il valore è stato alzato comunque per uniformità
+
+### Documentazione
+
+- `docs/decision_logic.md`: sezione Decision Maker aggiornata con le nuove capacità (scaling in, TP parziali, quantity frazionali) e con la nota che lo stop loss proattivo è rimandato a una fase futura
+- `docs/config.md`: aggiornati gli snippet YAML dei modelli LLM con i nuovi valori di `max_tokens` e aggiunto lo snippet del Performance Reviewer
+- `docs/deploy.md`: aggiunta guida "Scaricare log ed eventi in locale" nella sezione comandi utili, con gestione del caso utenti SSH diversi
+
+---
+
 ## 1.9.0 — 2026-04-20
 
 ### Aggiunto

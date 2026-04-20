@@ -92,7 +92,7 @@ Configurazione dei modelli LLM usati dagli agenti. Un file YAML per agente.
 provider: anthropic
 model: claude-sonnet-4-6
 temperature: 0.2
-max_tokens: 2048
+max_tokens: 4096
 ```
 
 **`decision_maker.yaml`** (provider: OpenAI):
@@ -111,7 +111,16 @@ max_tokens: 8192
 provider: gemini
 model: gemini-3.1-pro-preview
 temperature: 0.2
-max_tokens: 2048
+max_tokens: 4096
+```
+
+**`performance_reviewer.yaml`** (provider: Anthropic):
+
+```yaml
+provider: anthropic
+model: claude-sonnet-4-6
+temperature: 0.3
+max_tokens: 4096
 ```
 
 Note:

@@ -50,6 +50,10 @@ Riceve il segnale del Market Analyst e formula una proposta operativa usando com
 - Valuta esplicitamente memoria (`ia_memory`) e performance (`performance_summary`, `recent_performance`) **prima** di decidere: una sequenza di `HOLD` o un rendimento sotto target sono indizi che il DM sta esitando.
 - Riceve anche `latest_performance_review`: il report giornaliero del `Performance Reviewer` con giudizio sull'aderenza al mandato (`ALIGNED`, `DRIFTING`, `MISALIGNED`) e 1-3 suggerimenti concreti. Se il Reviewer segnala `DRIFTING` o `MISALIGNED`, i suggerimenti vanno incorporati attivamente nella decisione.
 - Nell'ambiguità propende per l'azione coerente con il mandato, non per un `HOLD` di default. `HOLD` resta legittimo quando il mercato è fermo o i rischi sono concreti.
+- Può usare **quantity frazionali** rispetto al portafoglio: non è obbligato a usare tutto il saldo USDC o a vendere sempre l'intera posizione.
+- **Scaling in**: quando un setup è chiaro ma vuole ridurre il rischio di timing, può dividere l'ingresso in 2-3 tranche (prima tranche `MARKET BUY`, successive `LIMIT BUY` a prezzi più bassi).
+- **Take profit parziali**: quando il prezzo è salito significativamente dall'ingresso, può piazzare un `LIMIT SELL` sopra il prezzo corrente con `quantity` parziale (es. 30-50% della posizione) per monetizzare una parte lasciando correre il resto. Eventuali aggiornamenti del TP nei cicli successivi passano da `CANCEL_AND_REPLACE_ORDER`.
+- Lo **stop loss proattivo** non è ancora implementato: gli order type `STOP_LOSS`, `STOP_LOSS_LIMIT`, `TAKE_PROFIT` e `OCO` saranno introdotti in una fase futura. Al momento, se il DM vede rischio ribassista concreto, deve fare `MARKET SELL` (totale o parziale) — non `LIMIT SELL` sotto mercato, che verrebbe eseguito immediatamente.
 - Non propone ordini sotto `min_order_usdc`.
 - Non propone ordini duplicati se ci sono già ordini aperti sulla stessa coppia.
 

@@ -28,12 +28,12 @@ flowchart TD
     reviewer -.->|"report giornaliero"| decisionMaker
 ```
 
-| Livello | Agente                   | Ruolo                         | Autorità                                                                                                                                         |
-|---------|--------------------------|-------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1       | **Risk Manager**         | Chief Risk Officer            | Ha potere di veto: può approvare, bloccare o chiedere modifiche a qualsiasi proposta. Nessun ordine passa senza la sua autorizzazione.           |
-| 2       | **Decision Maker**       | Portfolio Manager             | Decide la strategia operativa (BUY, SELL, HOLD, CANCEL_AND_REPLACE_ORDER), ma le sue proposte sono sempre soggette al giudizio del Risk Manager. |
-| 3       | **Market Analyst**       | Research Analyst              | Fornisce analisi e segnali di mercato. Non ha potere decisionale: il suo output è un input per il Decision Maker.                                |
-| 4       | **Execution Trader**     | Broker                        | Esegue ordini su Binance, ma solo se autorizzati dal Risk Manager. Non prende decisioni autonome.                                                |
+| Livello | Agente                   | Ruolo                          | Autorità                                                                                                                                                                                                                           |
+|---------|--------------------------|--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1       | **Risk Manager**         | Chief Risk Officer             | Ha potere di veto: può approvare, bloccare o chiedere modifiche a qualsiasi proposta. Nessun ordine passa senza la sua autorizzazione.                                                                                             |
+| 2       | **Decision Maker**       | Portfolio Manager              | Decide la strategia operativa (BUY, SELL, HOLD, CANCEL_AND_REPLACE_ORDER), ma le sue proposte sono sempre soggette al giudizio del Risk Manager.                                                                                   |
+| 3       | **Market Analyst**       | Research Analyst               | Fornisce analisi e segnali di mercato. Non ha potere decisionale: il suo output è un input per il Decision Maker.                                                                                                                  |
+| 4       | **Execution Trader**     | Broker                         | Esegue ordini su Binance, ma solo se autorizzati dal Risk Manager. Non prende decisioni autonome.                                                                                                                                  |
 | —       | **Performance Reviewer** | Performance Auditor consulente | Ruolo consultivo, fuori dalla catena decisionale. Produce un giudizio giornaliero sulle performance recenti letto dal Decision Maker nei cicli successivi. Non partecipa alla decisione del singolo trade e non ha potere di veto. |
 
 ---
