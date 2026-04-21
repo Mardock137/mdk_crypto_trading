@@ -1,7 +1,17 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
-## 1.11.0 — 2026-04-20
+## 1.11.1 — 2026-04-21
+
+### Corretto
+
+- `AnthropicInterface._build_kwargs`: corretto il formato della richiesta verso l'API Anthropic per Opus 4.7 con adaptive thinking. Il parametro `effort` non va più annidato dentro `thinking` (che causava errore 400 `thinking.adaptive.effort: Extra inputs are not permitted`), ma viene ora inviato nel campo separato `output_config`, come richiesto dalla documentazione ufficiale Anthropic. Quindi: `thinking={"type": "adaptive"}` e `output_config={"effort": "high"}` come kwarg distinti.
+- Aggiornato il test `test_thinking_effort_enables_thinking_and_removes_temperature` che verificava il formato sbagliato e aggiunto nuovo test di regressione `test_without_thinking_effort_does_not_send_output_config` per garantire che `output_config` non venga inviato quando `thinking_effort` è `None` (Performance Reviewer su Sonnet 4.6).
+- `AnthropicInterface.generate_text`: ora gestisce in modo robusto la risposta vuota (stessa logica già presente in `generate_json`): logga un warning con `stop_reason` e `usage`, poi solleva `RuntimeError`. Prima ritornava silenziosamente una stringa vuota, mascherando potenziali problemi di budget token esaurito durante il thinking.
+- Aggiunto test `test_generate_text_empty_response_logs_and_raises` per la nuova gestione degli edge case in `generate_text`.
+- `_extract_text`: docstring aggiornato per riflettere il comportamento attuale di Opus 4.7, dove i blocchi `thinking` arrivano vuoti di default (a meno di `display: "summarized"`).
+
+## 1.11.0 — 2026-04-21
 
 ### Modificato
 

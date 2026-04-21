@@ -41,7 +41,8 @@ class AnthropicInterface(BaseLlmInterface):
 
     - ``None`` (default): comportamento classico — viene passata ``temperature``
       e la risposta viene letta dal primo blocco ``text``.
-    - stringa (es. ``"high"``): abilita il thinking adattivo,
+    - stringa (es. ``"high"``): abilita il thinking adattivo passando
+      ``thinking={"type": "adaptive"}`` e ``output_config={"effort": ...}``,
       NON passa ``temperature`` (non accettata dai modelli con thinking) e la
       risposta viene estratta concatenando solo i blocchi ``text`` (scartando
       quelli ``thinking``).
@@ -68,15 +69,14 @@ class AnthropicInterface(BaseLlmInterface):
     def _build_kwargs(self) -> dict[str, Any]:
         """Costruisce i kwargs dinamici per messages.create().
 
-        Con thinking_effort: include thinking, esclude temperature.
-        Senza thinking_effort: include temperature, esclude thinking.
+        Con thinking_effort: include thinking (adaptive) e output_config (effort),
+        esclude temperature.
+        Senza thinking_effort: include temperature, esclude thinking e output_config.
         """
         kwargs: dict[str, Any] = {}
         if self._thinking_effort is not None:
-            kwargs["thinking"] = {
-                "type": "adaptive",
-                "effort": self._thinking_effort,
-            }
+            kwargs["thinking"] = {"type": "adaptive"}
+            kwargs["output_config"] = {"effort": self._thinking_effort}
         else:
             kwargs["temperature"] = self._temperature
         return kwargs
@@ -96,7 +96,15 @@ class AnthropicInterface(BaseLlmInterface):
                 messages=[{"role": "user", "content": user_prompt}],
                 **self._build_kwargs(),
             )
-            return _extract_text(response)
+            raw = _extract_text(response)
+            if not raw or not raw.strip():
+                _logger.warning(
+                    "Anthropic risposta vuota | stop_reason: %s | usage: %s",
+                    response.stop_reason,
+                    response.usage,
+                )
+                raise RuntimeError("Risposta vuota dal provider Anthropic.")
+            return raw
         except _RETRYABLE_ERRORS:
             raise
         except APIStatusError as exc:
@@ -150,9 +158,11 @@ def _extract_text(response: Any) -> str:
     """Estrae il testo dalla risposta Anthropic, ignorando i blocchi thinking.
 
     La risposta Anthropic e una lista di content blocks. I modelli con thinking
-    (es. Opus 4.7) possono restituire blocchi ``thinking`` prima dei blocchi
-    ``text``: questi vanno scartati. I modelli classici restituiscono solo
-    blocchi ``text``. Consideriamo "text" qualsiasi blocco che non sia
+    (es. Opus 4.7) possono includere blocchi ``thinking`` insieme a quelli
+    ``text``: questi vanno scartati a prescindere dal loro contenuto (su Opus
+    4.7 di default arrivano vuoti, ma con ``display: "summarized"`` possono
+    contenere un riassunto del ragionamento). I modelli classici restituiscono
+    solo blocchi ``text``. Consideriamo "text" qualsiasi blocco che non sia
     esplicitamente ``thinking``, per retrocompatibilita.
     """
     if not response.content:

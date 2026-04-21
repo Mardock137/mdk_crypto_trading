@@ -55,6 +55,33 @@ def test_generate_json_calls_messages_create_and_parses_response(mock_anthropic_
     assert result == {"risultato": "ok"}
 
 
+@patch("src.integrations.llm_interfaces.anthropic_interface._logger")
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_generate_text_empty_response_logs_and_raises(
+    mock_anthropic_cls: MagicMock,
+    mock_logger: MagicMock,
+) -> None:
+    """generate_text: risposta vuota → warning con stop_reason/usage + RuntimeError."""
+    mock_client = mock_anthropic_cls.return_value
+    mock_content_block = MagicMock()
+    mock_content_block.text = ""
+    mock_response = MagicMock()
+    mock_response.content = [mock_content_block]
+    mock_response.stop_reason = "max_tokens"
+    mock_response.usage = MagicMock(input_tokens=200, output_tokens=0)
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(api_key="fake-key", model="claude-opus-4-7")
+
+    with pytest.raises(RuntimeError, match="Risposta vuota"):
+        interface.generate_text("system prompt", "user prompt")
+
+    mock_logger.warning.assert_called_once()
+    warning_args = mock_logger.warning.call_args.args
+    assert "stop_reason" in warning_args[0]
+    assert "max_tokens" in warning_args
+
+
 @patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
 def test_generate_json_empty_text_raises(mock_anthropic_cls: MagicMock) -> None:
     """Verifica che generate_json sollevi RuntimeError quando Claude risponde con stringa vuota."""
@@ -267,7 +294,7 @@ from anthropic import InternalServerError
 def test_thinking_effort_enables_thinking_and_removes_temperature(
     mock_anthropic_cls: MagicMock,
 ) -> None:
-    """Con thinking_effort: la chiamata include `thinking` e NON include `temperature`."""
+    """Con thinking_effort: `thinking` adaptive + `output_config` effort, NO `temperature`."""
     mock_client = mock_anthropic_cls.return_value
     mock_text_block = MagicMock()
     mock_text_block.type = "text"
@@ -285,7 +312,8 @@ def test_thinking_effort_enables_thinking_and_removes_temperature(
 
     call_kwargs = mock_client.messages.create.call_args.kwargs
     assert "temperature" not in call_kwargs
-    assert call_kwargs["thinking"] == {"type": "adaptive", "effort": "high"}
+    assert call_kwargs["thinking"] == {"type": "adaptive"}
+    assert call_kwargs["output_config"] == {"effort": "high"}
 
 
 @patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
@@ -311,6 +339,29 @@ def test_without_thinking_effort_keeps_temperature_and_no_thinking(
     call_kwargs = mock_client.messages.create.call_args.kwargs
     assert call_kwargs["temperature"] == 0.2
     assert "thinking" not in call_kwargs
+
+
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_without_thinking_effort_does_not_send_output_config(
+    mock_anthropic_cls: MagicMock,
+) -> None:
+    """Senza thinking_effort: output_config NON deve essere inviato (regressione Sonnet 4.6)."""
+    mock_client = mock_anthropic_cls.return_value
+    mock_text_block = MagicMock()
+    mock_text_block.type = "text"
+    mock_text_block.text = "ok"
+    mock_response = MagicMock()
+    mock_response.content = [mock_text_block]
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(
+        api_key="fake-key",
+        model="claude-sonnet-4-6",
+    )
+    interface.generate_text("s", "u")
+
+    call_kwargs = mock_client.messages.create.call_args.kwargs
+    assert "output_config" not in call_kwargs
 
 
 @patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")

@@ -14,8 +14,8 @@
  │
  ├── 📁 config/                                              # Configurazioni statiche del sistema.
  │    ├── 📁 llm_models/                                     # Configurazione dei modelli IA (model, temperature, max token, ecc.).
- │    │    ├── 📄 decision_maker.yaml                        # Configurazione LLM per il Decision Maker (GPT-5.4).
- │    │    ├── 📄 market_analyst.yaml                        # Configurazione LLM per il Market Analyst (Claude Sonnet 4.6).
+ │    │    ├── 📄 decision_maker.yaml                        # Configurazione LLM per il Decision Maker (Claude Opus 4.7).
+ │    │    ├── 📄 market_analyst.yaml                        # Configurazione LLM per il Market Analyst (GPT-5.4).
  │    │    ├── 📄 performance_reviewer.yaml                  # Configurazione LLM per il Performance Reviewer (Claude Sonnet 4.6).
  │    │    └── 📄 risk_manager.yaml                          # Configurazione LLM per il Risk Manager (Gemini 3.1 Pro).
  │    ├── 📁 prompts/                                        # Prompt runtime usati dagli agenti.

@@ -252,10 +252,12 @@ sudo chown $USER:$USER ~/logs_export.tar.gz
 **Dal Mac/PC locale**:
 
 ```bash
-gcloud compute scp --zone=europe-west1-b mdk-crypto-trading:~/logs_export.tar.gz ./
+gcloud compute scp --zone=europe-west1-b mdk-crypto-trading:/home/chief/logs_export.tar.gz ./
 tar xzf logs_export.tar.gz -C logs/
 rm logs_export.tar.gz
 ```
+
+> **Nota**: `gcloud scp` si connette con l'utente di default (`mardock`), ma il tarball è nella home di `chief`. Usare il percorso assoluto `/home/chief/` evita l'errore "No such file or directory".
 
 **Pulizia sulla VM** (rimuovere i tarball temporanei):
 
