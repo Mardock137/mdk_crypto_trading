@@ -1,4 +1,4 @@
-provider: anthropic
-model: claude-sonnet-4-6
+provider: openai
+model: gpt-5.4
 temperature: 0.2
 max_tokens: 4096

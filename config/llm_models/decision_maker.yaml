@@ -1,5 +1,4 @@
-provider: openai
-model: gpt-5.4
-reasoning_effort: high
-temperature: 0.2
-max_tokens: 8192
+provider: anthropic
+model: claude-opus-4-7
+thinking_effort: high
+max_tokens: 16384

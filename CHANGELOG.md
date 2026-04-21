@@ -1,6 +1,33 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.11.0 — 2026-04-20
+
+### Modificato
+
+- Riassegnazione dei modelli LLM degli agenti:
+  - **Decision Maker**: da `GPT-5.4` (OpenAI) a `Claude Opus 4.7` (Anthropic) con adaptive thinking (`thinking_effort: high`). Motivazione: ragionamento strutturato superiore per decisioni ambigue e gestione dinamica della posizione.
+  - **Market Analyst**: da `Claude Sonnet 4.6` (Anthropic) a `GPT-5.4` (OpenAI) senza reasoning. Motivazione: analisi tecnica deterministica, no bisogno di thinking, budget token liberato.
+  - `Risk Manager` (Gemini 3.1 Pro) e `Performance Reviewer` (Claude Sonnet 4.6) restano invariati.
+- `config/llm_models/decision_maker.yaml`: provider `anthropic`, modello `claude-opus-4-7`, nuovo parametro `thinking_effort: high`, `max_tokens: 16384` (budget condiviso tra thinking e output). `temperature` rimossa (Opus 4.7 non la accetta con thinking).
+- `config/llm_models/market_analyst.yaml`: provider `openai`, modello `gpt-5.4`, `temperature: 0.2`, `max_tokens: 4096`. Nessun `reasoning_effort`.
+
+### Aggiunto
+
+- `AnthropicInterface`: nuovo parametro opzionale `thinking_effort: str | None = None` e helper interno `_build_kwargs`/`_extract_text`:
+  - Se `thinking_effort` è valorizzato (es. `"high"`): passa `thinking: {"type": "adaptive", "effort": ...}`, NON passa `temperature` (rifiutata da Opus 4.7 con thinking) e estrae solo i blocchi `text` dalla risposta (scartando quelli `thinking`).
+  - Se `thinking_effort` è `None` (default): comportamento identico al precedente (passa `temperature`, concatena i blocchi `text`). Retrocompatibilità totale con Sonnet 4.6 usato dal `Performance Reviewer`.
+- 4 nuovi test in `tests/integrations/llm_interfaces/test_anthropic_interface.py`: `thinking_effort` abilita `thinking` e rimuove `temperature`; regressione senza `thinking_effort`; estrazione text ignora blocchi `thinking`; concatenazione di più blocchi `text`.
+
+### Documentazione
+
+- README.md: bump `1.10.0` → `1.11.0`, tabella agenti aggiornata con `Claude Opus 4.7 (thinking)` per DM e `GPT-5.4` per MA, sezione "API integrate" riallineata.
+- `docs/config.md`: snippet YAML di `decision_maker.yaml` e `market_analyst.yaml` aggiornati; documentato il parametro `thinking_effort`.
+- `docs/architecture.md`: modelli degli agenti aggiornati nella descrizione dei ruoli.
+- `docs/decision_logic.md`: menzione del passaggio del DM a Opus 4.7 con adaptive thinking.
+
+---
+
 ## 1.10.0 — 2026-04-20
 
 ### Modificato

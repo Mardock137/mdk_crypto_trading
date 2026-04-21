@@ -36,15 +36,15 @@ flowchart TD
 ### Market Analyst
 
 - Riceve lo snapshot di mercato completo (prezzo, volume, order book, candele, indicatori tecnici).
-- Invia i dati a Claude Sonnet 4.6 che produce un'analisi strutturata (`MarketAnalysis`).
+- Invia i dati a GPT-5.4 che produce un'analisi strutturata (`MarketAnalysis`).
 - Non decide direttamente l'operazione.
 - Modello LLM e parametri configurati in `config/llm_models/market_analyst.yaml`.
 - Prompt operativo in `config/prompts/market_analyst.md`.
 
 ### Decision Maker
 
-- Riceve l'analisi del `Market Analyst`, il portafoglio, i vincoli operativi, la memoria IA e le performance recenti.
-- Invia i dati a GPT-5.4 che produce una proposta operativa strutturata (`TradeProposal`).
+- Riceve l'analisi del `Market Analyst`, il portafoglio, i vincoli operativi, la memoria IA, le performance recenti e il report del `Performance Reviewer`.
+- Invia i dati a Claude Opus 4.7 con adaptive thinking (`thinking_effort: high`) che produce una proposta operativa strutturata (`TradeProposal`).
 - Azioni possibili: `BUY`, `SELL`, `HOLD`, `CANCEL_AND_REPLACE_ORDER`.
 - Non esegue ordini reali.
 - Modello LLM e parametri configurati in `config/llm_models/decision_maker.yaml`.
@@ -192,7 +192,7 @@ I file `data/memory/` sono esclusi da git (vedi `.gitignore`) e vengono creati a
 - Le configurazioni dei modelli LLM (provider, model, temperature, max_tokens) vivono in `config/llm_models/`.
 - Il simbolo di trading attivo e la quote currency sono in `config/symbols.yaml`.
 - Le regole operative (es. `min_order_usdc`) vivono in `config/trading.yaml`.
-- I segreti (API key, URL, modalità) vivono nel `.env`. Le chiavi attive sono `CLAUDE_API_KEY` (Market Analyst + Performance Reviewer), `OPENAI_API_KEY` (Decision Maker) e `GEMINI_API_KEY` (Risk Manager).
+- I segreti (API key, URL, modalità) vivono nel `.env`. Le chiavi attive sono `CLAUDE_API_KEY` (Decision Maker + Performance Reviewer), `OPENAI_API_KEY` (Market Analyst) e `GEMINI_API_KEY` (Risk Manager).
 
 Per i dettagli, vedi `docs/config.md`.
 

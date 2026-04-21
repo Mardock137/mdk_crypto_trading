@@ -33,7 +33,19 @@ _RETRYABLE_ERRORS = (
 
 
 class AnthropicInterface(BaseLlmInterface):
-    """Implementazione di BaseLlmInterface per il provider Anthropic (Claude)."""
+    """Implementazione di BaseLlmInterface per il provider Anthropic (Claude).
+
+    Supporta sia i modelli "classici" (es. Sonnet 4.6) sia quelli che richiedono
+    adaptive thinking (es. Opus 4.7). La distinzione avviene tramite il parametro
+    ``thinking_effort``:
+
+    - ``None`` (default): comportamento classico — viene passata ``temperature``
+      e la risposta viene letta dal primo blocco ``text``.
+    - stringa (es. ``"high"``): abilita il thinking adattivo,
+      NON passa ``temperature`` (non accettata dai modelli con thinking) e la
+      risposta viene estratta concatenando solo i blocchi ``text`` (scartando
+      quelli ``thinking``).
+    """
 
     def __init__(
         self,
@@ -41,15 +53,33 @@ class AnthropicInterface(BaseLlmInterface):
         model: str,
         temperature: float = 0.7,
         max_tokens: int | None = None,
+        thinking_effort: str | None = None,
     ) -> None:
         self._model = model
         self._temperature = temperature
         self._max_tokens = max_tokens or 1024
+        self._thinking_effort = thinking_effort
         self._client = Anthropic(api_key=api_key)
 
     @property
     def model_name(self) -> str:
         return self._model
+
+    def _build_kwargs(self) -> dict[str, Any]:
+        """Costruisce i kwargs dinamici per messages.create().
+
+        Con thinking_effort: include thinking, esclude temperature.
+        Senza thinking_effort: include temperature, esclude thinking.
+        """
+        kwargs: dict[str, Any] = {}
+        if self._thinking_effort is not None:
+            kwargs["thinking"] = {
+                "type": "adaptive",
+                "effort": self._thinking_effort,
+            }
+        else:
+            kwargs["temperature"] = self._temperature
+        return kwargs
 
     @retry(
         retry=retry_if_exception_type(_RETRYABLE_ERRORS),
@@ -62,11 +92,11 @@ class AnthropicInterface(BaseLlmInterface):
             response = self._client.messages.create(
                 model=self._model,
                 max_tokens=self._max_tokens,
-                temperature=self._temperature,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_prompt}],
+                **self._build_kwargs(),
             )
-            return response.content[0].text if response.content else ""
+            return _extract_text(response)
         except _RETRYABLE_ERRORS:
             raise
         except APIStatusError as exc:
@@ -87,13 +117,13 @@ class AnthropicInterface(BaseLlmInterface):
             response = self._client.messages.create(
                 model=self._model,
                 max_tokens=self._max_tokens,
-                temperature=self._temperature,
                 system=system_prompt,
                 messages=[
                     {"role": "user", "content": json.dumps(dict(user_payload))}
                 ],
+                **self._build_kwargs(),
             )
-            raw = response.content[0].text if response.content else ""
+            raw = _extract_text(response)
             if not raw or not raw.strip():
                 _logger.warning(
                     "Anthropic risposta vuota | stop_reason: %s | usage: %s",
@@ -116,6 +146,27 @@ class AnthropicInterface(BaseLlmInterface):
             ) from exc
 
 
+def _extract_text(response: Any) -> str:
+    """Estrae il testo dalla risposta Anthropic, ignorando i blocchi thinking.
+
+    La risposta Anthropic e una lista di content blocks. I modelli con thinking
+    (es. Opus 4.7) possono restituire blocchi ``thinking`` prima dei blocchi
+    ``text``: questi vanno scartati. I modelli classici restituiscono solo
+    blocchi ``text``. Consideriamo "text" qualsiasi blocco che non sia
+    esplicitamente ``thinking``, per retrocompatibilita.
+    """
+    if not response.content:
+        return ""
+    parts: list[str] = []
+    for block in response.content:
+        if getattr(block, "type", None) == "thinking":
+            continue
+        text = getattr(block, "text", "") or ""
+        if isinstance(text, str) and text:
+            parts.append(text)
+    return "".join(parts)
+
+
 def _strip_markdown_json(text: str) -> str:
     """Rimuove il wrapping markdown da una risposta JSON di Claude.
 
@@ -130,11 +181,9 @@ def _strip_markdown_json(text: str) -> str:
 
     # Caso 1: code block markdown (```json ... ``` oppure ``` ... ```)
     if stripped.startswith("```"):
-        # Rimuove la prima riga (```json o ```)
         first_newline = stripped.find("\n")
         if first_newline != -1:
             inner = stripped[first_newline + 1:]
-            # Rimuove il ``` finale
             if inner.rstrip().endswith("```"):
                 inner = inner.rstrip()[:-3].rstrip()
             return inner.strip()

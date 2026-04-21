@@ -86,23 +86,22 @@ quote_currency: USDC
 
 Configurazione dei modelli LLM usati dagli agenti. Un file YAML per agente.
 
-**`market_analyst.yaml`** (provider: Anthropic):
-
-```yaml
-provider: anthropic
-model: claude-sonnet-4-6
-temperature: 0.2
-max_tokens: 4096
-```
-
-**`decision_maker.yaml`** (provider: OpenAI):
+**`market_analyst.yaml`** (provider: OpenAI):
 
 ```yaml
 provider: openai
 model: gpt-5.4
-reasoning_effort: high
 temperature: 0.2
-max_tokens: 8192
+max_tokens: 4096
+```
+
+**`decision_maker.yaml`** (provider: Anthropic, con adaptive thinking):
+
+```yaml
+provider: anthropic
+model: claude-opus-4-7
+thinking_effort: high
+max_tokens: 16384
 ```
 
 **`risk_manager.yaml`** (provider: Gemini):
@@ -125,8 +124,9 @@ max_tokens: 4096
 
 Note:
 
-- Quando `reasoning_effort` è configurato (solo OpenAI, Decision Maker), `temperature` viene ignorata perché GPT-5.4 non li accetta insieme.
-- `max_tokens` limita la lunghezza massima della risposta del modello. Per il Decision Maker il valore è alzato a `8192` perché con `reasoning_effort: high` i reasoning tokens interni consumano una quota significativa del budget: un limite troppo basso satura il budget e produce risposte vuote (`finish_reason: length`).
+- Quando `thinking_effort` è configurato (solo Anthropic, attualmente Decision Maker con Opus 4.7), `temperature` viene ignorata: Opus 4.7 non accetta `temperature` con thinking abilitato. L'interfaccia estrae automaticamente solo i blocchi `text` dalla risposta, scartando i blocchi `thinking`.
+- Per Anthropic senza `thinking_effort` (Performance Reviewer, Sonnet 4.6) il comportamento resta quello classico: `temperature` applicata, niente thinking.
+- `max_tokens` limita la lunghezza massima della risposta del modello. Per il Decision Maker il valore è alzato a `16384` perché con `thinking_effort: high` il budget è condiviso tra thinking interno e output finale: un limite troppo basso satura il budget.
 
 ### `config/prompts/`
 

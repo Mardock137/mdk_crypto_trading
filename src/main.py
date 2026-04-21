@@ -35,28 +35,29 @@ def main() -> None:
     rm_config = load_llm_model_config("config/llm_models/risk_manager.yaml")
     pr_config = load_llm_model_config("config/llm_models/performance_reviewer.yaml")
 
-    # Client LLM per il Market Analyst
-    ma_llm = AnthropicInterface(
-        api_key=settings.claude_api_key or "",
+    # Client LLM per il Market Analyst (GPT-5.4, senza reasoning: analisi tecnica strutturata)
+    ma_llm = OpenAiInterface(
+        api_key=settings.openai_api_key or "",
         model=ma_config["model"],
-        temperature=float(ma_config.get("temperature", 0.7)),
+        temperature=float(ma_config["temperature"]),
         max_tokens=ma_config.get("max_tokens"),
     )
 
-    # Client LLM per il Decision Maker
-    dm_llm = OpenAiInterface(
-        api_key=settings.openai_api_key or "",
+    # Client LLM per il Decision Maker (Claude Opus 4.7 con adaptive thinking)
+    # Nota: `temperature` non e accettata da Opus 4.7 con thinking abilitato,
+    # quindi non viene passata: l'interfaccia la ignora quando `thinking_effort` e valorizzato.
+    dm_llm = AnthropicInterface(
+        api_key=settings.claude_api_key or "",
         model=dm_config["model"],
-        temperature=float(dm_config.get("temperature", 0.2)),
         max_tokens=dm_config.get("max_tokens"),
-        reasoning_effort=dm_config.get("reasoning_effort"),
+        thinking_effort=dm_config.get("thinking_effort"),
     )
 
     # Client LLM per il Risk Manager
     rm_llm = GeminiInterface(
         api_key=settings.gemini_api_key or "",
         model=rm_config["model"],
-        temperature=float(rm_config.get("temperature", 0.2)),
+        temperature=float(rm_config["temperature"]),
         max_tokens=rm_config.get("max_tokens"),
     )
 
@@ -64,7 +65,7 @@ def main() -> None:
     pr_llm = AnthropicInterface(
         api_key=settings.claude_api_key or "",
         model=pr_config["model"],
-        temperature=float(pr_config.get("temperature", 0.3)),
+        temperature=float(pr_config["temperature"]),
         max_tokens=pr_config.get("max_tokens"),
     )
 

@@ -74,7 +74,7 @@ def test_main_creates_openai_interface_once(
     mock_runner_cls: MagicMock,
     mock_telegram_cls: MagicMock,
 ) -> None:
-    """OpenAiInterface deve essere istanziata 1 volta (solo Decision Maker)."""
+    """OpenAiInterface deve essere istanziata 1 volta (solo Market Analyst)."""
     main()
 
     mock_openai_cls.assert_called_once()
@@ -100,7 +100,7 @@ def test_main_creates_anthropic_interface_once(
     mock_runner_cls: MagicMock,
     mock_telegram_cls: MagicMock,
 ) -> None:
-    """AnthropicInterface deve essere istanziata 2 volte (Market Analyst + Performance Reviewer)."""
+    """AnthropicInterface deve essere istanziata 2 volte (Decision Maker + Performance Reviewer)."""
     main()
 
     assert mock_anthropic_cls.call_count == 2

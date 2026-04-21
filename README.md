@@ -3,7 +3,7 @@
 [![CI](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml/badge.svg)](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml)
 
 - **Versione Python**: `3.14.4`
-- **Versione MDK Crypto Trading**: `1.10.0`
+- **Versione MDK Crypto Trading**: `1.11.0`
 
 ## 📋 Indice
 
@@ -22,13 +22,13 @@ MDK Crypto Trading è un sistema autonomo di trading spot su criptovalute, strut
 
 ## 👥 Agenti e modelli
 
-| Agente                   | Ruolo                                                                           | Modello           |
-|--------------------------|---------------------------------------------------------------------------------|-------------------|
-| **Market Analyst**       | Analizza indicatori tecnici e genera un segnale di mercato                      | Claude Sonnet 4.6 |
-| **Decision Maker**       | Valuta il segnale e formula una proposta operativa (BUY, SELL, HOLD)            | GPT-5.4           |
-| **Risk Manager**         | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche           | Gemini 3.1 Pro    |
-| **Execution Trader**     | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)                  | —                 |
-| **Performance Reviewer** | Ruolo consultivo, fuori catena: genera un report giornaliero letto dal DM       | Claude Sonnet 4.6 |
+| Agente                   | Ruolo                                                                           | Modello                       |
+|--------------------------|---------------------------------------------------------------------------------|-------------------------------|
+| **Market Analyst**       | Analizza indicatori tecnici e genera un segnale di mercato                      | GPT-5.4                       |
+| **Decision Maker**       | Valuta il segnale e formula una proposta operativa (BUY, SELL, HOLD)            | Claude Opus 4.7 (thinking)    |
+| **Risk Manager**         | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche           | Gemini 3.1 Pro                |
+| **Execution Trader**     | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)                  | —                             |
+| **Performance Reviewer** | Ruolo consultivo, fuori catena: genera un report giornaliero letto dal DM       | Claude Sonnet 4.6             |
 
 ## 🔄 Come funziona
 
@@ -58,8 +58,8 @@ python dev_support/verify_connections.py
 
 ## 🤖 API integrate
 
-- **Anthropic API** (`Claude Sonnet 4.6`): Market Analyst e Performance Reviewer
-- **OpenAI API** (`GPT-5.4`): Decision Maker
+- **Anthropic API**: Decision Maker (`Claude Opus 4.7` con adaptive thinking) e Performance Reviewer (`Claude Sonnet 4.6`)
+- **OpenAI API** (`GPT-5.4`): Market Analyst
 - **Gemini API** (`Gemini 3.1 Pro`): Risk Manager
 - **Binance API**: dati di mercato, portafoglio, ordini aperti, esecuzione ordini (DEMO e REAL)
 - **Telegram Bot API** (opzionale): notifiche in tempo reale su ordini eseguiti, errori e avvio/stop del bot

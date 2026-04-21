@@ -260,6 +260,117 @@ def test_generate_json_parses_response_with_text_prefix(mock_anthropic_cls: Magi
 from anthropic import InternalServerError
 
 
+# --- Test per thinking_effort (Opus 4.7) ---
+
+
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_thinking_effort_enables_thinking_and_removes_temperature(
+    mock_anthropic_cls: MagicMock,
+) -> None:
+    """Con thinking_effort: la chiamata include `thinking` e NON include `temperature`."""
+    mock_client = mock_anthropic_cls.return_value
+    mock_text_block = MagicMock()
+    mock_text_block.type = "text"
+    mock_text_block.text = "ok"
+    mock_response = MagicMock()
+    mock_response.content = [mock_text_block]
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(
+        api_key="fake-key",
+        model="claude-opus-4-7",
+        thinking_effort="high",
+    )
+    interface.generate_text("s", "u")
+
+    call_kwargs = mock_client.messages.create.call_args.kwargs
+    assert "temperature" not in call_kwargs
+    assert call_kwargs["thinking"] == {"type": "adaptive", "effort": "high"}
+
+
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_without_thinking_effort_keeps_temperature_and_no_thinking(
+    mock_anthropic_cls: MagicMock,
+) -> None:
+    """Senza thinking_effort (default): temperature viene passata, niente thinking."""
+    mock_client = mock_anthropic_cls.return_value
+    mock_text_block = MagicMock()
+    mock_text_block.type = "text"
+    mock_text_block.text = "ok"
+    mock_response = MagicMock()
+    mock_response.content = [mock_text_block]
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(
+        api_key="fake-key",
+        model="claude-sonnet-4-6",
+        temperature=0.2,
+    )
+    interface.generate_text("s", "u")
+
+    call_kwargs = mock_client.messages.create.call_args.kwargs
+    assert call_kwargs["temperature"] == 0.2
+    assert "thinking" not in call_kwargs
+
+
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_extract_text_skips_thinking_blocks(mock_anthropic_cls: MagicMock) -> None:
+    """La risposta con blocchi thinking + text deve estrarre solo il text."""
+    mock_client = mock_anthropic_cls.return_value
+
+    thinking_block = MagicMock()
+    thinking_block.type = "thinking"
+    thinking_block.thinking = "sto pensando a lungo..."
+    # Anche se il block ha un attr .text, il tipo "thinking" lo esclude
+    thinking_block.text = "questo NON deve essere estratto"
+
+    text_block = MagicMock()
+    text_block.type = "text"
+    text_block.text = '{"risultato": "ok"}'
+
+    mock_response = MagicMock()
+    mock_response.content = [thinking_block, text_block]
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(
+        api_key="fake-key",
+        model="claude-opus-4-7",
+        thinking_effort="high",
+    )
+    result = interface.generate_json("system prompt", {"chiave": "valore"})
+
+    assert result == {"risultato": "ok"}
+
+
+@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
+def test_extract_text_concatenates_multiple_text_blocks(
+    mock_anthropic_cls: MagicMock,
+) -> None:
+    """Piu blocchi text consecutivi vengono concatenati correttamente."""
+    mock_client = mock_anthropic_cls.return_value
+
+    block1 = MagicMock()
+    block1.type = "text"
+    block1.text = '{"a":'
+
+    block2 = MagicMock()
+    block2.type = "text"
+    block2.text = ' 1}'
+
+    mock_response = MagicMock()
+    mock_response.content = [block1, block2]
+    mock_client.messages.create.return_value = mock_response
+
+    interface = AnthropicInterface(
+        api_key="fake-key",
+        model="claude-opus-4-7",
+        thinking_effort="high",
+    )
+    result = interface.generate_json("s", {"k": "v"})
+
+    assert result == {"a": 1}
+
+
 @patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
 def test_generate_json_retries_on_internal_server_error(mock_anthropic_cls: MagicMock) -> None:
     """Verifica che generate_json riprovi automaticamente su InternalServerError (500/529)."""
