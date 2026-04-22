@@ -255,3 +255,28 @@ class TradingCycleResult:
     risk_assessment: RiskAssessment
     execution_report: ExecutionReport
 
+
+@dataclass(frozen=True, slots=True)
+class CycleSkipConfig:
+    """Configurazione del pre-check deterministico che salta cicli non necessari."""
+
+    enabled: bool
+    max_consecutive_skips: int
+    price_delta_pct: float
+    rsi_delta: float
+    macd_sign_must_match: bool
+    require_no_order_events: bool
+    require_previous_action_hold: bool
+
+
+@dataclass(slots=True)
+class CycleContextSnapshot:
+    """Istantanea del contesto del ciclo precedente per confronti deterministici."""
+
+    price: float | None
+    rsi: float | None
+    macd: float | None
+    macd_signal: float | None
+    previous_action: TradeAction
+    open_order_ids: set[str] = field(default_factory=set)
+

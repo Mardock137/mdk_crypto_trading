@@ -64,6 +64,33 @@ Campi:
 
 Il mandate viene caricato all'avvio del runner tramite `load_mandate(trading_config)` in `src/utils/config.py` e propagato a ogni ciclo dentro `TradingCycleInput`. Se la sezione `mandate` manca o ha campi incompleti, il runner fallisce in fase di boot con un `ValueError` esplicito.
 
+### `config/cycle_skip.yaml`
+
+Configurazione del **pre-check deterministico** che decide se saltare un ciclo operativo quando il contesto di mercato e' rimasto sostanzialmente identico rispetto al precedente. Obiettivo: evitare di chiamare Analyst + Decision Maker (Opus con thinking) + Risk Manager quando non ci sono variazioni significative, risparmiando token e latenza.
+
+```yaml
+enabled: true
+max_consecutive_skips: 4
+thresholds:
+  price_delta_pct: 0.5
+  rsi_delta: 2.0
+  macd_sign_must_match: true
+  require_no_order_events: true
+  require_previous_action_hold: true
+```
+
+Campi:
+
+- `enabled`: se `false`, il pre-check e' disattivato e ogni ciclo esegue l'intera catena di agenti (comportamento pre-feature).
+- `max_consecutive_skips`: dopo N skip consecutivi, il ciclo successivo viene sempre eseguito per intero (anche se il contesto e' invariato). Evita di restare "bloccati" in skip infinito.
+- `thresholds.price_delta_pct`: variazione percentuale massima del prezzo tra ciclo precedente e corrente (oltre → no skip).
+- `thresholds.rsi_delta`: variazione assoluta massima dell'RSI (oltre → no skip).
+- `thresholds.macd_sign_must_match`: se `true`, il segno di `macd - macd_signal` deve essere uguale al ciclo precedente; un flip impedisce lo skip.
+- `thresholds.require_no_order_events`: se `true`, qualsiasi cambiamento nel set di ordini aperti (nuovo ordine, fill, cancellazione) impedisce lo skip.
+- `thresholds.require_previous_action_hold`: se `true`, lo skip e' consentito solo se l'azione del ciclo precedente era `HOLD`.
+
+Se il file manca, il sistema applica fallback safe con `enabled=false` (nessun ciclo viene saltato). Lo snapshot del contesto precedente vive solo in memoria del runner: dopo ogni restart il primo ciclo e' sempre full.
+
 ### `config/symbols.yaml`
 
 Simbolo di trading attivo e quote currency.

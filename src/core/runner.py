@@ -9,15 +9,26 @@ from pathlib import Path
 
 from src.agents.performance_reviewer import PerformanceReviewerAgent
 from src.core.contracts import (
+    CycleContextSnapshot,
+    CycleSkipConfig,
+    MarketDataSnapshot,
     OperationConstraints,
     OrderType,
     PerformanceReviewerInput,
+    PortfolioState,
+    TradeAction,
     TradingCycleInput,
     TradingCycleResult,
 )
 from src.core.workflow import TradingWorkflow
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
-from src.utils.config import AppSettings, load_mandate, load_trading_config
+from src.utils.config import (
+    AppSettings,
+    load_cycle_skip_config,
+    load_mandate,
+    load_trading_config,
+)
+from src.utils.cycle_skip import extract_open_order_ids, should_skip_cycle
 from src.utils.event_log_reader import load_recent_events
 from src.utils.event_logger import EventLogger
 from src.utils.memory_manager import MemoryManager
@@ -56,6 +67,9 @@ class TradingRunner:
         self._performance_reports_dir = performance_reports_dir
         self._trading_config = load_trading_config()
         self._mandate = load_mandate(self._trading_config)
+        self._cycle_skip_config: CycleSkipConfig = load_cycle_skip_config()
+        self._previous_snapshot: CycleContextSnapshot | None = None
+        self._consecutive_skips: int = 0
         self._shutdown_requested = False
         self._shutdown_event = threading.Event()
 
@@ -110,11 +124,21 @@ class TradingRunner:
             )
 
     def _run_single_cycle(self) -> None:
-        """Esegue un singolo ciclo operativo con gestione degli errori."""
+        """Esegue un singolo ciclo operativo con gestione degli errori.
+
+        Se un'eccezione interrompe il ciclo, ne' ``_previous_snapshot`` ne'
+        ``_consecutive_skips`` vengono aggiornati: il ciclo successivo partira'
+        quindi sempre con la catena LLM completa (nessun rischio di saltare
+        dopo un fallimento).
+        """
         self._logger.info("Inizio ciclo operativo")
         self._maybe_run_performance_review()
         try:
-            cycle_input = self._build_cycle_input()
+            market_data = self._exchange_client.get_market_snapshot(self._symbol)
+            portfolio = self._exchange_client.get_portfolio_state(self._symbol)
+            if self._try_skip_cycle(market_data, portfolio):
+                return
+            cycle_input = self._build_cycle_input(market_data, portfolio)
             result = self._workflow.run_cycle(cycle_input)
             self._logger.info(
                 "Market Analyst → %s (strength: %.2f, confidence: %.2f)",
@@ -151,6 +175,12 @@ class TradingRunner:
                 result=result,
                 current_price=cycle_input.market_data.price,
             )
+            self._previous_snapshot = self._build_snapshot(
+                market_data=cycle_input.market_data,
+                portfolio=cycle_input.portfolio,
+                proposed_action=result.trade_proposal.action,
+            )
+            self._consecutive_skips = 0
             if self._telegram_notifier and result.execution_report.was_executed:
                 self._telegram_notifier.send_message(
                     self._build_order_notification(result)
@@ -170,10 +200,12 @@ class TradingRunner:
                     f"Error: {escape_html(str(exc))}"
                 )
 
-    def _build_cycle_input(self) -> TradingCycleInput:
-        """Raccoglie dati di mercato e portafoglio dall'exchange e costruisce l'input."""
-        market_data = self._exchange_client.get_market_snapshot(self._symbol)
-        portfolio = self._exchange_client.get_portfolio_state(self._symbol)
+    def _build_cycle_input(
+        self,
+        market_data: MarketDataSnapshot,
+        portfolio: PortfolioState,
+    ) -> TradingCycleInput:
+        """Costruisce l'input del ciclo a partire da market data e portafoglio gia' raccolti."""
         constraints = OperationConstraints(
             cycle_interval_seconds=self._settings.cycle_interval_seconds,
             min_order_usdc=float(self._trading_config.get("min_order_usdc", 10.0)),
@@ -188,6 +220,61 @@ class TradingRunner:
             performance_summary=self._memory_manager.get_performance_summary(self._symbol),
             recent_performance=self._memory_manager.get_recent_performance(self._symbol),
             latest_performance_review=self._load_latest_performance_review(),
+        )
+
+    def _try_skip_cycle(
+        self,
+        market_data: MarketDataSnapshot,
+        portfolio: PortfolioState,
+    ) -> bool:
+        """Decide se saltare il ciclo corrente. Se si', logga e aggiorna il counter."""
+        if not self._cycle_skip_config.enabled:
+            return False
+
+        skip, reason = should_skip_cycle(
+            previous=self._previous_snapshot,
+            current_market=market_data,
+            current_portfolio=portfolio,
+            config=self._cycle_skip_config,
+            consecutive_skips=self._consecutive_skips,
+        )
+        if not skip:
+            self._logger.debug("Cycle skip non applicabile: %s", reason)
+            return False
+
+        assert self._previous_snapshot is not None
+        self._logger.info("Ciclo saltato dal pre-check deterministico: %s", reason)
+        self._event_logger.log_skipped_cycle(
+            symbol=self._symbol,
+            trading_mode=self._settings.trading_mode.value,
+            reason=reason,
+            snapshot=self._previous_snapshot,
+        )
+        self._consecutive_skips += 1
+        return True
+
+    @staticmethod
+    def _build_snapshot(
+        market_data: MarketDataSnapshot,
+        portfolio: PortfolioState,
+        proposed_action: TradeAction,
+    ) -> CycleContextSnapshot:
+        """Costruisce uno snapshot del contesto del ciclo appena concluso.
+
+        ``proposed_action`` e' l'azione proposta dal Decision Maker (non quella
+        effettivamente eseguita). Scelta voluta: se il DM propone BUY/SELL ma
+        il Risk Manager blocca, il ciclo successivo deve comunque girare per
+        dare al DM l'opportunita' di rivalutare, quindi il pre-check non deve
+        saltarlo.
+        """
+        indicators = market_data.indicators
+        return CycleContextSnapshot(
+            price=market_data.price,
+            rsi=_coerce_float(indicators.get("rsi")),
+            macd=_coerce_float(indicators.get("macd")),
+            macd_signal=_coerce_float(indicators.get("macd_signal")),
+            previous_action=proposed_action,
+            open_order_ids=extract_open_order_ids(portfolio),
         )
 
     def _maybe_run_performance_review(self) -> None:
@@ -288,3 +375,13 @@ class TradingRunner:
         lines.append(f"Mode: {self._settings.trading_mode.value}")
 
         return "\n".join(lines)
+
+
+def _coerce_float(value: object) -> float | None:
+    """Converte un valore in ``float``, ritornando ``None`` se non possibile."""
+    if value is None:
+        return None
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None

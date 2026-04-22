@@ -4,6 +4,7 @@ import pytest
 
 from src.utils.config import (
     TradingMode,
+    load_cycle_skip_config,
     load_llm_model_config,
     load_mandate,
     load_settings,
@@ -170,4 +171,80 @@ def test_load_llm_model_config_returns_dict(tmp_path: Path) -> None:
 def test_load_llm_model_config_raises_if_file_missing(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         load_llm_model_config(tmp_path / "non_esistente.yaml")
+
+
+# ---------- load_cycle_skip_config ----------
+
+
+_VALID_CYCLE_SKIP_YAML = """\
+enabled: true
+max_consecutive_skips: 5
+thresholds:
+  price_delta_pct: 0.5
+  rsi_delta: 2.0
+  macd_sign_must_match: true
+  require_no_order_events: true
+  require_previous_action_hold: true
+"""
+
+
+def test_load_cycle_skip_config_returns_expected_values(tmp_path: Path) -> None:
+    yaml_file = tmp_path / "cycle_skip.yaml"
+    yaml_file.write_text(_VALID_CYCLE_SKIP_YAML, encoding="utf-8")
+
+    config = load_cycle_skip_config(yaml_file)
+
+    assert config.enabled is True
+    assert config.max_consecutive_skips == 5
+    assert config.price_delta_pct == pytest.approx(0.5)
+    assert config.rsi_delta == pytest.approx(2.0)
+    assert config.macd_sign_must_match is True
+    assert config.require_no_order_events is True
+    assert config.require_previous_action_hold is True
+
+
+def test_load_cycle_skip_config_fallback_when_file_missing(tmp_path: Path) -> None:
+    config = load_cycle_skip_config(tmp_path / "missing.yaml")
+
+    assert config.enabled is False
+    assert config.max_consecutive_skips == 5
+
+
+def test_load_cycle_skip_config_raises_if_thresholds_missing(tmp_path: Path) -> None:
+    yaml_file = tmp_path / "cycle_skip.yaml"
+    yaml_file.write_text("enabled: true\nmax_consecutive_skips: 5\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="thresholds"):
+        load_cycle_skip_config(yaml_file)
+
+
+def test_load_cycle_skip_config_raises_if_field_missing(tmp_path: Path) -> None:
+    yaml_file = tmp_path / "cycle_skip.yaml"
+    yaml_file.write_text(
+        "max_consecutive_skips: 5\n"
+        "thresholds:\n"
+        "  price_delta_pct: 0.5\n"
+        "  rsi_delta: 2.0\n"
+        "  macd_sign_must_match: true\n"
+        "  require_no_order_events: true\n"
+        "  require_previous_action_hold: true\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="enabled"):
+        load_cycle_skip_config(yaml_file)
+
+
+def test_load_cycle_skip_config_raises_if_threshold_field_missing(tmp_path: Path) -> None:
+    yaml_file = tmp_path / "cycle_skip.yaml"
+    yaml_file.write_text(
+        "enabled: true\n"
+        "max_consecutive_skips: 5\n"
+        "thresholds:\n"
+        "  price_delta_pct: 0.5\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="rsi_delta"):
+        load_cycle_skip_config(yaml_file)
 

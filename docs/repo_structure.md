@@ -23,6 +23,7 @@
  │    │    ├── 📄 market_analyst.md                          # Prompt operativo del Market Analyst.
  │    │    ├── 📄 performance_reviewer.md                    # Prompt operativo del Performance Reviewer.
  │    │    └── 📄 risk_manager.md                            # Prompt operativo del Risk Manager.
+ │    ├── 📄 cycle_skip.yaml                                 # Configurazione del pre-check deterministico che salta cicli quando il contesto e' invariato.
  │    ├── 📄 symbols.yaml                                    # Simbolo di trading attivo e quote currency (es. BTCUSDC / USDC).
  │    └── 📄 trading.yaml                                    # Regole operative statiche del sistema (min_order_usdc + investment mandate).
  │
@@ -76,6 +77,7 @@
  │    │         └── 📄 openai_interface.py                   # Client LLM per OpenAI (con retry automatico).
  │    ├── 📁 utils/                                          # Utility comuni e configurazione tecnica.
  │    │    ├── 📄 config.py                                  # Caricamento variabili d'ambiente, YAML e configurazioni.
+ │    │    ├── 📄 cycle_skip.py                              # Pre-check deterministico: decide se saltare un ciclo quando il contesto e' invariato.
  │    │    ├── 📄 event_log_reader.py                        # Lettura eventi JSONL recenti usata dal Performance Reviewer.
  │    │    ├── 📄 event_logger.py                            # Logger JSON strutturato per le decisioni di ogni ciclo.
  │    │    ├── 📄 indicators.py                              # Indicatori tecnici: RSI, EMA, SMA, MACD.
@@ -107,6 +109,7 @@
  │    │         └── 📄 test_gemini_interface.py
  │    ├── 📁 utils/                                          # Test delle utility.
  │    │    ├── 📄 test_config.py
+ │    │    ├── 📄 test_cycle_skip.py
  │    │    ├── 📄 test_event_log_reader.py
  │    │    ├── 📄 test_event_logger.py
  │    │    ├── 📄 test_indicators.py

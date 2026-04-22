@@ -11,12 +11,16 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.core.contracts import (
+    CycleContextSnapshot,
+    CycleSkipConfig,
     ExecutionReport,
     ExecutionStatus,
     MandateAdherence,
+    MarketDataSnapshot,
     OrderType,
     PerformanceReview,
     PerformanceStats,
+    PortfolioState,
     TradeAction,
     TradeProposal,
     TradeProposalDetails,
@@ -57,6 +61,17 @@ def _make_settings(**overrides: Any) -> AppSettings:
     return AppSettings(**defaults)
 
 
+_DEFAULT_DISABLED_SKIP_CONFIG = CycleSkipConfig(
+    enabled=False,
+    max_consecutive_skips=5,
+    price_delta_pct=0.5,
+    rsi_delta=2.0,
+    macd_sign_must_match=True,
+    require_no_order_events=True,
+    require_previous_action_hold=True,
+)
+
+
 def _make_runner(
     settings: AppSettings | None = None,
     workflow: MagicMock | None = None,
@@ -66,8 +81,14 @@ def _make_runner(
     performance_reviewer: MagicMock | None = None,
     telegram_notifier: TelegramNotifier | None = None,
     performance_reports_dir: Path | None = None,
+    cycle_skip_config: CycleSkipConfig | None = None,
 ) -> TradingRunner:
-    with patch("src.core.runner.load_trading_config", return_value=_MOCK_TRADING_CONFIG):
+    with patch(
+        "src.core.runner.load_trading_config", return_value=_MOCK_TRADING_CONFIG,
+    ), patch(
+        "src.core.runner.load_cycle_skip_config",
+        return_value=cycle_skip_config or _DEFAULT_DISABLED_SKIP_CONFIG,
+    ):
         return TradingRunner(
             workflow=workflow or MagicMock(),
             event_logger=event_logger or MagicMock(),
@@ -370,3 +391,114 @@ def test_load_latest_performance_review_returns_file_content(
     runner = _make_runner(performance_reports_dir=tmp_path)
 
     assert runner._load_latest_performance_review() == "latest content"
+
+
+# ---------- Cycle skip ----------
+
+
+_ENABLED_SKIP_CONFIG = CycleSkipConfig(
+    enabled=True,
+    max_consecutive_skips=5,
+    price_delta_pct=0.5,
+    rsi_delta=2.0,
+    macd_sign_must_match=True,
+    require_no_order_events=True,
+    require_previous_action_hold=True,
+)
+
+
+def _stable_market() -> MarketDataSnapshot:
+    return MarketDataSnapshot(
+        symbol="BTCUSDC",
+        price=100.0,
+        indicators={"rsi": 50.0, "macd": 1.0, "macd_signal": 0.5},
+    )
+
+
+def _empty_portfolio() -> PortfolioState:
+    return PortfolioState(
+        usdc_balance=1000.0,
+        usdc_balance_total=1000.0,
+        usdc_value=1000.0,
+        portfolio_qty_free=0.0,
+        portfolio_qty_total=0.0,
+        open_orders=[],
+    )
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_cycle_is_skipped_when_context_unchanged(mock_wait: MagicMock) -> None:
+    """Con cycle skip attivo e contesto invariato, il workflow NON viene chiamato."""
+    mock_exchange = MagicMock()
+    mock_exchange.get_market_snapshot.return_value = _stable_market()
+    mock_exchange.get_portfolio_state.return_value = _empty_portfolio()
+    mock_workflow = MagicMock()
+    mock_event_logger = MagicMock()
+
+    runner = _make_runner(
+        exchange_client=mock_exchange,
+        workflow=mock_workflow,
+        event_logger=mock_event_logger,
+        cycle_skip_config=_ENABLED_SKIP_CONFIG,
+    )
+    runner._previous_snapshot = CycleContextSnapshot(
+        price=100.0,
+        rsi=50.0,
+        macd=1.0,
+        macd_signal=0.5,
+        previous_action=TradeAction.HOLD,
+        open_order_ids=set(),
+    )
+
+    runner.run()
+
+    mock_workflow.run_cycle.assert_not_called()
+    mock_event_logger.log_skipped_cycle.assert_called_once()
+    assert runner._consecutive_skips == 1
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_cycle_runs_normally_when_skip_disabled(mock_wait: MagicMock) -> None:
+    """Con cycle skip disabilitato, il workflow viene sempre chiamato."""
+    mock_exchange = MagicMock()
+    mock_exchange.get_market_snapshot.return_value = _stable_market()
+    mock_exchange.get_portfolio_state.return_value = _empty_portfolio()
+    mock_workflow = MagicMock()
+
+    runner = _make_runner(
+        exchange_client=mock_exchange,
+        workflow=mock_workflow,
+    )
+    runner._previous_snapshot = CycleContextSnapshot(
+        price=100.0,
+        rsi=50.0,
+        macd=1.0,
+        macd_signal=0.5,
+        previous_action=TradeAction.HOLD,
+        open_order_ids=set(),
+    )
+
+    runner.run()
+
+    mock_workflow.run_cycle.assert_called_once()
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_first_cycle_is_not_skipped_even_with_skip_enabled(
+    mock_wait: MagicMock,
+) -> None:
+    """Il primo ciclo (snapshot=None) non viene mai saltato."""
+    mock_exchange = MagicMock()
+    mock_exchange.get_market_snapshot.return_value = _stable_market()
+    mock_exchange.get_portfolio_state.return_value = _empty_portfolio()
+    mock_workflow = MagicMock()
+
+    runner = _make_runner(
+        exchange_client=mock_exchange,
+        workflow=mock_workflow,
+        cycle_skip_config=_ENABLED_SKIP_CONFIG,
+    )
+
+    runner.run()
+
+    mock_workflow.run_cycle.assert_called_once()

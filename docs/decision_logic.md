@@ -29,6 +29,10 @@ flowchart TD
     ET -->|ExecutionReport| LOG["Log ciclo"]
 ```
 
+### Pre-check deterministico (opzionale)
+
+Prima della catena di agenti, il runner puo' applicare un pre-check deterministico (zero LLM) che confronta il contesto attuale con lo snapshot del ciclo precedente: se prezzo, RSI, segno MACD e set di ordini aperti sono rimasti entro soglie di tolleranza e l'ultima azione era `HOLD`, il ciclo viene saltato senza chiamare alcun agente. Lo skip e' configurabile via `config/cycle_skip.yaml` (vedi `docs/config.md`) e si disattiva dopo `max_consecutive_skips` consecutivi per garantire che il Decision Maker rivaluti comunque il setup periodicamente. I cicli saltati vengono registrati in `logs/events/` con `cycle_type: "skipped"`.
+
 ---
 
 ## Market Analyst

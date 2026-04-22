@@ -1,6 +1,32 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.0 — 2026-04-22
+
+### Aggiunto
+
+- **Cycle skip deterministico**: pre-check opzionale che salta un ciclo operativo quando il contesto di mercato e' sostanzialmente invariato rispetto al precedente, evitando di chiamare Market Analyst, Decision Maker (Opus con thinking) e Risk Manager quando non serve. Motivazione: dai log del 22/04 risultavano 5 HOLD consecutivi in ~6 ore con delta indicatori minimi e zero ordini eseguiti — ogni ciclo consumava comunque la catena LLM completa.
+- `config/cycle_skip.yaml`: nuovo file con `enabled`, `max_consecutive_skips` e `thresholds` (`price_delta_pct`, `rsi_delta`, `macd_sign_must_match`, `require_no_order_events`, `require_previous_action_hold`).
+- `src/core/contracts.py`: nuove dataclass `CycleSkipConfig` e `CycleContextSnapshot`.
+- `src/utils/config.py`: `load_cycle_skip_config()` con fallback safe (`enabled=false`) se il file manca.
+- `src/utils/cycle_skip.py`: funzione pura `should_skip_cycle()` che decide in modo deterministico se saltare il ciclo corrente, e helper `extract_open_order_ids()`.
+- `src/utils/event_logger.py`: nuovo metodo `log_skipped_cycle()` che scrive un record JSON distinto con `cycle_type: "skipped"` (senza payload agenti).
+- `src/core/runner.py`: integrato il pre-check prima della catena decisionale. Lo snapshot del contesto precedente vive solo in RAM (primo ciclo post-restart sempre full). Counter `_consecutive_skips` per garantire una rivalutazione dopo N skip.
+
+### Documentazione
+
+- `README.md`: bump `1.12.0` → `1.13.0`.
+- `docs/config.md`: nuova sezione "Cycle skip" con spiegazione dei campi.
+- `docs/decision_logic.md`: aggiunta la menzione del pre-check deterministico prima della catena di agenti.
+- `docs/repo_structure.md`: aggiunti `config/cycle_skip.yaml`, `src/utils/cycle_skip.py` e `tests/utils/test_cycle_skip.py`.
+
+### Test
+
+- `tests/utils/test_cycle_skip.py`: nuovo file, copertura di `should_skip_cycle` su tutti i casi limite (disabilitato, primo ciclo, counter al massimo, ogni soglia violata, contesto invariato).
+- `tests/utils/test_config.py`: aggiunti test per `load_cycle_skip_config` (valori corretti, file mancante, campi mancanti).
+- `tests/utils/test_event_logger.py`: aggiunto test per `log_skipped_cycle`.
+- `tests/core/test_runner.py`: aggiunti test di integrazione (skip attivo + contesto invariato → workflow non chiamato; skip disabilitato → workflow chiamato; primo ciclo mai saltato).
+
 ## 1.12.0 — 2026-04-22
 
 ### Modificato

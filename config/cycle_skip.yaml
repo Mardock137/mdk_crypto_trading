@@ -1,0 +1,8 @@
+enabled: true
+max_consecutive_skips: 4
+thresholds:
+  price_delta_pct: 0.5
+  rsi_delta: 2.0
+  macd_sign_must_match: true
+  require_no_order_events: true
+  require_previous_action_hold: true

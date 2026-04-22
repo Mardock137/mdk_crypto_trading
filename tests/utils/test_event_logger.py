@@ -5,6 +5,7 @@ from datetime import date
 from pathlib import Path
 
 from src.core.contracts import (
+    CycleContextSnapshot,
     ExecutionReport,
     ExecutionStatus,
     MarketAnalysis,
@@ -117,3 +118,34 @@ def test_log_error_writes_error_field(tmp_path: Path) -> None:
     assert record["trade_proposal"] is None
     assert record["risk_assessment"] is None
     assert record["execution_report"] is None
+
+
+def test_log_skipped_cycle_writes_expected_fields(tmp_path: Path) -> None:
+    """log_skipped_cycle deve scrivere un record con cycle_type=skipped."""
+    logger = EventLogger(events_dir=tmp_path)
+    snapshot = CycleContextSnapshot(
+        price=100.0,
+        rsi=52.0,
+        macd=1.0,
+        macd_signal=0.5,
+        previous_action=TradeAction.HOLD,
+        open_order_ids={"abc", "xyz"},
+    )
+
+    logger.log_skipped_cycle(
+        symbol="BTCUSDC",
+        trading_mode="DEMO",
+        reason="context unchanged within thresholds",
+        snapshot=snapshot,
+    )
+
+    jsonl_file = tmp_path / f"{date.today().isoformat()}.jsonl"
+    record = json.loads(jsonl_file.read_text(encoding="utf-8").strip())
+
+    assert record["cycle_type"] == "skipped"
+    assert record["symbol"] == "BTCUSDC"
+    assert record["trading_mode"] == "DEMO"
+    assert record["reason"] == "context unchanged within thresholds"
+    assert record["snapshot"]["price"] == 100.0
+    assert record["snapshot"]["previous_action"] == "HOLD"
+    assert sorted(record["snapshot"]["open_order_ids"]) == ["abc", "xyz"]

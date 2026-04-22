@@ -1,4 +1,4 @@
 provider: anthropic
 model: claude-opus-4-7
-thinking_effort: high
+thinking_effort: medium
 max_tokens: 16384

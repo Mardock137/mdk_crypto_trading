@@ -9,7 +9,17 @@ from typing import Any, Mapping
 import yaml
 from dotenv import load_dotenv
 
-from src.core.contracts import InvestmentMandate
+from src.core.contracts import CycleSkipConfig, InvestmentMandate
+
+_DEFAULT_CYCLE_SKIP_CONFIG = CycleSkipConfig(
+    enabled=False,
+    max_consecutive_skips=5,
+    price_delta_pct=0.5,
+    rsi_delta=2.0,
+    macd_sign_must_match=True,
+    require_no_order_events=True,
+    require_previous_action_hold=True,
+)
 
 
 class TradingMode(str, Enum):
@@ -122,6 +132,56 @@ def load_symbol_config(
     if not quote_currency:
         raise ValueError("Campo 'quote_currency' mancante in symbols.yaml")
     return {"symbol": str(symbol), "quote_currency": str(quote_currency)}
+
+
+def load_cycle_skip_config(
+    config_path: str | Path = "config/cycle_skip.yaml",
+) -> CycleSkipConfig:
+    """Carica la configurazione del pre-check di skip ciclo dal file YAML.
+
+    Fallback safe: se il file non esiste, ritorna una configurazione con
+    ``enabled=False`` (nessun ciclo viene saltato).
+    """
+    resolved = Path(config_path)
+    if not resolved.exists():
+        return _DEFAULT_CYCLE_SKIP_CONFIG
+
+    data = _load_yaml(resolved)
+    thresholds = data.get("thresholds")
+    if not isinstance(thresholds, Mapping):
+        raise ValueError(
+            "Sezione 'thresholds' mancante o non valida in cycle_skip.yaml"
+        )
+
+    required_top = ("enabled", "max_consecutive_skips")
+    missing_top = [k for k in required_top if k not in data]
+    if missing_top:
+        raise ValueError(
+            f"Campi mancanti in cycle_skip.yaml: {missing_top}"
+        )
+
+    required_thresholds = (
+        "price_delta_pct",
+        "rsi_delta",
+        "macd_sign_must_match",
+        "require_no_order_events",
+        "require_previous_action_hold",
+    )
+    missing_thresholds = [k for k in required_thresholds if k not in thresholds]
+    if missing_thresholds:
+        raise ValueError(
+            f"Campi mancanti in 'thresholds' di cycle_skip.yaml: {missing_thresholds}"
+        )
+
+    return CycleSkipConfig(
+        enabled=bool(data["enabled"]),
+        max_consecutive_skips=int(data["max_consecutive_skips"]),
+        price_delta_pct=float(thresholds["price_delta_pct"]),
+        rsi_delta=float(thresholds["rsi_delta"]),
+        macd_sign_must_match=bool(thresholds["macd_sign_must_match"]),
+        require_no_order_events=bool(thresholds["require_no_order_events"]),
+        require_previous_action_hold=bool(thresholds["require_previous_action_hold"]),
+    )
 
 
 def load_llm_model_config(

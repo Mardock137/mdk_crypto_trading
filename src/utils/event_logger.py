@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from src.core.contracts import (
+    CycleContextSnapshot,
     ExecutionReport,
     MarketAnalysis,
     RiskAssessment,
@@ -43,6 +44,36 @@ class EventLogger:
             "trade_proposal": dataclasses.asdict(trade_proposal),
             "risk_assessment": dataclasses.asdict(risk_assessment),
             "execution_report": dataclasses.asdict(execution_report),
+            "error": None,
+        }
+        self._append(record)
+
+    def log_skipped_cycle(
+        self,
+        symbol: str,
+        trading_mode: str,
+        reason: str,
+        snapshot: CycleContextSnapshot,
+    ) -> None:
+        """Registra un ciclo saltato dal pre-check deterministico.
+
+        Scrive solo i campi essenziali (marker ``cycle_type=skipped``, motivo,
+        snapshot di riferimento) senza i payload degli agenti.
+        """
+        record: dict[str, Any] = {
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "symbol": symbol,
+            "trading_mode": trading_mode,
+            "cycle_type": "skipped",
+            "reason": reason,
+            "snapshot": {
+                "price": snapshot.price,
+                "rsi": snapshot.rsi,
+                "macd": snapshot.macd,
+                "macd_signal": snapshot.macd_signal,
+                "previous_action": snapshot.previous_action.value,
+                "open_order_ids": sorted(snapshot.open_order_ids),
+            },
             "error": None,
         }
         self._append(record)
