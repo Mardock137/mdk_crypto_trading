@@ -50,23 +50,17 @@ Regole operative statiche del sistema e mandato di investimento.
 min_order_usdc: 10.0
 
 mandate:
-  objective: "Generare rendimento sul capitale"
-  min_monthly_return_pct: 2.0
   max_drawdown_pct: 15.0
   horizon: "Intraday to swing (ore → giorni)"
   max_position_pct: 100.0
-  min_trades_per_week: 3
 ```
 
 Campi:
 
 - `min_order_usdc`: valore minimo interno consentito per un ordine, in USDC.
-- `mandate.objective`: descrizione testuale dell'obiettivo strategico del sistema.
-- `mandate.min_monthly_return_pct`: rendimento mensile minimo atteso in percentuale.
 - `mandate.max_drawdown_pct`: drawdown massimo tollerato in percentuale.
 - `mandate.horizon`: orizzonte temporale tipico delle operazioni (es. intraday, swing).
 - `mandate.max_position_pct`: percentuale massima del capitale allocabile sulla singola posizione. Finché il bot è mono-simbolo è tipicamente `100.0`; il campo esiste già in vista del multi-simbolo.
-- `mandate.min_trades_per_week`: numero minimo di trade attesi per settimana. È usato dal Decision Maker come indicatore per evitare di ripiegare su `HOLD` "nel dubbio".
 
 Il mandate viene caricato all'avvio del runner tramite `load_mandate(trading_config)` in `src/utils/config.py` e propagato a ogni ciclo dentro `TradingCycleInput`. Se la sezione `mandate` manca o ha campi incompleti, il runner fallisce in fase di boot con un `ValueError` esplicito.
 
@@ -174,49 +168,41 @@ python dev_support/verify_connections.py
 ### Problema: `ValueError: Missing required environment variable: TRADING_MODE`
 
 **Causa**: la variabile `TRADING_MODE` non è presente nel `.env` (oppure è vuota).
-
 **Soluzione**: aggiungere `TRADING_MODE=DEMO` o `TRADING_MODE=REAL` nel file `.env`.
 
 ### Problema: `ValueError: Missing required environment variable: CYCLE_INTERVAL_SECONDS`
 
 **Causa**: la variabile `CYCLE_INTERVAL_SECONDS` non è presente nel `.env` (oppure è vuota).
-
 **Soluzione**: aggiungere `CYCLE_INTERVAL_SECONDS=300` (o l'intervallo desiderato in secondi) nel file `.env`.
 
 ### Problema: `ValueError` su `TRADING_MODE` con valore non valido
 
 **Causa**: `TRADING_MODE` ha un valore diverso da `DEMO` o `REAL` (es. `demo`, `test`, `live`). Il valore è case-sensitive.
-
 **Soluzione**: usare esattamente `DEMO` o `REAL` in maiuscolo.
 
 ### Problema: `ValueError: Invalid boolean value` su `KILL_SWITCH`
 
 **Causa**: `KILL_SWITCH` ha un valore non riconosciuto. Valori accettati: `1`, `true`, `yes`, `on`, `0`, `false`, `no`, `off`.
-
 **Soluzione**: usare uno dei valori accettati (es. `KILL_SWITCH=1`).
 
 ### Problema: `FileNotFoundError: File di configurazione non trovato`
 
 **Causa**: manca uno dei file YAML nella cartella `config/` (`trading.yaml`, `symbols.yaml`, o uno dei file in `llm_models/`).
-
 **Soluzione**: verificare che tutti i file YAML siano presenti nella cartella `config/`. Se il progetto è stato clonato di recente, questi file dovrebbero essere già nel repository.
 
 ### Problema: `ValueError: Campo 'symbol' mancante in symbols.yaml`
 
 **Causa**: il file `config/symbols.yaml` esiste ma non contiene il campo `symbol`.
-
 **Soluzione**: aggiungere `symbol: BTCUSDC` (o il simbolo desiderato) nel file.
 
 ### Problema: `ValueError: Campo 'quote_currency' mancante in symbols.yaml`
 
 **Causa**: il file `config/symbols.yaml` esiste ma non contiene il campo `quote_currency`.
-
 **Soluzione**: aggiungere `quote_currency: USDC` (o la quote currency corrispondente al simbolo).
 
 ### Problema: `KeyError: 'model'` all'avvio
 
 **Causa**: uno dei file YAML in `config/llm_models/` non contiene il campo `model`.
-
 **Soluzione**: verificare che ogni file YAML abbia almeno il campo `model` con il nome del modello (es. `model: claude-sonnet-4-6`).
 
 ---

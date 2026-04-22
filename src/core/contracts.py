@@ -85,14 +85,11 @@ class OperationConstraints:
 
 @dataclass(slots=True)
 class InvestmentMandate:
-    """Mandato operativo: obiettivi e vincoli imposti al Decision Maker."""
+    """Mandato operativo: vincoli di rischio e contesto strategico imposti al Decision Maker."""
 
-    objective: str
-    min_monthly_return_pct: float
     max_drawdown_pct: float
     horizon: str
     max_position_pct: float
-    min_trades_per_week: int
 
 
 @dataclass(slots=True)

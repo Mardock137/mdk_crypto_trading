@@ -120,12 +120,9 @@ def test_load_symbol_config_raises_if_file_missing(tmp_path: Path) -> None:
 
 def _valid_mandate_dict() -> dict:
     return {
-        "objective": "Generare rendimento",
-        "min_monthly_return_pct": 2.0,
         "max_drawdown_pct": 15.0,
         "horizon": "Intraday to swing",
         "max_position_pct": 100.0,
-        "min_trades_per_week": 3,
     }
 
 
@@ -134,12 +131,9 @@ def test_load_mandate_returns_investment_mandate() -> None:
 
     mandate = load_mandate(config)
 
-    assert mandate.objective == "Generare rendimento"
-    assert mandate.min_monthly_return_pct == pytest.approx(2.0)
     assert mandate.max_drawdown_pct == pytest.approx(15.0)
     assert mandate.horizon == "Intraday to swing"
     assert mandate.max_position_pct == pytest.approx(100.0)
-    assert mandate.min_trades_per_week == 3
 
 
 def test_load_mandate_raises_if_section_missing() -> None:

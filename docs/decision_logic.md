@@ -46,8 +46,8 @@ Riceve il segnale del Market Analyst e formula una proposta operativa usando com
 
 - **Azioni possibili**: `BUY`, `SELL`, `HOLD`, `CANCEL_AND_REPLACE_ORDER`
 - **Tipi di ordine**: `MARKET`, `LIMIT`, `NONE` (solo per HOLD)
-- Usa il mandato (obiettivo, rendimento mensile minimo, drawdown massimo, orizzonte, posizione massima, trade minimi per settimana) come riferimento per valutare se l'operato recente è allineato.
-- Valuta esplicitamente memoria (`ia_memory`) e performance (`performance_summary`, `recent_performance`) **prima** di decidere: una sequenza di `HOLD` o un rendimento sotto target sono indizi che il DM sta esitando.
+- Usa il mandato (drawdown massimo, orizzonte, posizione massima) come vincoli di rischio e contesto strategico. L'obiettivo di generare rendimento sul capitale è parte dell'identità del DM ed è definito nel prompt.
+- Valuta esplicitamente memoria (`ia_memory`) e performance (`performance_summary`, `recent_performance`) **prima** di decidere: una sequenza di `HOLD` su mercato non fermo è un indizio di esitazione.
 - Riceve anche `latest_performance_review`: il report giornaliero del `Performance Reviewer` con giudizio sull'aderenza al mandato (`ALIGNED`, `DRIFTING`, `MISALIGNED`) e 1-3 suggerimenti concreti. Se il Reviewer segnala `DRIFTING` o `MISALIGNED`, i suggerimenti vanno incorporati attivamente nella decisione.
 - Nell'ambiguità propende per l'azione coerente con il mandato, non per un `HOLD` di default. `HOLD` resta legittimo quando il mercato è fermo o i rischi sono concreti.
 - Può usare **quantity frazionali** rispetto al portafoglio: non è obbligato a usare tutto il saldo USDC o a vendere sempre l'intera posizione.

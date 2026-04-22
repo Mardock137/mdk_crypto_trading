@@ -60,20 +60,14 @@ def test_execution_report_was_executed_property() -> None:
 
 def test_investment_mandate_stores_all_fields() -> None:
     mandate = InvestmentMandate(
-        objective="Rendimento su capitale",
-        min_monthly_return_pct=2.0,
         max_drawdown_pct=15.0,
         horizon="Intraday to swing",
         max_position_pct=100.0,
-        min_trades_per_week=3,
     )
 
-    assert mandate.objective == "Rendimento su capitale"
-    assert mandate.min_monthly_return_pct == 2.0
     assert mandate.max_drawdown_pct == 15.0
     assert mandate.horizon == "Intraday to swing"
     assert mandate.max_position_pct == 100.0
-    assert mandate.min_trades_per_week == 3
 
 
 def test_market_analysis_keeps_structured_signal_data() -> None:

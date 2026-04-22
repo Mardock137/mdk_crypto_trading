@@ -140,12 +140,9 @@ def test_build_stats_period_dates() -> None:
 
 def test_write_performance_report_creates_file(tmp_path: Path) -> None:
     mandate = InvestmentMandate(
-        objective="Rendimento sul capitale",
-        min_monthly_return_pct=2.0,
         max_drawdown_pct=15.0,
         horizon="Intraday to swing",
         max_position_pct=100.0,
-        min_trades_per_week=3,
     )
     stats = build_performance_stats(
         "BTCUSDC", _mock_mm_without_trades(),

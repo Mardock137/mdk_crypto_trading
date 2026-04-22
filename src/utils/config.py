@@ -93,12 +93,9 @@ def load_mandate(trading_config: Mapping[str, Any]) -> InvestmentMandate:
         )
 
     required = (
-        "objective",
-        "min_monthly_return_pct",
         "max_drawdown_pct",
         "horizon",
         "max_position_pct",
-        "min_trades_per_week",
     )
     missing = [k for k in required if k not in raw]
     if missing:
@@ -107,12 +104,9 @@ def load_mandate(trading_config: Mapping[str, Any]) -> InvestmentMandate:
         )
 
     return InvestmentMandate(
-        objective=str(raw["objective"]),
-        min_monthly_return_pct=float(raw["min_monthly_return_pct"]),
         max_drawdown_pct=float(raw["max_drawdown_pct"]),
         horizon=str(raw["horizon"]),
         max_position_pct=float(raw["max_position_pct"]),
-        min_trades_per_week=int(raw["min_trades_per_week"]),
     )
 
 

@@ -46,7 +46,7 @@ class DummyDecisionMaker:
     def run(self, agent_input: DecisionMakerInput) -> TradeProposal:
         self.call_order.append("decision_maker")
         assert agent_input.market_analysis.market_bias is MarketBias.BULLISH
-        assert agent_input.mandate.min_trades_per_week == 3
+        assert agent_input.mandate.max_drawdown_pct == 15.0
         assert agent_input.latest_performance_review == "fake review content"
         return TradeProposal(
             action=TradeAction.BUY,
@@ -111,12 +111,9 @@ def test_workflow_runs_agents_in_expected_order() -> None:
             min_order_usdc=10.0,
         ),
         mandate=InvestmentMandate(
-            objective="Rendimento sul capitale",
-            min_monthly_return_pct=2.0,
             max_drawdown_pct=15.0,
             horizon="Intraday to swing",
             max_position_pct=100.0,
-            min_trades_per_week=3,
         ),
         latest_performance_review="fake review content",
     )

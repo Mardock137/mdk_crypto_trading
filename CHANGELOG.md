@@ -1,6 +1,27 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.12.0 — 2026-04-22
+
+### Modificato
+
+- `config/trading.yaml`: semplificato il mandato. Rimossi i campi `objective`, `min_monthly_return_pct` e `min_trades_per_week`. Motivazione: i target numerici (rendimento mensile minimo e trade minimi settimanali) generavano comportamento coercitivo nel Decision Maker, che finiva per forzare trade anche in assenza di setup (es. evento del 21/04 motivato esplicitamente come "trade settimanale richiesto dal mandato"). L'`objective` testuale invece non è un dato variabile del ciclo: fa parte dell'identità del DM e va nel prompt, non nel config. Restano nel mandato solo i vincoli di rischio e il contesto strategico: `max_drawdown_pct`, `horizon`, `max_position_pct`.
+- `src/core/contracts.py`: `InvestmentMandate` ridotto a 3 campi (`max_drawdown_pct`, `horizon`, `max_position_pct`).
+- `src/utils/config.py`: `load_mandate` allineato alla nuova struttura (validazione solo sui 3 campi rimasti).
+- `src/utils/performance_stats.py`: il report markdown non stampa più Obiettivo / Rendimento mensile minimo / Trade minimi per settimana.
+- `config/prompts/decision_maker.md`: integrata "Generare rendimento sul capitale" nella sezione `SCOPO`. Rimossi i riferimenti ai 3 campi eliminati dalla sezione `Mandato operativo`. Riformulato il principio anti-HOLD-bias in chiave qualitativa: il DM deve valutare il setup di mercato, non conteggiare trade o rendimenti rispetto a target numerici.
+- `config/prompts/performance_reviewer.md`: verdetto `ALIGNED` / `DRIFTING` / `MISALIGNED` ridefinito in chiave qualitativa. Non si valuta più rispetto a `min_trades_per_week` o `min_monthly_return_pct`, ma rispetto alla coerenza delle decisioni con il contesto di mercato e i vincoli di rischio.
+
+### Documentazione
+
+- `README.md`: bump `1.11.1` → `1.12.0`.
+- `docs/config.md`: snippet YAML e tabella dei campi del mandato aggiornati. Aggiunta nota sul razionale della rimozione dei target numerici.
+- `docs/decision_logic.md`: sezione Decision Maker riallineata alla nuova forma del mandato.
+
+### Test
+
+- `tests/core/test_contracts.py`, `tests/utils/test_config.py`, `tests/agents/test_decision_maker.py`, `tests/agents/test_performance_reviewer.py`, `tests/utils/test_performance_stats.py`, `tests/core/test_workflow.py`, `tests/core/test_runner.py`: fixture del mandato aggiornate ai 3 campi rimanenti; asserzioni sui campi rimossi eliminate.
+
 ## 1.11.1 — 2026-04-21
 
 ### Corretto
