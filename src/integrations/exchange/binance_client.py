@@ -351,8 +351,8 @@ class BinanceClient(BaseExchangeClient):
         macd_prev = indicators.macd(closes_prev)
 
         return {
-            "rsi_14": rsi_val,
-            "rsi_14_prev": rsi_prev,
+            "rsi": rsi_val,
+            "rsi_prev": rsi_prev,
             "ema_21": ema_val,
             "ema_21_prev": ema_prev,
             "sma_50": sma_val,

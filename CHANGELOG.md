@@ -1,6 +1,17 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.2 — 2026-04-27
+
+### Corretto
+
+- `src/integrations/exchange/binance_client.py`: allineate le chiavi RSI restituite dagli indicatori da `rsi_14` / `rsi_14_prev` a `rsi` / `rsi_prev`. Questo ripristina il funzionamento del pre-check di cycle skip, che leggeva gia' `rsi` e quindi non riusciva mai a confrontare correttamente la variazione dell'indicatore.
+- `config/prompts/market_analyst.md`: aggiornata la documentazione del payload in input per usare `rsi` / `rsi_prev`, coerentemente con le chiavi realmente passate dal runner al prompt.
+- `tests/integrations/exchange/test_binance_client.py`: aggiornata la regressione sul market snapshot per verificare le chiavi RSI corrette ed evitare il ritorno accidentale dei nomi legacy.
+- `tests/core/test_runner.py`: corretta l'asserzione sulla notifica ordine non eseguito da `ESEGUITO` a `EXECUTED`, cosi' il test verifica davvero il testo reale inviato dal runner.
+
+---
+
 ## 1.13.1 — 2026-04-27
 
 ### Aggiunto

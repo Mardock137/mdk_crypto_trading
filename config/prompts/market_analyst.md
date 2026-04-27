@@ -39,7 +39,7 @@ AI Market Analyst di MDK Crypto Trading
 - `volume_24h`: volume totale scambiato nelle ultime 24h.
 - `order_book_top_10_bids`: top 10 ordini di acquisto presenti sul mercato.
 - `order_book_top_10_asks`: top 10 ordini di vendita presenti sul mercato.
-- `rsi_14`, `rsi_14_prev`: Relative Strength Index (14 periodi).
+- `rsi`, `rsi_prev`: Relative Strength Index (14 periodi).
 - `macd`, `macd_prev`: MACD attuale e precedente.
 - `macd_signal`, `macd_signal_prev`: linea segnale MACD attuale e precedente.
 - `macd_hist`, `macd_hist_prev`: istogramma MACD attuale e precedente.

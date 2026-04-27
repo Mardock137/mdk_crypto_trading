@@ -196,7 +196,9 @@ def test_get_market_snapshot_returns_populated_snapshot(
     assert snapshot.avg_price == 49950.0
     assert snapshot.volume_24h == 1234.5
     assert len(snapshot.order_book_top_10_bids) == 1
-    assert "rsi_14" in snapshot.indicators
+    assert "rsi" in snapshot.indicators
+    assert "rsi_prev" in snapshot.indicators
+    assert "rsi_14" not in snapshot.indicators
 
 
 # ---------- Verifica retry su get_market_snapshot ----------

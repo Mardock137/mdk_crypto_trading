@@ -283,7 +283,7 @@ def test_run_does_not_send_order_notification_when_not_executed(
     runner.run()
 
     texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
-    assert not any("ESEGUITO" in t for t in texts)
+    assert not any("EXECUTED" in t for t in texts)
 
 
 # ---------- Performance Reviewer trigger ----------
