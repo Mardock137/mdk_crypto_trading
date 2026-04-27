@@ -1,6 +1,14 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.1 — 2026-04-27
+
+### Aggiunto
+
+- `.github/dependabot.yml`: configurazione Dependabot per aggiornamenti automatici settimanali delle dipendenze Python. Tutti gli aggiornamenti vengono raggruppati in un'unica PR settimanale (lunedì 09:00, `Europe/Rome`), che attiva automaticamente la CI pytest prima del merge.
+
+---
+
 ## 1.13.0 — 2026-04-22
 
 ### Aggiunto
