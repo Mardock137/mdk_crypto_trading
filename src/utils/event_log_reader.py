@@ -5,11 +5,13 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 
 def load_recent_events(
     symbol: str,
     days: int = 7,
-    events_dir: str | Path = "logs/events",
+    events_dir: str | Path = _PROJECT_ROOT / "logs/events",
     today: date | None = None,
 ) -> list[dict[str, Any]]:
     """Legge gli eventi operativi dell'exchange negli ultimi ``days`` giorni.

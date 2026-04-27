@@ -31,6 +31,29 @@ def test_generate_text_calls_generate_content(mock_genai: MagicMock) -> None:
     assert result == "Risposta di test"
 
 
+@patch("src.integrations.llm_interfaces.gemini_interface._logger")
+@patch("src.integrations.llm_interfaces.gemini_interface.genai")
+def test_generate_text_empty_response_logs_and_raises(
+    mock_genai: MagicMock,
+    mock_logger: MagicMock,
+) -> None:
+    """generate_text: risposta vuota -> warning con usage_metadata + RuntimeError."""
+    mock_client = mock_genai.Client.return_value
+    mock_response = MagicMock()
+    mock_response.text = ""
+    mock_response.usage_metadata = MagicMock(prompt_token_count=120, candidates_token_count=0)
+    mock_client.models.generate_content.return_value = mock_response
+
+    interface = GeminiInterface(api_key="fake-key", model="gemini-2.0-flash")
+
+    with pytest.raises(RuntimeError, match="Risposta vuota"):
+        interface.generate_text("system prompt", "user prompt")
+
+    mock_logger.warning.assert_called_once()
+    warning_args = mock_logger.warning.call_args.args
+    assert "usage_metadata" in warning_args[0]
+
+
 @patch("src.integrations.llm_interfaces.gemini_interface.genai")
 def test_generate_json_uses_json_mime_type(mock_genai: MagicMock) -> None:
     """Verifica che generate_json chiami l'API con response_mime_type JSON."""

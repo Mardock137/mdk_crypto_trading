@@ -101,7 +101,8 @@ class OpenAiInterface(BaseLlmInterface):
                         "OpenAI generate_text risposta vuota | choices: [] | usage: %s",
                         response.usage,
                     )
-            return content or ""
+                raise RuntimeError("Risposta vuota dal provider OpenAI.")
+            return content
         except _RETRYABLE_ERRORS:
             raise
         except APIError as exc:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from src.agents.decision_maker import DecisionMakerAgent
 from src.agents.execution_trader import ExecutionTraderAgent
 from src.agents.market_analyst import MarketAnalystAgent
@@ -21,6 +23,8 @@ from src.utils.logging_config import configure_logging
 from src.utils.memory_manager import MemoryManager
 from src.utils.telegram_notifier import TelegramNotifier
 
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 
 def main() -> None:
     settings = load_settings()
@@ -30,14 +34,25 @@ def main() -> None:
     symbol_config = load_symbol_config()
     symbol = symbol_config["symbol"]
     quote_currency = symbol_config["quote_currency"]
-    ma_config = load_llm_model_config("config/llm_models/market_analyst.yaml")
-    dm_config = load_llm_model_config("config/llm_models/decision_maker.yaml")
-    rm_config = load_llm_model_config("config/llm_models/risk_manager.yaml")
-    pr_config = load_llm_model_config("config/llm_models/performance_reviewer.yaml")
+    ma_config = load_llm_model_config(_PROJECT_ROOT / "config/llm_models/market_analyst.yaml")
+    dm_config = load_llm_model_config(_PROJECT_ROOT / "config/llm_models/decision_maker.yaml")
+    rm_config = load_llm_model_config(_PROJECT_ROOT / "config/llm_models/risk_manager.yaml")
+    pr_config = load_llm_model_config(_PROJECT_ROOT / "config/llm_models/performance_reviewer.yaml")
+
+    required_keys = {
+        "OPENAI_API_KEY": settings.openai_api_key,
+        "CLAUDE_API_KEY": settings.claude_api_key,
+        "GEMINI_API_KEY": settings.gemini_api_key,
+    }
+    missing = [name for name, value in required_keys.items() if not value]
+    if missing:
+        raise ValueError(
+            f"API key obbligatorie non configurate nel .env: {', '.join(missing)}"
+        )
 
     # Client LLM per il Market Analyst (GPT-5.4, senza reasoning: analisi tecnica strutturata)
     ma_llm = OpenAiInterface(
-        api_key=settings.openai_api_key or "",
+        api_key=settings.openai_api_key,
         model=ma_config["model"],
         temperature=float(ma_config["temperature"]),
         max_tokens=ma_config.get("max_tokens"),
@@ -47,7 +62,7 @@ def main() -> None:
     # Nota: `temperature` non e accettata da Opus 4.7 con thinking abilitato,
     # quindi non viene passata: l'interfaccia la ignora quando `thinking_effort` e valorizzato.
     dm_llm = AnthropicInterface(
-        api_key=settings.claude_api_key or "",
+        api_key=settings.claude_api_key,
         model=dm_config["model"],
         max_tokens=dm_config.get("max_tokens"),
         thinking_effort=dm_config.get("thinking_effort"),
@@ -55,7 +70,7 @@ def main() -> None:
 
     # Client LLM per il Risk Manager
     rm_llm = GeminiInterface(
-        api_key=settings.gemini_api_key or "",
+        api_key=settings.gemini_api_key,
         model=rm_config["model"],
         temperature=float(rm_config["temperature"]),
         max_tokens=rm_config.get("max_tokens"),
@@ -63,7 +78,7 @@ def main() -> None:
 
     # Client LLM per il Performance Reviewer (riutilizza AnthropicInterface)
     pr_llm = AnthropicInterface(
-        api_key=settings.claude_api_key or "",
+        api_key=settings.claude_api_key,
         model=pr_config["model"],
         temperature=float(pr_config["temperature"]),
         max_tokens=pr_config.get("max_tokens"),

@@ -55,7 +55,14 @@ class GeminiInterface(BaseLlmInterface):
                     max_output_tokens=self._max_tokens,
                 ),
             )
-            return response.text or ""
+            text = response.text
+            if not text or not text.strip():
+                _logger.warning(
+                    "Gemini generate_text risposta vuota | usage_metadata: %s",
+                    response.usage_metadata,
+                )
+                raise RuntimeError("Risposta vuota dal provider Gemini.")
+            return text
         except genai_errors.ServerError:
             raise
         except genai_errors.ClientError as exc:

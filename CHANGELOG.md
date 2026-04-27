@@ -1,6 +1,19 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.4 — 2026-04-27
+
+### Corretto
+
+- `src/main.py`: aggiunta validazione fail-fast delle API key LLM obbligatorie (`OPENAI_API_KEY`, `CLAUDE_API_KEY`, `GEMINI_API_KEY`) subito al boot. Se una chiave manca, il processo fallisce con un errore chiaro invece di creare i client con stringa vuota e scoprire il problema solo al primo ciclo operativo.
+- `tests/test_main.py`: aggiunta regressione per il fail-fast sulle API key mancanti e aggiornato il test dei path LLM per accettare i nuovi percorsi assoluti.
+- `src/integrations/llm_interfaces/openai_interface.py` e `src/integrations/llm_interfaces/gemini_interface.py`: allineato `generate_text()` al comportamento gia' usato da Anthropic. Ora una risposta vuota viene loggata e provoca `RuntimeError`, invece di ritornare silenziosamente una stringa vuota.
+- `tests/integrations/llm_interfaces/test_openai_interface.py` e `tests/integrations/llm_interfaces/test_gemini_interface.py`: aggiunti test di regressione per verificare warning + `RuntimeError` su risposta vuota in `generate_text()`.
+- `src/agents/execution_trader.py` e `src/core/runner.py`: migliorato il logging negli `except Exception` aggiungendo `exc_info=True`, cosi' il traceback completo resta disponibile nei log senza cambiare la logica di fallback.
+- `src/utils/config.py`, `src/utils/event_log_reader.py`, `src/main.py` e `src/core/runner.py`: sostituiti i path relativi di default con path assoluti calcolati dalla root del progetto. Questo evita errori di avvio o file non trovati quando il bot viene lanciato da una cartella diversa dalla repo.
+
+---
+
 ## 1.13.3 — 2026-04-27
 
 ### Corretto

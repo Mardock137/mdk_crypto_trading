@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 
 from src.core.contracts import CycleSkipConfig, InvestmentMandate
 
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 _DEFAULT_CYCLE_SKIP_CONFIG = CycleSkipConfig(
     enabled=False,
     max_consecutive_skips=5,
@@ -88,7 +90,7 @@ def _load_yaml(path: str | Path) -> dict[str, Any]:
 
 
 def load_trading_config(
-    config_path: str | Path = "config/trading.yaml",
+    config_path: str | Path = _PROJECT_ROOT / "config/trading.yaml",
 ) -> dict[str, Any]:
     """Carica le regole operative dal file YAML di configurazione."""
     return _load_yaml(config_path)
@@ -121,7 +123,7 @@ def load_mandate(trading_config: Mapping[str, Any]) -> InvestmentMandate:
 
 
 def load_symbol_config(
-    config_path: str | Path = "config/symbols.yaml",
+    config_path: str | Path = _PROJECT_ROOT / "config/symbols.yaml",
 ) -> dict[str, str]:
     """Carica il simbolo di trading e la quote currency dal file YAML."""
     data = _load_yaml(config_path)
@@ -135,7 +137,7 @@ def load_symbol_config(
 
 
 def load_cycle_skip_config(
-    config_path: str | Path = "config/cycle_skip.yaml",
+    config_path: str | Path = _PROJECT_ROOT / "config/cycle_skip.yaml",
 ) -> CycleSkipConfig:
     """Carica la configurazione del pre-check di skip ciclo dal file YAML.
 

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from src.main import main
 from src.utils.config import AppSettings, TradingMode
@@ -156,7 +159,7 @@ def test_main_loads_three_llm_configs(
     main()
 
     assert mock_load_llm.call_count == 4
-    paths_called = [c.args[0] for c in mock_load_llm.call_args_list]
+    paths_called = [str(c.args[0]) for c in mock_load_llm.call_args_list]
     assert any("market_analyst" in p for p in paths_called)
     assert any("decision_maker" in p for p in paths_called)
     assert any("risk_manager" in p for p in paths_called)
@@ -216,3 +219,16 @@ def test_main_creates_telegram_notifier(
         bot_token="tg-token-test",
         chat_id="tg-chat-test",
     )
+
+
+@patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
+@patch("src.main.load_symbol_config", return_value={"symbol": "BTCUSDC", "quote_currency": "USDC"})
+@patch("src.main.load_settings", return_value=replace(_FAKE_SETTINGS, openai_api_key=None))
+def test_main_raises_if_required_api_key_is_missing(
+    mock_load_settings: MagicMock,
+    mock_load_symbol: MagicMock,
+    mock_load_llm: MagicMock,
+) -> None:
+    """main() deve fallire subito se manca una API key LLM obbligatoria."""
+    with pytest.raises(ValueError, match="OPENAI_API_KEY"):
+        main()

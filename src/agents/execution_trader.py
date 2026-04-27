@@ -57,6 +57,7 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
         try:
             details = self._execute_order(agent_input)
         except Exception as exc:
+            _logger.error("Esecuzione ordine fallita: %s", exc, exc_info=True)
             return ExecutionReport(
                 execution_status=ExecutionStatus.FAILED,
                 executed_action=proposal.action,

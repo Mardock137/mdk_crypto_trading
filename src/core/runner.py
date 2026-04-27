@@ -35,8 +35,9 @@ from src.utils.memory_manager import MemoryManager
 from src.utils.performance_stats import build_performance_stats, write_performance_report
 from src.utils.telegram_notifier import TelegramNotifier, escape_html
 
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _PERFORMANCE_REVIEW_DAYS = 7
-_PERFORMANCE_REPORTS_DIR = Path("data/performance_reports")
+_PERFORMANCE_REPORTS_DIR = _PROJECT_ROOT / "data/performance_reports"
 
 
 class TradingRunner:
@@ -187,7 +188,7 @@ class TradingRunner:
                 )
             self._logger.info("Ciclo completato con successo")
         except Exception as exc:
-            self._logger.error("Errore durante il ciclo: %s", exc)
+            self._logger.error("Errore durante il ciclo: %s", exc, exc_info=True)
             self._event_logger.log_error(
                 symbol=self._symbol,
                 trading_mode=self._settings.trading_mode.value,

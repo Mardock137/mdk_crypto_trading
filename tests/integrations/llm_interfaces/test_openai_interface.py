@@ -39,6 +39,33 @@ def test_generate_text_calls_chat_completions(mock_openai_cls: MagicMock) -> Non
     assert result == "Risposta di test"
 
 
+@patch("src.integrations.llm_interfaces.openai_interface._logger")
+@patch("src.integrations.llm_interfaces.openai_interface.OpenAI")
+def test_generate_text_empty_response_logs_and_raises(
+    mock_openai_cls: MagicMock,
+    mock_logger: MagicMock,
+) -> None:
+    """generate_text: risposta vuota -> warning con finish_reason/usage + RuntimeError."""
+    mock_client = mock_openai_cls.return_value
+    mock_choice = MagicMock()
+    mock_choice.message.content = ""
+    mock_choice.finish_reason = "length"
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=0)
+    mock_client.chat.completions.create.return_value = mock_response
+
+    interface = OpenAiInterface(api_key="fake-key", model="gpt-4o")
+
+    with pytest.raises(RuntimeError, match="Risposta vuota"):
+        interface.generate_text("system prompt", "user prompt")
+
+    mock_logger.warning.assert_called_once()
+    warning_args = mock_logger.warning.call_args.args
+    assert "finish_reason" in warning_args[0]
+    assert "length" in warning_args
+
+
 @patch("src.integrations.llm_interfaces.openai_interface.OpenAI")
 def test_generate_json_uses_json_response_format(mock_openai_cls: MagicMock) -> None:
     """Verifica che generate_json chiami l'API con response_format json_object."""
