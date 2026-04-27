@@ -27,7 +27,8 @@ class PerformanceReviewerAgent(
         self._llm = llm
 
     def run(self, agent_input: PerformanceReviewerInput) -> PerformanceReview:
-        assert self.prompt_path is not None
+        if self.prompt_path is None:
+            raise RuntimeError(f"Prompt path non configurato per l'agente '{self.name}'.")
         system_prompt = self.prompt_path.read_text(encoding="utf-8")
 
         user_payload: dict[str, Any] = {
@@ -53,5 +54,5 @@ def _parse_performance_review(data: Any) -> PerformanceReview:
     return PerformanceReview(
         summary=str(data["summary"]),
         mandate_adherence=MandateAdherence(data["mandate_adherence"]),
-        suggestions=_ensure_list_of_str(data.get("suggestions", []), "suggestions"),
+        suggestions=_ensure_list_of_str(data.get("suggestions", [])),
     )

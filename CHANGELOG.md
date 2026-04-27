@@ -1,6 +1,18 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.3 — 2026-04-27
+
+### Corretto
+
+- `src/utils/indicators.py`: rimosso `import numpy as np`, che era rimasto inutilizzato. Gli indicatori del file usano solo `pandas`, quindi l'import extra era rumore inutile.
+- `tests/test_main.py`: rimosso `call` dagli import di `unittest.mock`, dato che il test non lo usa in nessun punto.
+- `src/agents/base_agent.py`, `src/agents/market_analyst.py`, `src/agents/risk_manager.py`, `src/agents/performance_reviewer.py`: semplificata `_ensure_list_of_str()` eliminando il parametro `field_name`, che non veniva mai usato, e aggiornati tutti i chiamanti.
+- `src/agents/market_analyst.py`, `src/agents/decision_maker.py`, `src/agents/risk_manager.py`, `src/agents/performance_reviewer.py`: sostituiti i guard `assert self.prompt_path is not None` con controlli espliciti che sollevano `RuntimeError`. In questo modo la validazione resta attiva anche con `python -O`, dove gli assert vengono rimossi dal runtime.
+- `tests/agents/test_agent_interfaces.py`: aggiornati i test per la nuova firma di `_ensure_list_of_str()` e aggiunta una regressione che verifica l'errore esplicito quando un agente non ha un prompt configurato.
+
+---
+
 ## 1.13.2 — 2026-04-27
 
 ### Corretto

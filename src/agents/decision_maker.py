@@ -21,7 +21,8 @@ class DecisionMakerAgent(BaseAgent[DecisionMakerInput, TradeProposal]):
         self._llm = llm
 
     def run(self, agent_input: DecisionMakerInput) -> TradeProposal:
-        assert self.prompt_path is not None
+        if self.prompt_path is None:
+            raise RuntimeError(f"Prompt path non configurato per l'agente '{self.name}'.")
         system_prompt = self.prompt_path.read_text(encoding="utf-8")
 
         user_payload: dict[str, Any] = {

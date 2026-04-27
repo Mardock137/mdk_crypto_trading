@@ -13,6 +13,16 @@ from src.agents import (
 from src.agents.base_agent import _ensure_list_of_str, unwrap_llm_response
 
 
+class _AgentWithoutPrompt(BaseAgent[None, None]):
+    def __init__(self) -> None:
+        super().__init__(name="agent_without_prompt")
+
+    def run(self, agent_input: None) -> None:
+        if self.prompt_path is None:
+            raise RuntimeError(f"Prompt path non configurato per l'agente '{self.name}'.")
+        return None
+
+
 def test_all_agents_inherit_from_base_agent() -> None:
     assert issubclass(MarketAnalystAgent, BaseAgent)
     assert issubclass(DecisionMakerAgent, BaseAgent)
@@ -40,24 +50,31 @@ def test_execution_trader_prompt_path_is_none() -> None:
     assert agent.prompt_path is None
 
 
+def test_agent_without_prompt_raises_runtime_error() -> None:
+    agent = _AgentWithoutPrompt()
+
+    with pytest.raises(RuntimeError, match="Prompt path non configurato"):
+        agent.run(None)
+
+
 # --- Test _ensure_list_of_str ---
 
 def test_ensure_list_of_str_with_normal_list() -> None:
-    assert _ensure_list_of_str(["a", "b", "c"], "field") == ["a", "b", "c"]
+    assert _ensure_list_of_str(["a", "b", "c"]) == ["a", "b", "c"]
 
 
 def test_ensure_list_of_str_converts_items_to_str() -> None:
-    assert _ensure_list_of_str([1, 2.5, True], "field") == ["1", "2.5", "True"]
+    assert _ensure_list_of_str([1, 2.5, True]) == ["1", "2.5", "True"]
 
 
 def test_ensure_list_of_str_with_single_string() -> None:
-    assert _ensure_list_of_str("solo", "field") == ["solo"]
+    assert _ensure_list_of_str("solo") == ["solo"]
 
 
 def test_ensure_list_of_str_with_unexpected_type_returns_empty() -> None:
-    assert _ensure_list_of_str(42, "field") == []
-    assert _ensure_list_of_str(None, "field") == []
-    assert _ensure_list_of_str({"key": "val"}, "field") == []
+    assert _ensure_list_of_str(42) == []
+    assert _ensure_list_of_str(None) == []
+    assert _ensure_list_of_str({"key": "val"}) == []
 
 
 # --- Test unwrap_llm_response ---

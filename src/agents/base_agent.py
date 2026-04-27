@@ -64,7 +64,7 @@ class BaseAgent(ABC, Generic[InputT, OutputT]):
         raise RuntimeError("Unexpected: retry loop completed without returning or raising")
 
 
-def _ensure_list_of_str(value: Any, field_name: str) -> list[str]:
+def _ensure_list_of_str(value: Any) -> list[str]:
     """Normalizza un campo lista dalla risposta LLM in list[str].
 
     Gestisce: lista normale, stringa singola, tipo inatteso (ritorna lista vuota).

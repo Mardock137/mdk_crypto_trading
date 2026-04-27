@@ -18,7 +18,8 @@ class RiskManagerAgent(BaseAgent[RiskManagerInput, RiskAssessment]):
         self._llm = llm
 
     def run(self, agent_input: RiskManagerInput) -> RiskAssessment:
-        assert self.prompt_path is not None
+        if self.prompt_path is None:
+            raise RuntimeError(f"Prompt path non configurato per l'agente '{self.name}'.")
         system_prompt = self.prompt_path.read_text(encoding="utf-8")
 
         market_analysis_subset = {
@@ -52,6 +53,6 @@ def _parse_risk_assessment(data: Any) -> RiskAssessment:
         risk_decision=RiskDecision(data["risk_decision"]),
         confidence=float(data["confidence"]),
         reason=str(data["reason"]),
-        checks=_ensure_list_of_str(data.get("checks", []), "checks"),
-        required_changes=_ensure_list_of_str(data.get("required_changes", []), "required_changes"),
+        checks=_ensure_list_of_str(data.get("checks", [])),
+        required_changes=_ensure_list_of_str(data.get("required_changes", [])),
     )
