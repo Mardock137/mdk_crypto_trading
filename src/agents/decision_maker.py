@@ -56,6 +56,7 @@ def _parse_trade_proposal(data: Any) -> TradeProposal:
     raw_details: dict[str, Any] = data.get("details", {})
 
     if action is TradeAction.HOLD:
+        order_type = OrderType.NONE
         details = TradeProposalDetails()
     elif action is TradeAction.CANCEL_AND_REPLACE_ORDER:
         details = TradeProposalDetails(

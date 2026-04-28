@@ -230,9 +230,6 @@ class ExecutionInput:
     symbol: str
     proposal: TradeProposal
     risk_assessment: RiskAssessment
-    portfolio: PortfolioState
-    constraints: OperationConstraints
-    current_price: float | None = None
 
 
 @dataclass(slots=True)

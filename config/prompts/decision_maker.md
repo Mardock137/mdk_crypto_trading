@@ -185,6 +185,10 @@ Note:
 }
 ```
 
+Note:
+
+- `order_type` deve essere sempre `"NONE"`
+
 ### `CANCEL_AND_REPLACE_ORDER`
 
 ```json

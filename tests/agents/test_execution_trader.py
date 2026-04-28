@@ -8,31 +8,14 @@ from src.agents.execution_trader import ExecutionTraderAgent
 from src.core.contracts import (
     ExecutionInput,
     ExecutionStatus,
-    OperationConstraints,
     OrderSide,
     OrderType,
-    PortfolioState,
     RiskAssessment,
     RiskDecision,
     TradeAction,
     TradeProposal,
     TradeProposalDetails,
 )
-
-
-def _make_portfolio() -> PortfolioState:
-    return PortfolioState(
-        usdc_balance=1000.0,
-        usdc_balance_total=1000.0,
-        usdc_value=500.0,
-        portfolio_qty_free=0.01,
-        portfolio_qty_total=0.01,
-    )
-
-
-def _make_constraints() -> OperationConstraints:
-    return OperationConstraints(cycle_interval_seconds=60, min_order_usdc=10.0)
-
 
 def _make_input(
     proposal: TradeProposal,
@@ -42,9 +25,6 @@ def _make_input(
         symbol="BTCUSDC",
         proposal=proposal,
         risk_assessment=risk,
-        portfolio=_make_portfolio(),
-        constraints=_make_constraints(),
-        current_price=50000.0,
     )
 
 

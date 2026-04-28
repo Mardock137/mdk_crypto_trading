@@ -1,6 +1,16 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.6 — 2026-04-28
+
+### Corretto
+
+- `src/core/contracts.py`, `src/core/workflow.py` e `tests/agents/test_execution_trader.py`: ripulito `ExecutionInput` rimuovendo `portfolio`, `constraints` e `current_price`, che non venivano mai letti dall'`ExecutionTraderAgent`. Il contratto ora espone solo i dati davvero usati dall'esecutore, senza creare aspettative false.
+- `src/agents/decision_maker.py`: quando il Decision Maker propone `HOLD`, il parser forza sempre `order_type = NONE`, anche se l'LLM restituisce un valore incoerente. Questo allinea `TradeProposal` con il comportamento gia' applicato dall'Execution Trader nei report.
+- `config/prompts/decision_maker.md` e `tests/agents/test_decision_maker.py`: aggiornata la documentazione dello schema `HOLD` e aggiunta regressione che verifica la normalizzazione automatica di `order_type` a `NONE`.
+
+---
+
 ## 1.13.5 — 2026-04-28
 
 ### Corretto

@@ -66,9 +66,6 @@ class TradingWorkflow:
                 symbol=cycle_input.symbol,
                 proposal=trade_proposal,
                 risk_assessment=risk_assessment,
-                portfolio=cycle_input.portfolio,
-                constraints=cycle_input.constraints,
-                current_price=cycle_input.market_data.price,
             )
         )
 

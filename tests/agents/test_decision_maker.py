@@ -126,7 +126,7 @@ def test_parse_sell_limit_partial_take_profit() -> None:
 def test_parse_hold() -> None:
     data = {
         "action": "HOLD",
-        "order_type": "NONE",
+        "order_type": "MARKET",
         "confidence": 0.64,
         "reason": "dati insufficienti",
         "details": {},
