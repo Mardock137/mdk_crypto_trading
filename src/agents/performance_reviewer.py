@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from src.agents.base_agent import BaseAgent, ensure_list_of_str, unwrap_llm_response
+from src.agents.base_agent import BaseLlmAgent, ensure_list_of_str, unwrap_llm_response
 from src.core.contracts import (
     MandateAdherence,
     PerformanceReview,
@@ -13,7 +13,7 @@ from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
 
 
 class PerformanceReviewerAgent(
-    BaseAgent[PerformanceReviewerInput, PerformanceReview]
+    BaseLlmAgent[PerformanceReviewerInput, PerformanceReview]
 ):
     """Agente consultivo che produce un giudizio giornaliero sulle performance.
 
@@ -23,24 +23,22 @@ class PerformanceReviewerAgent(
     """
 
     def __init__(self, llm: BaseLlmInterface) -> None:
-        super().__init__(name="performance_reviewer", prompt_name="performance_reviewer.md")
-        self._llm = llm
+        super().__init__(
+            name="performance_reviewer",
+            prompt_name="performance_reviewer.md",
+            llm=llm,
+        )
 
-    def run(self, agent_input: PerformanceReviewerInput) -> PerformanceReview:
-        if self.prompt_path is None:
-            raise RuntimeError(f"Prompt path non configurato per l'agente '{self.name}'.")
-        system_prompt = self.prompt_path.read_text(encoding="utf-8")
-
-        user_payload: dict[str, Any] = {
+    def _build_user_payload(self, agent_input: PerformanceReviewerInput) -> dict[str, Any]:
+        return {
             "symbol": agent_input.symbol,
             "days_analyzed": agent_input.days_analyzed,
             "mandate": dataclasses.asdict(agent_input.mandate),
             "stats": dataclasses.asdict(agent_input.stats),
         }
 
-        return self._call_llm_with_retry(
-            self._llm, system_prompt, user_payload, _parse_performance_review,
-        )
+    def _parse_response(self, data: Any) -> PerformanceReview:
+        return _parse_performance_review(data)
 
 
 def _parse_performance_review(data: Any) -> PerformanceReview:

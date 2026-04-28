@@ -118,7 +118,7 @@ Ogni interfaccia LLM riprova automaticamente le chiamate API in caso di errori t
 - `OpenAiInterface`: `RateLimitError`, `APIConnectionError`, `APITimeoutError`, `InternalServerError`
 - `GeminiInterface`: `ServerError`
 
-**Livello 2 — retry parsing (BaseAgent._call_llm_with_retry):**
+**Livello 2 — retry parsing (BaseLlmAgent._call_llm_with_retry):**
 Prima di validare la risposta JSON, il sistema la normalizza tramite `unwrap_llm_response()`. Questo gestisce i casi in cui il modello restituisce il JSON corretto ma wrappato in un array (es. `[{...}]` invece di `{...}`), oppure risponde con un dict vuoto o un tipo non atteso.
 
 Le interfacce LLM rilevano in anticipo le risposte problematiche e sollevano `RuntimeError` nei seguenti casi:

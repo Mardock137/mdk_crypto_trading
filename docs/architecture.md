@@ -86,12 +86,16 @@ flowchart TD
 
 ### `src/agents/`
 
-Contiene i 5 agenti del sistema e una base comune (`BaseAgent`).
+Contiene i 5 agenti del sistema su una gerarchia a due livelli:
+
+- `BaseAgent` (minimale): nome, prompt opzionale, logger, firma astratta di `run`. È estesa direttamente da `ExecutionTraderAgent` (l'unico agente non-LLM).
+- `BaseLlmAgent(BaseAgent)` (Template Method): aggiunge `__init__(name, prompt_name, llm)`, un `run` concreto che orchestra il flusso comune (verifica prompt → lettura prompt → costruzione payload → chiamata LLM con retry sul parsing) e `_call_llm_with_retry`. Le sottoclassi LLM implementano solo i metodi astratti `_build_user_payload` (cosa mandare all'LLM) e `_parse_response` (come interpretare la risposta).
+
 Ogni agente espone un input strutturato e un output strutturato.
 
 I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent`, `ExecutionTraderAgent`) formano la catena decisionale lineare. `PerformanceReviewerAgent` sta fuori dalla catena e viene invocato solo una volta al giorno dal runner.
 
-`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent` e `PerformanceReviewerAgent` ricevono un `BaseLlmInterface`, leggono il prompt da disco, inviano i dati al modello tramite `BaseAgent._call_llm_with_retry()` (retry centralizzato con backoff esponenziale), normalizzano la risposta tramite `unwrap_llm_response()` e parsano il JSON nei rispettivi contratti (`MarketAnalysis`, `TradeProposal`, `RiskAssessment`, `PerformanceReview`). `ExecutionTraderAgent` non usa LLM: riceve un `BaseExchangeClient` e piazza gli ordini direttamente sull'exchange.
+`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent` e `PerformanceReviewerAgent` estendono `BaseLlmAgent` e ricevono un `BaseLlmInterface`. Il `run` ereditato dalla base legge il prompt da disco, costruisce il payload tramite `_build_user_payload`, invia i dati al modello e fa retry sul parsing tramite `_call_llm_with_retry` (backoff esponenziale), poi normalizza la risposta tramite `unwrap_llm_response()` e la parsa nei rispettivi contratti (`MarketAnalysis`, `TradeProposal`, `RiskAssessment`, `PerformanceReview`). `ExecutionTraderAgent` non usa LLM: riceve un `BaseExchangeClient` e piazza gli ordini direttamente sull'exchange.
 
 ### `src/core/`
 
@@ -201,7 +205,7 @@ Per i dettagli, vedi `docs/config.md`.
 ## 📚 Riferimenti
 
 - **Codice**:
-  - `src/agents/` — agenti (Market Analyst, Decision Maker, Risk Manager, Execution Trader, BaseAgent)
+  - `src/agents/` — agenti (Market Analyst, Decision Maker, Risk Manager, Performance Reviewer, Execution Trader) + `BaseAgent` / `BaseLlmAgent`
   - `src/core/contracts.py` — contratti condivisi
   - `src/core/workflow.py` — orchestratore della catena
   - `src/core/runner.py` — loop operativo ciclico

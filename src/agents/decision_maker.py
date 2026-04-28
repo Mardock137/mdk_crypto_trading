@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from src.agents.base_agent import BaseAgent, unwrap_llm_response
+from src.agents.base_agent import BaseLlmAgent, unwrap_llm_response
 from src.core.contracts import (
     DecisionMakerInput,
     OrderSide,
@@ -15,17 +15,16 @@ from src.core.contracts import (
 from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
 
 
-class DecisionMakerAgent(BaseAgent[DecisionMakerInput, TradeProposal]):
+class DecisionMakerAgent(BaseLlmAgent[DecisionMakerInput, TradeProposal]):
     def __init__(self, llm: BaseLlmInterface) -> None:
-        super().__init__(name="decision_maker", prompt_name="decision_maker.md")
-        self._llm = llm
+        super().__init__(
+            name="decision_maker",
+            prompt_name="decision_maker.md",
+            llm=llm,
+        )
 
-    def run(self, agent_input: DecisionMakerInput) -> TradeProposal:
-        if self.prompt_path is None:
-            raise RuntimeError(f"Prompt path non configurato per l'agente '{self.name}'.")
-        system_prompt = self.prompt_path.read_text(encoding="utf-8")
-
-        user_payload: dict[str, Any] = {
+    def _build_user_payload(self, agent_input: DecisionMakerInput) -> dict[str, Any]:
+        return {
             "portfolio": dataclasses.asdict(agent_input.portfolio),
             "market_analysis": dataclasses.asdict(agent_input.market_analysis),
             "constraints": dataclasses.asdict(agent_input.constraints),
@@ -36,9 +35,8 @@ class DecisionMakerAgent(BaseAgent[DecisionMakerInput, TradeProposal]):
             "latest_performance_review": agent_input.latest_performance_review,
         }
 
-        return self._call_llm_with_retry(
-            self._llm, system_prompt, user_payload, _parse_trade_proposal,
-        )
+    def _parse_response(self, data: Any) -> TradeProposal:
+        return _parse_trade_proposal(data)
 
 
 def _parse_trade_proposal(data: Any) -> TradeProposal:

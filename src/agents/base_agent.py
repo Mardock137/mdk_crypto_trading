@@ -17,6 +17,14 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 class BaseAgent(ABC, Generic[InputT, OutputT]):
+    """Classe base minimale comune a tutti gli agenti (LLM e non-LLM).
+
+    Espone solo nome, prompt opzionale, logger e firma di `run`. Non sa nulla
+    di LLM: gli agenti non-LLM (es. `ExecutionTraderAgent`) la estendono
+    direttamente, mentre gli agenti LLM passano dalla classe intermedia
+    `BaseLlmAgent` che aggiunge il flusso comune `run` + retry sul parsing.
+    """
+
     def __init__(self, name: str, prompt_name: str = "") -> None:
         self.name = name
         self.prompt_name = prompt_name
@@ -32,9 +40,51 @@ class BaseAgent(ABC, Generic[InputT, OutputT]):
     def run(self, agent_input: InputT) -> OutputT:
         """Execute the agent with structured input."""
 
+
+class BaseLlmAgent(BaseAgent[InputT, OutputT]):
+    """Template Method per gli agenti che dialogano con un LLM.
+
+    Centralizza il flusso comune in `run`:
+      1. Verifica `prompt_path`.
+      2. Legge il system prompt da disco.
+      3. Costruisce il payload utente tramite `_build_user_payload` (astratto).
+      4. Chiama l'LLM con retry sul parsing tramite `_call_llm_with_retry` e
+         delega il parsing della risposta a `_parse_response` (astratto).
+
+    Le sottoclassi implementano solo `_build_user_payload` (cosa mandare
+    all'LLM) e `_parse_response` (come interpretare la risposta).
+    """
+
+    def __init__(
+        self,
+        name: str,
+        prompt_name: str,
+        llm: BaseLlmInterface,
+    ) -> None:
+        super().__init__(name=name, prompt_name=prompt_name)
+        self._llm = llm
+
+    def run(self, agent_input: InputT) -> OutputT:
+        if self.prompt_path is None:
+            raise RuntimeError(
+                f"Prompt path non configurato per l'agente '{self.name}'.",
+            )
+        system_prompt = self.prompt_path.read_text(encoding="utf-8")
+        user_payload = self._build_user_payload(agent_input)
+        return self._call_llm_with_retry(
+            system_prompt, user_payload, self._parse_response,
+        )
+
+    @abstractmethod
+    def _build_user_payload(self, agent_input: InputT) -> dict[str, Any]:
+        """Costruisce il payload utente da mandare all'LLM."""
+
+    @abstractmethod
+    def _parse_response(self, data: Any) -> OutputT:
+        """Interpreta la risposta JSON dell'LLM e produce l'output dell'agente."""
+
     def _call_llm_with_retry(
         self,
-        llm: BaseLlmInterface,
         system_prompt: str,
         user_payload: dict[str, Any],
         parse_fn: Callable[[Any], OutputT],
@@ -44,7 +94,7 @@ class BaseAgent(ABC, Generic[InputT, OutputT]):
         response = None
         for attempt in range(1, max_attempts + 1):
             try:
-                response = llm.generate_json(system_prompt, user_payload)
+                response = self._llm.generate_json(system_prompt, user_payload)
                 self._logger.debug("Risposta raw LLM: %s", response)
                 return parse_fn(response)
             except (ValueError, KeyError, TypeError, RuntimeError) as exc:
@@ -94,4 +144,3 @@ def unwrap_llm_response(data: Any) -> dict[str, Any]:
             raise ValueError("Risposta LLM è un dict vuoto.")
         return data
     raise ValueError(f"Tipo di risposta LLM non atteso: {type(data).__name__}.")
-

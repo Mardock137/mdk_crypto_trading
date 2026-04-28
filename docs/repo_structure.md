@@ -56,7 +56,7 @@
  │
  ├── 📁 src/                                                 # Cartella contenente il codice sorgente di MDK Crypto Trading.
  │    ├── 📁 agents/                                         # Agenti del workflow multi-agente.
- │    │    ├── 📄 base_agent.py                              # Base class comune per tutti gli agenti.
+ │    │    ├── 📄 base_agent.py                              # Base class minimale (`BaseAgent`) + Template Method per agenti LLM (`BaseLlmAgent`).
  │    │    ├── 📄 decision_maker.py                          # Agente che formula la proposta operativa.
  │    │    ├── 📄 execution_trader.py                        # Agente che esegue la proposta approvata.
  │    │    ├── 📄 market_analyst.py                          # Agente di analisi del mercato.

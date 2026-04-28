@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from src.agents.base_agent import BaseAgent, ensure_list_of_str, unwrap_llm_response
+from src.agents.base_agent import BaseLlmAgent, ensure_list_of_str, unwrap_llm_response
 from src.core.contracts import (
     MarketAnalysis,
     MarketAnalystInput,
@@ -13,20 +13,19 @@ from src.core.contracts import (
 from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
 
 
-class MarketAnalystAgent(BaseAgent[MarketAnalystInput, MarketAnalysis]):
+class MarketAnalystAgent(BaseLlmAgent[MarketAnalystInput, MarketAnalysis]):
     def __init__(self, llm: BaseLlmInterface) -> None:
-        super().__init__(name="market_analyst", prompt_name="market_analyst.md")
-        self._llm = llm
-
-    def run(self, agent_input: MarketAnalystInput) -> MarketAnalysis:
-        if self.prompt_path is None:
-            raise RuntimeError(f"Prompt path non configurato per l'agente '{self.name}'.")
-        system_prompt = self.prompt_path.read_text(encoding="utf-8")
-        user_payload = dataclasses.asdict(agent_input.market_data)
-
-        return self._call_llm_with_retry(
-            self._llm, system_prompt, user_payload, _parse_market_analysis,
+        super().__init__(
+            name="market_analyst",
+            prompt_name="market_analyst.md",
+            llm=llm,
         )
+
+    def _build_user_payload(self, agent_input: MarketAnalystInput) -> dict[str, Any]:
+        return dataclasses.asdict(agent_input.market_data)
+
+    def _parse_response(self, data: Any) -> MarketAnalysis:
+        return _parse_market_analysis(data)
 
 
 def _parse_market_analysis(data: Any) -> MarketAnalysis:

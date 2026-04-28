@@ -1,6 +1,22 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.9 — 2026-04-28
+
+### Modificato
+
+- `src/agents/base_agent.py`: introdotta una nuova classe intermedia `BaseLlmAgent(BaseAgent)` che applica il pattern **Template Method** ai 4 agenti che dialogano con un LLM. La classe centralizza in un `run` concreto il flusso comune (verifica prompt → lettura prompt da disco → costruzione payload → chiamata LLM con retry sul parsing). Le sottoclassi devono implementare solo `_build_user_payload` (cosa mandare all'LLM) e `_parse_response` (come interpretare la risposta). `_call_llm_with_retry` è stato spostato da `BaseAgent` a `BaseLlmAgent`, perché era usato solo dagli agenti LLM. `BaseAgent` resta minimale (nome, prompt opzionale, logger, firma astratta di `run`) ed è ancora estesa direttamente da `ExecutionTraderAgent` (l'unico agente non-LLM).
+- `src/agents/market_analyst.py`, `src/agents/decision_maker.py`, `src/agents/risk_manager.py`, `src/agents/performance_reviewer.py`: i 4 agenti LLM ora estendono `BaseLlmAgent` invece di `BaseAgent`. Rimosso il metodo `run` (ora ereditato dal template) e l'assegnazione `self._llm = llm` (ora gestita dalla base). Ogni agente espone solo `__init__` (con `name`, `prompt_name`, `llm`), `_build_user_payload` e `_parse_response`. Le funzioni modulo `_parse_market_analysis`, `_parse_trade_proposal`, `_parse_risk_assessment`, `_parse_performance_review` restano invariate (i test le importano direttamente).
+- `src/agents/execution_trader.py`: nessuna modifica. Continua a estendere direttamente `BaseAgent`.
+- `src/agents/__init__.py`: aggiunto `BaseLlmAgent` agli import e a `__all__`.
+- `docs/architecture.md`: aggiornata la descrizione della cartella `src/agents/` per riflettere la nuova gerarchia a due livelli (`BaseAgent` minimale + `BaseLlmAgent` Template Method).
+- `docs/decision_logic.md`: aggiornato il riferimento da `BaseAgent._call_llm_with_retry` a `BaseLlmAgent._call_llm_with_retry`.
+- `docs/repo_structure.md`: aggiornata la descrizione di `base_agent.py` per menzionare anche `BaseLlmAgent`.
+
+Nessun cambio di firma pubblica e nessun cambio di comportamento osservabile. Ogni agente continua ad essere costruito con `XAgent(llm=...)` e `agent.run(input)` produce lo stesso output di prima. La duplicazione tra i 4 agenti LLM (lettura prompt, costruzione payload, chiamata LLM con retry) è stata eliminata: ora vive solo in `BaseLlmAgent`.
+
+---
+
 ## 1.13.8 — 2026-04-28
 
 ### Modificato

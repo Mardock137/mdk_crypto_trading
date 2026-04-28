@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from src.agents.base_agent import BaseAgent, ensure_list_of_str, unwrap_llm_response
+from src.agents.base_agent import BaseLlmAgent, ensure_list_of_str, unwrap_llm_response
 from src.core.contracts import (
     RiskAssessment,
     RiskDecision,
@@ -12,23 +12,21 @@ from src.core.contracts import (
 from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
 
 
-class RiskManagerAgent(BaseAgent[RiskManagerInput, RiskAssessment]):
+class RiskManagerAgent(BaseLlmAgent[RiskManagerInput, RiskAssessment]):
     def __init__(self, llm: BaseLlmInterface) -> None:
-        super().__init__(name="risk_manager", prompt_name="risk_manager.md")
-        self._llm = llm
+        super().__init__(
+            name="risk_manager",
+            prompt_name="risk_manager.md",
+            llm=llm,
+        )
 
-    def run(self, agent_input: RiskManagerInput) -> RiskAssessment:
-        if self.prompt_path is None:
-            raise RuntimeError(f"Prompt path non configurato per l'agente '{self.name}'.")
-        system_prompt = self.prompt_path.read_text(encoding="utf-8")
-
+    def _build_user_payload(self, agent_input: RiskManagerInput) -> dict[str, Any]:
         market_analysis_subset = {
             "market_bias": agent_input.market_analysis.market_bias.value,
             "summary": agent_input.market_analysis.summary,
             "risk_notes": agent_input.market_analysis.risk_notes,
         }
-
-        user_payload: dict[str, Any] = {
+        return {
             "proposal": dataclasses.asdict(agent_input.proposal),
             "portfolio": dataclasses.asdict(agent_input.portfolio),
             "market_analysis": market_analysis_subset,
@@ -36,9 +34,8 @@ class RiskManagerAgent(BaseAgent[RiskManagerInput, RiskAssessment]):
             "current_price": agent_input.current_price,
         }
 
-        return self._call_llm_with_retry(
-            self._llm, system_prompt, user_payload, _parse_risk_assessment,
-        )
+    def _parse_response(self, data: Any) -> RiskAssessment:
+        return _parse_risk_assessment(data)
 
 
 def _parse_risk_assessment(data: Any) -> RiskAssessment:
