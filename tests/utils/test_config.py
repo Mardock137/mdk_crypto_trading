@@ -123,7 +123,7 @@ def _valid_mandate_dict() -> dict:
     return {
         "max_drawdown_pct": 15.0,
         "horizon": "Intraday to swing",
-        "max_position_pct": 100.0,
+        "max_position_pct": 70.0,
     }
 
 
@@ -134,7 +134,7 @@ def test_load_mandate_returns_investment_mandate() -> None:
 
     assert mandate.max_drawdown_pct == pytest.approx(15.0)
     assert mandate.horizon == "Intraday to swing"
-    assert mandate.max_position_pct == pytest.approx(100.0)
+    assert mandate.max_position_pct == pytest.approx(70.0)
 
 
 def test_load_mandate_raises_if_section_missing() -> None:

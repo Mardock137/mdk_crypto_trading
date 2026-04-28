@@ -1,3 +1,6 @@
+from unittest.mock import MagicMock
+
+from src.agents.execution_trader import ExecutionTraderAgent
 from src.core.contracts import (
     DecisionMakerInput,
     ExecutionInput,
@@ -71,6 +74,25 @@ class DummyRiskManager:
         )
 
 
+class DummyBlockingRiskManager:
+    def run(self, agent_input: RiskManagerInput) -> RiskAssessment:
+        return RiskAssessment(
+            risk_decision=RiskDecision.BLOCK,
+            confidence=0.9,
+            reason="Rischio troppo alto.",
+        )
+
+
+class DummyAdjustmentRiskManager:
+    def run(self, agent_input: RiskManagerInput) -> RiskAssessment:
+        return RiskAssessment(
+            risk_decision=RiskDecision.REQUEST_ADJUSTMENT,
+            confidence=0.7,
+            reason="Ridurre la quantità.",
+            required_changes=["Ridurre qty a 0.005"],
+        )
+
+
 class DummyExecutionTrader:
     def __init__(self, call_order: list[str]) -> None:
         self.call_order = call_order
@@ -113,7 +135,7 @@ def test_workflow_runs_agents_in_expected_order() -> None:
         mandate=InvestmentMandate(
             max_drawdown_pct=15.0,
             horizon="Intraday to swing",
-            max_position_pct=100.0,
+            max_position_pct=70.0,
         ),
         latest_performance_review="fake review content",
     )
@@ -129,4 +151,90 @@ def test_workflow_runs_agents_in_expected_order() -> None:
     assert result.trade_proposal.action is TradeAction.BUY
     assert result.risk_assessment.is_approved is True
     assert result.execution_report.was_executed is True
+
+
+def test_workflow_does_not_execute_when_risk_blocks() -> None:
+    exchange_client = MagicMock()
+    workflow = TradingWorkflow(
+        market_analyst=DummyMarketAnalyst([]),
+        decision_maker=DummyDecisionMaker([]),
+        risk_manager=DummyBlockingRiskManager(),
+        execution_trader=ExecutionTraderAgent(
+            exchange_client=exchange_client,
+            kill_switch=False,
+        ),
+    )
+
+    cycle_input = TradingCycleInput(
+        symbol="BTCUSDC",
+        market_data=MarketDataSnapshot(symbol="BTCUSDC", price=100000.0),
+        portfolio=PortfolioState(
+            usdc_balance=1000.0,
+            usdc_balance_total=1000.0,
+            usdc_value=0.0,
+            portfolio_qty_free=0.0,
+            portfolio_qty_total=0.0,
+        ),
+        constraints=OperationConstraints(
+            cycle_interval_seconds=7200,
+            min_order_usdc=10.0,
+        ),
+        mandate=InvestmentMandate(
+            max_drawdown_pct=15.0,
+            horizon="Intraday to swing",
+            max_position_pct=70.0,
+        ),
+        latest_performance_review="fake review content",
+    )
+
+    result = workflow.run_cycle(cycle_input)
+
+    assert result.risk_assessment.is_approved is False
+    assert result.execution_report.execution_status is ExecutionStatus.NOT_EXECUTED
+    exchange_client.place_market_order.assert_not_called()
+    exchange_client.place_limit_order.assert_not_called()
+    exchange_client.cancel_order.assert_not_called()
+
+
+def test_workflow_does_not_execute_when_risk_requests_adjustment() -> None:
+    exchange_client = MagicMock()
+    workflow = TradingWorkflow(
+        market_analyst=DummyMarketAnalyst([]),
+        decision_maker=DummyDecisionMaker([]),
+        risk_manager=DummyAdjustmentRiskManager(),
+        execution_trader=ExecutionTraderAgent(
+            exchange_client=exchange_client,
+            kill_switch=False,
+        ),
+    )
+
+    cycle_input = TradingCycleInput(
+        symbol="BTCUSDC",
+        market_data=MarketDataSnapshot(symbol="BTCUSDC", price=100000.0),
+        portfolio=PortfolioState(
+            usdc_balance=1000.0,
+            usdc_balance_total=1000.0,
+            usdc_value=0.0,
+            portfolio_qty_free=0.0,
+            portfolio_qty_total=0.0,
+        ),
+        constraints=OperationConstraints(
+            cycle_interval_seconds=7200,
+            min_order_usdc=10.0,
+        ),
+        mandate=InvestmentMandate(
+            max_drawdown_pct=15.0,
+            horizon="Intraday to swing",
+            max_position_pct=70.0,
+        ),
+        latest_performance_review="fake review content",
+    )
+
+    result = workflow.run_cycle(cycle_input)
+
+    assert result.risk_assessment.is_approved is False
+    assert result.execution_report.execution_status is ExecutionStatus.NOT_EXECUTED
+    exchange_client.place_market_order.assert_not_called()
+    exchange_client.place_limit_order.assert_not_called()
+    exchange_client.cancel_order.assert_not_called()
 

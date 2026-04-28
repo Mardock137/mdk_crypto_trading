@@ -12,7 +12,7 @@ from src.utils.cycle_skip import extract_open_order_ids, should_skip_cycle
 
 def _make_config(
     enabled: bool = True,
-    max_consecutive_skips: int = 5,
+    max_consecutive_skips: int = 4,
     price_delta_pct: float = 0.5,
     rsi_delta: float = 2.0,
     macd_sign_must_match: bool = True,

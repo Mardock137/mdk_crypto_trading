@@ -1,6 +1,16 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.5 — 2026-04-28
+
+### Corretto
+
+- Allineati i mock dei test ai valori reali di configurazione: `max_position_pct` portato da `100.0` a `70.0` e `max_consecutive_skips` da `5` a `4`. Questo riduce il rischio che la suite passi con vincoli diversi da quelli usati davvero in produzione.
+- `tests/agents/test_agent_interfaces.py`: aggiunta copertura anche per `PerformanceReviewerAgent`, sia nel controllo di ereditarietà da `BaseAgent` sia nella verifica del `prompt_path`.
+- `tests/core/test_workflow.py`: aggiunti due test sui percorsi reali `RiskDecision.BLOCK` e `RiskDecision.REQUEST_ADJUSTMENT`, usando `ExecutionTraderAgent` reale con exchange mockato. I nuovi test verificano che il workflow completi comunque la sequenza ma non piazzi alcun ordine quando il Risk Manager non approva la proposta.
+
+---
+
 ## 1.13.4 — 2026-04-27
 
 ### Corretto

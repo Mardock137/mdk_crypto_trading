@@ -35,7 +35,7 @@ _MOCK_TRADING_CONFIG = {
     "mandate": {
         "max_drawdown_pct": 15.0,
         "horizon": "Intraday to swing",
-        "max_position_pct": 100.0,
+        "max_position_pct": 70.0,
     },
 }
 
@@ -63,7 +63,7 @@ def _make_settings(**overrides: Any) -> AppSettings:
 
 _DEFAULT_DISABLED_SKIP_CONFIG = CycleSkipConfig(
     enabled=False,
-    max_consecutive_skips=5,
+    max_consecutive_skips=4,
     price_delta_pct=0.5,
     rsi_delta=2.0,
     macd_sign_must_match=True,
@@ -398,7 +398,7 @@ def test_load_latest_performance_review_returns_file_content(
 
 _ENABLED_SKIP_CONFIG = CycleSkipConfig(
     enabled=True,
-    max_consecutive_skips=5,
+    max_consecutive_skips=4,
     price_delta_pct=0.5,
     rsi_delta=2.0,
     macd_sign_must_match=True,

@@ -62,12 +62,12 @@ def test_investment_mandate_stores_all_fields() -> None:
     mandate = InvestmentMandate(
         max_drawdown_pct=15.0,
         horizon="Intraday to swing",
-        max_position_pct=100.0,
+        max_position_pct=70.0,
     )
 
     assert mandate.max_drawdown_pct == 15.0
     assert mandate.horizon == "Intraday to swing"
-    assert mandate.max_position_pct == 100.0
+    assert mandate.max_position_pct == 70.0
 
 
 def test_market_analysis_keeps_structured_signal_data() -> None:

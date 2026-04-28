@@ -24,7 +24,7 @@ def _make_mandate() -> InvestmentMandate:
     return InvestmentMandate(
         max_drawdown_pct=15.0,
         horizon="Intraday to swing",
-        max_position_pct=100.0,
+        max_position_pct=70.0,
     )
 
 

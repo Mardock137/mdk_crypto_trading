@@ -142,7 +142,7 @@ def test_write_performance_report_creates_file(tmp_path: Path) -> None:
     mandate = InvestmentMandate(
         max_drawdown_pct=15.0,
         horizon="Intraday to swing",
-        max_position_pct=100.0,
+        max_position_pct=70.0,
     )
     stats = build_performance_stats(
         "BTCUSDC", _mock_mm_without_trades(),

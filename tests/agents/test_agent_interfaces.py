@@ -11,6 +11,7 @@ from src.agents import (
     RiskManagerAgent,
 )
 from src.agents.base_agent import _ensure_list_of_str, unwrap_llm_response
+from src.agents.performance_reviewer import PerformanceReviewerAgent
 
 
 class _AgentWithoutPrompt(BaseAgent[None, None]):
@@ -27,6 +28,7 @@ def test_all_agents_inherit_from_base_agent() -> None:
     assert issubclass(MarketAnalystAgent, BaseAgent)
     assert issubclass(DecisionMakerAgent, BaseAgent)
     assert issubclass(RiskManagerAgent, BaseAgent)
+    assert issubclass(PerformanceReviewerAgent, BaseAgent)
     assert issubclass(ExecutionTraderAgent, BaseAgent)
 
 
@@ -35,6 +37,7 @@ def test_agents_expose_expected_prompt_paths() -> None:
         (MarketAnalystAgent(llm=MagicMock()), "market_analyst.md"),
         (DecisionMakerAgent(llm=MagicMock()), "decision_maker.md"),
         (RiskManagerAgent(llm=MagicMock()), "risk_manager.md"),
+        (PerformanceReviewerAgent(llm=MagicMock()), "performance_reviewer.md"),
     ]
 
     for agent, prompt_name in agents_with_prompts:
