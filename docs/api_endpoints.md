@@ -48,7 +48,7 @@ Elenco degli endpoint API esterni utilizzati da MDK Crypto Trading, raggruppati 
 - `GET https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDC` → Statistiche ultime 24h.
 
 - `POST https://api.binance.com/api/v3/order` → Crea un ordine.
-- `POST https://api.binance.com/api/v3/cancelReplace` → Cancella un ordine già piazzato e lo rimpiazza subito con uno nuovo.
+- `POST https://api.binance.com/api/v3/order` (x2) → Per `CANCEL_AND_REPLACE_ORDER`: prima `DELETE /order` per cancellare l'ordine esistente, poi `POST /order` per piazzare il nuovo ordine limit.
 
 - `DELETE https://api.binance.com/api/v3/order` → Cancella un ordine già piazzato.
 

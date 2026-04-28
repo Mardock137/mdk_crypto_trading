@@ -46,7 +46,7 @@ Analizza i dati di mercato e produce un segnale. Non decide operazioni.
 
 ## Decision Maker
 
-Riceve il segnale del Market Analyst e formula una proposta operativa usando come bussola il **mandato di investimento** definito in `config/trading.yaml`. Gira su Claude Opus 4.7 con adaptive thinking (`thinking_effort: high`): il modello esegue un ragionamento strutturato interno prima di emettere la proposta JSON.
+Riceve il segnale del Market Analyst e formula una proposta operativa usando come bussola il **mandato di investimento** definito in `config/trading.yaml`. Gira su Claude Opus 4.7 con adaptive thinking (`thinking_effort: medium`): il modello esegue un ragionamento strutturato interno prima di emettere la proposta JSON.
 
 - **Azioni possibili**: `BUY`, `SELL`, `HOLD`, `CANCEL_AND_REPLACE_ORDER`
 - **Tipi di ordine**: `MARKET`, `LIMIT`, `NONE` (solo per HOLD)

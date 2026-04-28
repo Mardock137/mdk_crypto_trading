@@ -25,9 +25,9 @@ Contiene chiavi API, modalità di esecuzione e variabili riservate. Mai committa
 | `KILL_SWITCH`             | no           | `1`      | Se `1`, forza tutte le operazioni a HOLD          |
 | `CYCLE_INTERVAL_SECONDS`  | sì           | —        | Secondi tra un ciclo e l'altro                    |
 | `LOG_LEVEL`               | no           | `INFO`   | `DEBUG`, `INFO`, `WARNING`, `ERROR`               |
-| `CLAUDE_API_KEY`          | no           | —        | Chiave API Anthropic (Claude)                     |
-| `OPENAI_API_KEY`          | no           | —        | Chiave API OpenAI                                 |
-| `GEMINI_API_KEY`          | no           | —        | Chiave API Google Gemini                          |
+| `CLAUDE_API_KEY`          | sì           | —        | Chiave API Anthropic (Claude)                     |
+| `OPENAI_API_KEY`          | sì           | —        | Chiave API OpenAI                                 |
+| `GEMINI_API_KEY`          | sì           | —        | Chiave API Google Gemini                          |
 | `BINANCE_API_KEY`         | in REAL      | —        | Chiave API Binance produzione                     |
 | `BINANCE_SECRET_KEY`      | in REAL      | —        | Secret Binance produzione                         |
 | `BINANCE_DEMO_API_KEY`    | in DEMO      | —        | Chiave API Binance Demo Trading                   |
@@ -52,7 +52,7 @@ min_order_usdc: 10.0
 mandate:
   max_drawdown_pct: 15.0
   horizon: "Intraday to swing (ore → giorni)"
-  max_position_pct: 100.0
+  max_position_pct: 70.0
 ```
 
 Campi:
@@ -60,7 +60,7 @@ Campi:
 - `min_order_usdc`: valore minimo interno consentito per un ordine, in USDC.
 - `mandate.max_drawdown_pct`: drawdown massimo tollerato in percentuale.
 - `mandate.horizon`: orizzonte temporale tipico delle operazioni (es. intraday, swing).
-- `mandate.max_position_pct`: percentuale massima del capitale allocabile sulla singola posizione. Finché il bot è mono-simbolo è tipicamente `100.0`; il campo esiste già in vista del multi-simbolo.
+- `mandate.max_position_pct`: percentuale massima del capitale allocabile sulla singola posizione. Il campo esiste già in vista del multi-simbolo.
 
 Il mandate viene caricato all'avvio del runner tramite `load_mandate(trading_config)` in `src/utils/config.py` e propagato a ogni ciclo dentro `TradingCycleInput`. Se la sezione `mandate` manca o ha campi incompleti, il runner fallisce in fase di boot con un `ValueError` esplicito.
 
@@ -121,7 +121,7 @@ max_tokens: 4096
 ```yaml
 provider: anthropic
 model: claude-opus-4-7
-thinking_effort: high
+thinking_effort: medium
 max_tokens: 16384
 ```
 
@@ -156,6 +156,7 @@ Prompt runtime caricati dal codice durante l'esecuzione. Ogni agente ha il suo f
 - `market_analyst.md` — Prompt operativo del Market Analyst
 - `decision_maker.md` — Prompt operativo del Decision Maker
 - `risk_manager.md` — Prompt operativo del Risk Manager
+- `performance_reviewer.md` — Prompt operativo del Performance Reviewer
 
 I file in `dev_support/prompts/` sono la versione di progettazione e riferimento umano. Quelli in `config/prompts/` sono la versione usata dal codice.
 
