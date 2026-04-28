@@ -11,10 +11,6 @@ class BaseLlmInterface(ABC):
         """Return the provider model name."""
 
     @abstractmethod
-    def generate_text(self, system_prompt: str, user_prompt: str) -> str:
-        """Generate a plain text response."""
-
-    @abstractmethod
     def generate_json(
         self,
         system_prompt: str,

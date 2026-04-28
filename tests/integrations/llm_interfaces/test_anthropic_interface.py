@@ -14,28 +14,6 @@ def test_model_name_returns_configured_value(mock_anthropic_cls: MagicMock) -> N
 
 
 @patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
-def test_generate_text_calls_messages_create(mock_anthropic_cls: MagicMock) -> None:
-    """Verifica che generate_text chiami messages.create con i parametri corretti."""
-    mock_client = mock_anthropic_cls.return_value
-    mock_content_block = MagicMock()
-    mock_content_block.text = "Risposta di test"
-    mock_response = MagicMock()
-    mock_response.content = [mock_content_block]
-    mock_client.messages.create.return_value = mock_response
-
-    interface = AnthropicInterface(api_key="fake-key", model="claude-sonnet-4-6")
-    result = interface.generate_text("system prompt", "user prompt")
-
-    mock_client.messages.create.assert_called_once()
-    call_kwargs = mock_client.messages.create.call_args.kwargs
-    assert call_kwargs["model"] == "claude-sonnet-4-6"
-    assert call_kwargs["system"] == "system prompt"
-    assert call_kwargs["messages"] == [{"role": "user", "content": "user prompt"}]
-    assert call_kwargs["temperature"] == 0.7
-    assert result == "Risposta di test"
-
-
-@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
 def test_generate_json_calls_messages_create_and_parses_response(mock_anthropic_cls: MagicMock) -> None:
     """Verifica che generate_json chiami messages.create e parsi correttamente il JSON."""
     mock_client = mock_anthropic_cls.return_value
@@ -53,33 +31,6 @@ def test_generate_json_calls_messages_create_and_parses_response(mock_anthropic_
     assert call_kwargs["system"] == "system prompt"
     assert "output_config" not in call_kwargs
     assert result == {"risultato": "ok"}
-
-
-@patch("src.integrations.llm_interfaces.anthropic_interface._logger")
-@patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
-def test_generate_text_empty_response_logs_and_raises(
-    mock_anthropic_cls: MagicMock,
-    mock_logger: MagicMock,
-) -> None:
-    """generate_text: risposta vuota → warning con stop_reason/usage + RuntimeError."""
-    mock_client = mock_anthropic_cls.return_value
-    mock_content_block = MagicMock()
-    mock_content_block.text = ""
-    mock_response = MagicMock()
-    mock_response.content = [mock_content_block]
-    mock_response.stop_reason = "max_tokens"
-    mock_response.usage = MagicMock(input_tokens=200, output_tokens=0)
-    mock_client.messages.create.return_value = mock_response
-
-    interface = AnthropicInterface(api_key="fake-key", model="claude-opus-4-7")
-
-    with pytest.raises(RuntimeError, match="Risposta vuota"):
-        interface.generate_text("system prompt", "user prompt")
-
-    mock_logger.warning.assert_called_once()
-    warning_args = mock_logger.warning.call_args.args
-    assert "stop_reason" in warning_args[0]
-    assert "max_tokens" in warning_args
 
 
 @patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
@@ -183,7 +134,7 @@ def test_custom_temperature_and_max_tokens_are_forwarded(mock_anthropic_cls: Mag
     """Verifica che temperature e max_tokens personalizzati vengano passati all'API."""
     mock_client = mock_anthropic_cls.return_value
     mock_content_block = MagicMock()
-    mock_content_block.text = "ok"
+    mock_content_block.text = '{"ok": true}'
     mock_response = MagicMock()
     mock_response.content = [mock_content_block]
     mock_client.messages.create.return_value = mock_response
@@ -194,7 +145,7 @@ def test_custom_temperature_and_max_tokens_are_forwarded(mock_anthropic_cls: Mag
         temperature=0.2,
         max_tokens=512,
     )
-    interface.generate_text("s", "u")
+    interface.generate_json("s", {"k": "v"})
 
     call_kwargs = mock_client.messages.create.call_args.kwargs
     assert call_kwargs["temperature"] == 0.2
@@ -298,7 +249,7 @@ def test_thinking_effort_enables_thinking_and_removes_temperature(
     mock_client = mock_anthropic_cls.return_value
     mock_text_block = MagicMock()
     mock_text_block.type = "text"
-    mock_text_block.text = "ok"
+    mock_text_block.text = '{"ok": true}'
     mock_response = MagicMock()
     mock_response.content = [mock_text_block]
     mock_client.messages.create.return_value = mock_response
@@ -308,7 +259,7 @@ def test_thinking_effort_enables_thinking_and_removes_temperature(
         model="claude-opus-4-7",
         thinking_effort="high",
     )
-    interface.generate_text("s", "u")
+    interface.generate_json("s", {"k": "v"})
 
     call_kwargs = mock_client.messages.create.call_args.kwargs
     assert "temperature" not in call_kwargs
@@ -324,7 +275,7 @@ def test_without_thinking_effort_keeps_temperature_and_no_thinking(
     mock_client = mock_anthropic_cls.return_value
     mock_text_block = MagicMock()
     mock_text_block.type = "text"
-    mock_text_block.text = "ok"
+    mock_text_block.text = '{"ok": true}'
     mock_response = MagicMock()
     mock_response.content = [mock_text_block]
     mock_client.messages.create.return_value = mock_response
@@ -334,7 +285,7 @@ def test_without_thinking_effort_keeps_temperature_and_no_thinking(
         model="claude-sonnet-4-6",
         temperature=0.2,
     )
-    interface.generate_text("s", "u")
+    interface.generate_json("s", {"k": "v"})
 
     call_kwargs = mock_client.messages.create.call_args.kwargs
     assert call_kwargs["temperature"] == 0.2
@@ -349,7 +300,7 @@ def test_without_thinking_effort_does_not_send_output_config(
     mock_client = mock_anthropic_cls.return_value
     mock_text_block = MagicMock()
     mock_text_block.type = "text"
-    mock_text_block.text = "ok"
+    mock_text_block.text = '{"ok": true}'
     mock_response = MagicMock()
     mock_response.content = [mock_text_block]
     mock_client.messages.create.return_value = mock_response
@@ -358,7 +309,7 @@ def test_without_thinking_effort_does_not_send_output_config(
         api_key="fake-key",
         model="claude-sonnet-4-6",
     )
-    interface.generate_text("s", "u")
+    interface.generate_json("s", {"k": "v"})
 
     call_kwargs = mock_client.messages.create.call_args.kwargs
     assert "output_config" not in call_kwargs

@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from src.agents.base_agent import BaseAgent, _ensure_list_of_str, unwrap_llm_response
+from src.agents.base_agent import BaseAgent, ensure_list_of_str, unwrap_llm_response
 from src.core.contracts import (
     RiskAssessment,
     RiskDecision,
@@ -53,6 +53,6 @@ def _parse_risk_assessment(data: Any) -> RiskAssessment:
         risk_decision=RiskDecision(data["risk_decision"]),
         confidence=float(data["confidence"]),
         reason=str(data["reason"]),
-        checks=_ensure_list_of_str(data.get("checks", [])),
-        required_changes=_ensure_list_of_str(data.get("required_changes", [])),
+        checks=ensure_list_of_str(data.get("checks", [])),
+        required_changes=ensure_list_of_str(data.get("required_changes", [])),
     )

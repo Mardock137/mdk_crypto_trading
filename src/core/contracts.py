@@ -209,7 +209,7 @@ class DecisionMakerInput:
     market_analysis: MarketAnalysis
     constraints: OperationConstraints
     mandate: InvestmentMandate
-    ia_memory: list[dict[str, Any]] = field(default_factory=list)
+    decision_memory: list[dict[str, Any]] = field(default_factory=list)
     performance_summary: str = ""
     recent_performance: list[dict[str, Any]] = field(default_factory=list)
     latest_performance_review: str = ""
@@ -239,7 +239,7 @@ class TradingCycleInput:
     portfolio: PortfolioState
     constraints: OperationConstraints
     mandate: InvestmentMandate
-    ia_memory: list[dict[str, Any]] = field(default_factory=list)
+    decision_memory: list[dict[str, Any]] = field(default_factory=list)
     performance_summary: str = ""
     recent_performance: list[dict[str, Any]] = field(default_factory=list)
     latest_performance_review: str = ""

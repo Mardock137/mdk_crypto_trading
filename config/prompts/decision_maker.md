@@ -73,7 +73,7 @@ Il mandato definisce i vincoli di rischio e il contesto strategico che ti sono s
 
 ### Memoria e performance
 
-- `ia_memory`: memoria delle ultime 10 decisioni prese sulla coppia.
+- `decision_memory`: memoria delle ultime 10 decisioni prese sulla coppia.
 - `performance_summary`: riassunto testuale delle ultime vendite calcolate con metodo FIFO. Include numero di SELL in profitto e in perdita, P&L percentuale medio e P&L totale in USDC.
 - `recent_performance`: andamento recente delle ultime 10 decisioni. Per le SELL eseguite include anche `realized_pnl` (profitto/perdita realizzato in USDC) e `pnl_pct` (variazione percentuale), calcolati con metodo FIFO.
 

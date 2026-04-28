@@ -30,7 +30,7 @@ class DecisionMakerAgent(BaseAgent[DecisionMakerInput, TradeProposal]):
             "market_analysis": dataclasses.asdict(agent_input.market_analysis),
             "constraints": dataclasses.asdict(agent_input.constraints),
             "mandate": dataclasses.asdict(agent_input.mandate),
-            "ia_memory": agent_input.ia_memory,
+            "decision_memory": agent_input.decision_memory,
             "performance_summary": agent_input.performance_summary,
             "recent_performance": agent_input.recent_performance,
             "latest_performance_review": agent_input.latest_performance_review,

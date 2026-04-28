@@ -44,36 +44,6 @@ class GeminiInterface(BaseLlmInterface):
         stop=stop_after_attempt(3),
         reraise=True,
     )
-    def generate_text(self, system_prompt: str, user_prompt: str) -> str:
-        try:
-            response = self._client.models.generate_content(
-                model=self._model,
-                contents=user_prompt,
-                config=genai_types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    temperature=self._temperature,
-                    max_output_tokens=self._max_tokens,
-                ),
-            )
-            text = response.text
-            if not text or not text.strip():
-                _logger.warning(
-                    "Gemini generate_text risposta vuota | usage_metadata: %s",
-                    response.usage_metadata,
-                )
-                raise RuntimeError("Risposta vuota dal provider Gemini.")
-            return text
-        except genai_errors.ServerError:
-            raise
-        except genai_errors.ClientError as exc:
-            raise RuntimeError(f"Errore API Gemini: {exc}") from exc
-
-    @retry(
-        retry=retry_if_exception_type(genai_errors.ServerError),
-        wait=wait_exponential(multiplier=1, min=2, max=30),
-        stop=stop_after_attempt(3),
-        reraise=True,
-    )
     def generate_json(
         self,
         system_prompt: str,

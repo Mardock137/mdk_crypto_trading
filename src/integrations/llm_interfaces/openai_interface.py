@@ -75,45 +75,6 @@ class OpenAiInterface(BaseLlmInterface):
         stop=stop_after_attempt(3),
         reraise=True,
     )
-    def generate_text(self, system_prompt: str, user_prompt: str) -> str:
-        try:
-            kwargs = self._build_kwargs()
-            response = self._client.chat.completions.create(
-                model=self._model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                **kwargs,
-            )
-            content = (
-                response.choices[0].message.content if response.choices else None
-            )
-            if not content:
-                if response.choices:
-                    _logger.warning(
-                        "OpenAI generate_text risposta vuota | finish_reason: %s | usage: %s",
-                        response.choices[0].finish_reason,
-                        response.usage,
-                    )
-                else:
-                    _logger.warning(
-                        "OpenAI generate_text risposta vuota | choices: [] | usage: %s",
-                        response.usage,
-                    )
-                raise RuntimeError("Risposta vuota dal provider OpenAI.")
-            return content
-        except _RETRYABLE_ERRORS:
-            raise
-        except APIError as exc:
-            raise RuntimeError(f"Errore API OpenAI: {exc}") from exc
-
-    @retry(
-        retry=retry_if_exception_type(_RETRYABLE_ERRORS),
-        wait=wait_exponential(multiplier=1, min=2, max=30),
-        stop=stop_after_attempt(3),
-        reraise=True,
-    )
     def generate_json(
         self,
         system_prompt: str,

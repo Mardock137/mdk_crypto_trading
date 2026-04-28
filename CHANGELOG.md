@@ -1,6 +1,17 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.7 — 2026-04-28
+
+### Modificato
+
+- `src/core/contracts.py`, `src/core/runner.py`, `src/core/workflow.py`, `src/agents/decision_maker.py`, `config/prompts/decision_maker.md`, `docs/architecture.md`, `docs/decision_logic.md`: rinominato il campo `ia_memory` in `decision_memory` su `DecisionMakerInput` e `TradingCycleInput`. Il nuovo nome è più preciso: descrive la memoria del Decision Maker, non dell'"IA" in senso generico. Nessun cambio di logica.
+- `src/agents/base_agent.py` e i tre agenti che la importano (`market_analyst.py`, `risk_manager.py`, `performance_reviewer.py`) + `tests/agents/test_agent_interfaces.py`: rimosso il prefisso `_` dalla funzione `_ensure_list_of_str`, rinominata in `ensure_list_of_str`. La funzione è importata da tre moduli esterni, quindi il prefisso "privato" era fuorviante. Nessun cambio di comportamento.
+- `src/core/__init__.py`: aggiunti agli export pubblici del package `InvestmentMandate`, `MandateAdherence`, `PerformanceStats`, `PerformanceReview`, `PerformanceReviewerInput`, `CycleSkipConfig`, `CycleContextSnapshot`. Erano già definiti in `contracts.py` ma non esposti da `src.core`. Chi importava da `src.core.contracts` può ora importare da `src.core` senza frammentazione.
+- `src/integrations/llm_interfaces/base_llm_interface.py`, `anthropic_interface.py`, `openai_interface.py`, `gemini_interface.py`: rimosso il metodo `generate_text` da tutte le interfacce. Non veniva mai chiamato in produzione (solo dai test) e non aggiungeva valore rispetto a `generate_json`. Rimossi anche i relativi test in `tests/integrations/llm_interfaces/`. I test che usavano `generate_text` come veicolo per verificare il comportamento dei kwargs (`temperature`, `max_tokens`, `thinking_effort`, `reasoning_effort`) sono stati convertiti a usare `generate_json`, mantenendo la copertura.
+
+---
+
 ## 1.13.6 — 2026-04-28
 
 ### Corretto

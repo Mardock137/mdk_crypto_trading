@@ -87,35 +87,6 @@ class AnthropicInterface(BaseLlmInterface):
         stop=stop_after_attempt(3),
         reraise=True,
     )
-    def generate_text(self, system_prompt: str, user_prompt: str) -> str:
-        try:
-            response = self._client.messages.create(
-                model=self._model,
-                max_tokens=self._max_tokens,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}],
-                **self._build_kwargs(),
-            )
-            raw = _extract_text(response)
-            if not raw or not raw.strip():
-                _logger.warning(
-                    "Anthropic risposta vuota | stop_reason: %s | usage: %s",
-                    response.stop_reason,
-                    response.usage,
-                )
-                raise RuntimeError("Risposta vuota dal provider Anthropic.")
-            return raw
-        except _RETRYABLE_ERRORS:
-            raise
-        except APIStatusError as exc:
-            raise RuntimeError(f"Errore API Anthropic: {exc}") from exc
-
-    @retry(
-        retry=retry_if_exception_type(_RETRYABLE_ERRORS),
-        wait=wait_exponential(multiplier=1, min=2, max=30),
-        stop=stop_after_attempt(3),
-        reraise=True,
-    )
     def generate_json(
         self,
         system_prompt: str,

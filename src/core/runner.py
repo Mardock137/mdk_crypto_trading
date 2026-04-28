@@ -217,7 +217,7 @@ class TradingRunner:
             portfolio=portfolio,
             constraints=constraints,
             mandate=self._mandate,
-            ia_memory=self._memory_manager.get_memory(self._symbol),
+            decision_memory=self._memory_manager.get_memory(self._symbol),
             performance_summary=self._memory_manager.get_performance_summary(self._symbol),
             recent_performance=self._memory_manager.get_recent_performance(self._symbol),
             latest_performance_review=self._load_latest_performance_review(),

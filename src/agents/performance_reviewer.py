@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from src.agents.base_agent import BaseAgent, _ensure_list_of_str, unwrap_llm_response
+from src.agents.base_agent import BaseAgent, ensure_list_of_str, unwrap_llm_response
 from src.core.contracts import (
     MandateAdherence,
     PerformanceReview,
@@ -54,5 +54,5 @@ def _parse_performance_review(data: Any) -> PerformanceReview:
     return PerformanceReview(
         summary=str(data["summary"]),
         mandate_adherence=MandateAdherence(data["mandate_adherence"]),
-        suggestions=_ensure_list_of_str(data.get("suggestions", [])),
+        suggestions=ensure_list_of_str(data.get("suggestions", [])),
     )

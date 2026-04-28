@@ -101,7 +101,7 @@ def test_parse_empty_dict_raises() -> None:
 
 
 def test_parse_accepts_string_suggestions() -> None:
-    """_ensure_list_of_str deve gestire il caso in cui suggestions e una stringa."""
+    """ensure_list_of_str deve gestire il caso in cui suggestions e una stringa."""
     data = {
         "summary": "x",
         "mandate_adherence": "ALIGNED",

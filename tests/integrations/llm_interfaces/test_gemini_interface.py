@@ -14,47 +14,6 @@ def test_model_name_returns_configured_value(mock_genai: MagicMock) -> None:
 
 
 @patch("src.integrations.llm_interfaces.gemini_interface.genai")
-def test_generate_text_calls_generate_content(mock_genai: MagicMock) -> None:
-    """Verifica che generate_text chiami models.generate_content correttamente."""
-    mock_client = mock_genai.Client.return_value
-    mock_response = MagicMock()
-    mock_response.text = "Risposta di test"
-    mock_client.models.generate_content.return_value = mock_response
-
-    interface = GeminiInterface(api_key="fake-key", model="gemini-2.0-flash")
-    result = interface.generate_text("system prompt", "user prompt")
-
-    mock_client.models.generate_content.assert_called_once()
-    call_kwargs = mock_client.models.generate_content.call_args.kwargs
-    assert call_kwargs["model"] == "gemini-2.0-flash"
-    assert call_kwargs["contents"] == "user prompt"
-    assert result == "Risposta di test"
-
-
-@patch("src.integrations.llm_interfaces.gemini_interface._logger")
-@patch("src.integrations.llm_interfaces.gemini_interface.genai")
-def test_generate_text_empty_response_logs_and_raises(
-    mock_genai: MagicMock,
-    mock_logger: MagicMock,
-) -> None:
-    """generate_text: risposta vuota -> warning con usage_metadata + RuntimeError."""
-    mock_client = mock_genai.Client.return_value
-    mock_response = MagicMock()
-    mock_response.text = ""
-    mock_response.usage_metadata = MagicMock(prompt_token_count=120, candidates_token_count=0)
-    mock_client.models.generate_content.return_value = mock_response
-
-    interface = GeminiInterface(api_key="fake-key", model="gemini-2.0-flash")
-
-    with pytest.raises(RuntimeError, match="Risposta vuota"):
-        interface.generate_text("system prompt", "user prompt")
-
-    mock_logger.warning.assert_called_once()
-    warning_args = mock_logger.warning.call_args.args
-    assert "usage_metadata" in warning_args[0]
-
-
-@patch("src.integrations.llm_interfaces.gemini_interface.genai")
 def test_generate_json_uses_json_mime_type(mock_genai: MagicMock) -> None:
     """Verifica che generate_json chiami l'API con response_mime_type JSON."""
     mock_client = mock_genai.Client.return_value
@@ -154,11 +113,11 @@ def test_custom_temperature_and_max_tokens_are_forwarded(mock_genai: MagicMock) 
     """Verifica che temperature e max_tokens personalizzati vengano passati al config."""
     mock_client = mock_genai.Client.return_value
     mock_response = MagicMock()
-    mock_response.text = "ok"
+    mock_response.text = '{"ok": true}'
     mock_client.models.generate_content.return_value = mock_response
 
     interface = GeminiInterface(api_key="fake-key", model="gemini-2.0-flash", temperature=0.2, max_tokens=512)
-    interface.generate_text("s", "u")
+    interface.generate_json("s", {"k": "v"})
 
     call_kwargs = mock_client.models.generate_content.call_args.kwargs
     config = call_kwargs["config"]

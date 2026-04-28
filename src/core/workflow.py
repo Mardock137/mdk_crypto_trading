@@ -43,7 +43,7 @@ class TradingWorkflow:
                 market_analysis=market_analysis,
                 constraints=cycle_input.constraints,
                 mandate=cycle_input.mandate,
-                ia_memory=cycle_input.ia_memory,
+                decision_memory=cycle_input.decision_memory,
                 performance_summary=cycle_input.performance_summary,
                 recent_performance=cycle_input.recent_performance,
                 latest_performance_review=cycle_input.latest_performance_review,
