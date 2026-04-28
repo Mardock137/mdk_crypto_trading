@@ -1,6 +1,20 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.8 — 2026-04-28
+
+### Modificato
+
+- `src/integrations/llm_interfaces/base_llm_interface.py`: riscritta da minimal ABC a **Template Method**. Ora `generate_json` è un metodo concreto nella classe base che orchestra retry (`tenacity.Retrying` programmato), chiamata al provider, estrazione testo, controllo risposta vuota, parsing JSON, controllo dict vuoto e wrapping degli errori. Le sottoclassi implementano solo i metodi astratti specifici del provider (`_call_provider`, `_extract_text`, `_log_empty_response`) e possono fare override dell'hook `_strip_response`. Aggiunti gli attributi di classe `_PROVIDER_NAME`, `_RETRYABLE_ERRORS`, `_NON_RETRYABLE_PROVIDER_ERROR` che ogni sottoclasse dichiara.
+- `src/integrations/llm_interfaces/anthropic_interface.py`: rimossi `@retry` e blocco `try/except` da `generate_json` (ora gestiti dalla base). Il metodo è stato sostituito da `_call_provider`, `_extract_text` (l'ex funzione modulo, ora metodo della classe), `_log_empty_response` e override di `_strip_response` che chiama la funzione modulo `_strip_markdown_json` (mantenuta come funzione modulo perché importata dai test). `__init__`, `model_name` e `_build_kwargs` invariati.
+- `src/integrations/llm_interfaces/openai_interface.py`: rimossi `@retry` e blocco `try/except` da `generate_json`. Aggiunti `_call_provider`, `_extract_text`, `_log_empty_response`. `__init__`, `model_name` e `_build_kwargs` invariati.
+- `src/integrations/llm_interfaces/gemini_interface.py`: rimossi `@retry` e blocco `try/except` da `generate_json`. Aggiunti `_call_provider`, `_extract_text`, `_log_empty_response`. `__init__` e `model_name` invariati.
+- `docs/architecture.md`: aggiunta nota sul Template Method nella descrizione di `llm_interfaces/`.
+
+Nessun cambio di firma pubblica, di comportamento osservabile o di messaggi di errore. La duplicazione tra le tre interfacce LLM (logica di retry, controllo risposta vuota, parsing JSON, gestione errori) è stata eliminata: ora vive solo nella base.
+
+---
+
 ## 1.13.7 — 2026-04-28
 
 ### Modificato

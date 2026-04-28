@@ -2,38 +2,33 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Mapping
+from typing import Any, ClassVar, Mapping
 
 from openai import (
-    OpenAI,
-    APIError,
     APIConnectionError,
+    APIError,
     APITimeoutError,
     InternalServerError,
+    OpenAI,
     RateLimitError,
-)
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
 )
 
 from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
 
 _logger = logging.getLogger("mdk_crypto_trading.openai_interface")
 
-# Eccezioni temporanee su cui fare retry automatico
-_RETRYABLE_ERRORS = (
-    RateLimitError,
-    APIConnectionError,
-    APITimeoutError,
-    InternalServerError,
-)
-
 
 class OpenAiInterface(BaseLlmInterface):
     """Implementazione di BaseLlmInterface per il provider OpenAI."""
+
+    _PROVIDER_NAME: ClassVar[str] = "OpenAI"
+    _RETRYABLE_ERRORS: ClassVar[tuple[type[BaseException], ...]] = (
+        RateLimitError,
+        APIConnectionError,
+        APITimeoutError,
+        InternalServerError,
+    )
+    _NON_RETRYABLE_PROVIDER_ERROR: ClassVar[type[BaseException]] = APIError
 
     def __init__(
         self,
@@ -53,6 +48,10 @@ class OpenAiInterface(BaseLlmInterface):
     def model_name(self) -> str:
         return self._model
 
+    @property
+    def _logger(self) -> logging.Logger:
+        return _logger
+
     def _build_kwargs(self) -> dict[str, Any]:
         """Costruisce i kwargs dinamici per chat.completions.create().
 
@@ -69,54 +68,36 @@ class OpenAiInterface(BaseLlmInterface):
             kwargs["max_completion_tokens"] = self._max_tokens
         return kwargs
 
-    @retry(
-        retry=retry_if_exception_type(_RETRYABLE_ERRORS),
-        wait=wait_exponential(multiplier=1, min=2, max=30),
-        stop=stop_after_attempt(3),
-        reraise=True,
-    )
-    def generate_json(
+    def _call_provider(
         self,
         system_prompt: str,
         user_payload: Mapping[str, Any],
-    ) -> dict[str, Any]:
-        try:
-            kwargs = self._build_kwargs()
-            response = self._client.chat.completions.create(
-                model=self._model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": json.dumps(dict(user_payload))},
-                ],
-                response_format={"type": "json_object"},
-                **kwargs,
+    ) -> Any:
+        return self._client.chat.completions.create(
+            model=self._model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": json.dumps(dict(user_payload))},
+            ],
+            response_format={"type": "json_object"},
+            **self._build_kwargs(),
+        )
+
+    def _extract_text(self, response: Any) -> str:
+        if not response.choices:
+            return ""
+        content = response.choices[0].message.content
+        return content or ""
+
+    def _log_empty_response(self, response: Any) -> None:
+        if response.choices:
+            self._logger.warning(
+                "OpenAI risposta vuota | finish_reason: %s | usage: %s",
+                response.choices[0].finish_reason,
+                response.usage,
             )
-            raw = (
-                response.choices[0].message.content if response.choices else None
+        else:
+            self._logger.warning(
+                "OpenAI risposta vuota | choices: [] | usage: %s",
+                response.usage,
             )
-            if not raw or not raw.strip():
-                if response.choices:
-                    _logger.warning(
-                        "OpenAI risposta vuota | finish_reason: %s | usage: %s",
-                        response.choices[0].finish_reason,
-                        response.usage,
-                    )
-                else:
-                    _logger.warning(
-                        "OpenAI risposta vuota | choices: [] | usage: %s",
-                        response.usage,
-                    )
-                raise RuntimeError("Risposta vuota dal provider OpenAI.")
-            result: dict[str, Any] = json.loads(raw)
-            if not result:
-                raise RuntimeError("Il provider OpenAI ha risposto con un JSON vuoto.")
-            return result
-        except _RETRYABLE_ERRORS:
-            raise
-        except APIError as exc:
-            raise RuntimeError(f"Errore API OpenAI: {exc}") from exc
-        except json.JSONDecodeError as exc:
-            _logger.warning("Risposta raw non decodificabile di OpenAI: %r", raw)
-            raise RuntimeError(
-                f"Impossibile decodificare la risposta JSON di OpenAI: {exc}"
-            ) from exc

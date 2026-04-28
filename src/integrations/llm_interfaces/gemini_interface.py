@@ -2,17 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Mapping
+from typing import Any, ClassVar, Mapping
 
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types as genai_types
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
 
@@ -21,6 +15,12 @@ _logger = logging.getLogger("mdk_crypto_trading.gemini_interface")
 
 class GeminiInterface(BaseLlmInterface):
     """Implementazione di BaseLlmInterface per il provider Google Gemini."""
+
+    _PROVIDER_NAME: ClassVar[str] = "Gemini"
+    _RETRYABLE_ERRORS: ClassVar[tuple[type[BaseException], ...]] = (
+        genai_errors.ServerError,
+    )
+    _NON_RETRYABLE_PROVIDER_ERROR: ClassVar[type[BaseException]] = genai_errors.ClientError
 
     def __init__(
         self,
@@ -38,51 +38,37 @@ class GeminiInterface(BaseLlmInterface):
     def model_name(self) -> str:
         return self._model
 
-    @retry(
-        retry=retry_if_exception_type(genai_errors.ServerError),
-        wait=wait_exponential(multiplier=1, min=2, max=30),
-        stop=stop_after_attempt(3),
-        reraise=True,
-    )
-    def generate_json(
+    @property
+    def _logger(self) -> logging.Logger:
+        return _logger
+
+    def _call_provider(
         self,
         system_prompt: str,
         user_payload: Mapping[str, Any],
-    ) -> dict[str, Any]:
-        try:
-            response = self._client.models.generate_content(
-                model=self._model,
-                contents=json.dumps(dict(user_payload)),
-                config=genai_types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    response_mime_type="application/json",
-                    temperature=self._temperature,
-                    max_output_tokens=self._max_tokens,
-                ),
-            )
-            raw = response.text
-            if not raw or not raw.strip():
-                finish_reason = (
-                    response.candidates[0].finish_reason
-                    if response.candidates
-                    else None
-                )
-                _logger.warning(
-                    "Gemini risposta vuota | finish_reason: %s | usage_metadata: %s",
-                    finish_reason,
-                    response.usage_metadata,
-                )
-                raise RuntimeError("Risposta vuota dal provider Gemini.")
-            result: dict[str, Any] = json.loads(raw)
-            if not result:
-                raise RuntimeError("Il provider Gemini ha risposto con un JSON vuoto.")
-            return result
-        except genai_errors.ServerError:
-            raise
-        except genai_errors.ClientError as exc:
-            raise RuntimeError(f"Errore API Gemini: {exc}") from exc
-        except json.JSONDecodeError as exc:
-            _logger.warning("Risposta raw non decodificabile di Gemini: %r", raw)
-            raise RuntimeError(
-                f"Impossibile decodificare la risposta JSON di Gemini: {exc}"
-            ) from exc
+    ) -> Any:
+        return self._client.models.generate_content(
+            model=self._model,
+            contents=json.dumps(dict(user_payload)),
+            config=genai_types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                response_mime_type="application/json",
+                temperature=self._temperature,
+                max_output_tokens=self._max_tokens,
+            ),
+        )
+
+    def _extract_text(self, response: Any) -> str:
+        return response.text or ""
+
+    def _log_empty_response(self, response: Any) -> None:
+        finish_reason = (
+            response.candidates[0].finish_reason
+            if response.candidates
+            else None
+        )
+        self._logger.warning(
+            "Gemini risposta vuota | finish_reason: %s | usage_metadata: %s",
+            finish_reason,
+            response.usage_metadata,
+        )

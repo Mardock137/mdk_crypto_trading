@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Mapping
+from typing import Any, ClassVar, Mapping
 
 from anthropic import (
     Anthropic,
@@ -12,24 +12,10 @@ from anthropic import (
     InternalServerError,
     RateLimitError,
 )
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
 
 _logger = logging.getLogger("mdk_crypto_trading.anthropic_interface")
-
-# Eccezioni temporanee su cui fare retry automatico
-_RETRYABLE_ERRORS = (
-    RateLimitError,
-    APIConnectionError,
-    APITimeoutError,
-    InternalServerError,
-)
 
 
 class AnthropicInterface(BaseLlmInterface):
@@ -47,6 +33,15 @@ class AnthropicInterface(BaseLlmInterface):
       risposta viene estratta concatenando solo i blocchi ``text`` (scartando
       quelli ``thinking``).
     """
+
+    _PROVIDER_NAME: ClassVar[str] = "Anthropic"
+    _RETRYABLE_ERRORS: ClassVar[tuple[type[BaseException], ...]] = (
+        RateLimitError,
+        APIConnectionError,
+        APITimeoutError,
+        InternalServerError,
+    )
+    _NON_RETRYABLE_PROVIDER_ERROR: ClassVar[type[BaseException]] = APIStatusError
 
     def __init__(
         self,
@@ -66,6 +61,10 @@ class AnthropicInterface(BaseLlmInterface):
     def model_name(self) -> str:
         return self._model
 
+    @property
+    def _logger(self) -> logging.Logger:
+        return _logger
+
     def _build_kwargs(self) -> dict[str, Any]:
         """Costruisce i kwargs dinamici per messages.create().
 
@@ -81,71 +80,52 @@ class AnthropicInterface(BaseLlmInterface):
             kwargs["temperature"] = self._temperature
         return kwargs
 
-    @retry(
-        retry=retry_if_exception_type(_RETRYABLE_ERRORS),
-        wait=wait_exponential(multiplier=1, min=2, max=30),
-        stop=stop_after_attempt(3),
-        reraise=True,
-    )
-    def generate_json(
+    def _call_provider(
         self,
         system_prompt: str,
         user_payload: Mapping[str, Any],
-    ) -> dict[str, Any]:
-        try:
-            response = self._client.messages.create(
-                model=self._model,
-                max_tokens=self._max_tokens,
-                system=system_prompt,
-                messages=[
-                    {"role": "user", "content": json.dumps(dict(user_payload))}
-                ],
-                **self._build_kwargs(),
-            )
-            raw = _extract_text(response)
-            if not raw or not raw.strip():
-                _logger.warning(
-                    "Anthropic risposta vuota | stop_reason: %s | usage: %s",
-                    response.stop_reason,
-                    response.usage,
-                )
-                raise RuntimeError("Risposta vuota dal provider Anthropic.")
-            result: dict[str, Any] = json.loads(_strip_markdown_json(raw))
-            if not result:
-                raise RuntimeError("Il provider Anthropic ha risposto con un JSON vuoto.")
-            return result
-        except _RETRYABLE_ERRORS:
-            raise
-        except APIStatusError as exc:
-            raise RuntimeError(f"Errore API Anthropic: {exc}") from exc
-        except json.JSONDecodeError as exc:
-            _logger.warning("Risposta raw non decodificabile di Anthropic: %r", raw)
-            raise RuntimeError(
-                f"Impossibile decodificare la risposta JSON di Anthropic: {exc}"
-            ) from exc
+    ) -> Any:
+        return self._client.messages.create(
+            model=self._model,
+            max_tokens=self._max_tokens,
+            system=system_prompt,
+            messages=[
+                {"role": "user", "content": json.dumps(dict(user_payload))},
+            ],
+            **self._build_kwargs(),
+        )
 
+    def _extract_text(self, response: Any) -> str:
+        """Estrae il testo dalla risposta Anthropic, ignorando i blocchi thinking.
 
-def _extract_text(response: Any) -> str:
-    """Estrae il testo dalla risposta Anthropic, ignorando i blocchi thinking.
+        La risposta Anthropic e una lista di content blocks. I modelli con thinking
+        (es. Opus 4.7) possono includere blocchi ``thinking`` insieme a quelli
+        ``text``: questi vanno scartati a prescindere dal loro contenuto (su Opus
+        4.7 di default arrivano vuoti, ma con ``display: "summarized"`` possono
+        contenere un riassunto del ragionamento). I modelli classici restituiscono
+        solo blocchi ``text``. Consideriamo "text" qualsiasi blocco che non sia
+        esplicitamente ``thinking``, per retrocompatibilita.
+        """
+        if not response.content:
+            return ""
+        parts: list[str] = []
+        for block in response.content:
+            if getattr(block, "type", None) == "thinking":
+                continue
+            text = getattr(block, "text", "") or ""
+            if isinstance(text, str) and text:
+                parts.append(text)
+        return "".join(parts)
 
-    La risposta Anthropic e una lista di content blocks. I modelli con thinking
-    (es. Opus 4.7) possono includere blocchi ``thinking`` insieme a quelli
-    ``text``: questi vanno scartati a prescindere dal loro contenuto (su Opus
-    4.7 di default arrivano vuoti, ma con ``display: "summarized"`` possono
-    contenere un riassunto del ragionamento). I modelli classici restituiscono
-    solo blocchi ``text``. Consideriamo "text" qualsiasi blocco che non sia
-    esplicitamente ``thinking``, per retrocompatibilita.
-    """
-    if not response.content:
-        return ""
-    parts: list[str] = []
-    for block in response.content:
-        if getattr(block, "type", None) == "thinking":
-            continue
-        text = getattr(block, "text", "") or ""
-        if isinstance(text, str) and text:
-            parts.append(text)
-    return "".join(parts)
+    def _log_empty_response(self, response: Any) -> None:
+        self._logger.warning(
+            "Anthropic risposta vuota | stop_reason: %s | usage: %s",
+            response.stop_reason,
+            response.usage,
+        )
+
+    def _strip_response(self, raw: str) -> str:
+        return _strip_markdown_json(raw)
 
 
 def _strip_markdown_json(text: str) -> str:
@@ -160,7 +140,6 @@ def _strip_markdown_json(text: str) -> str:
     """
     stripped = text.strip()
 
-    # Caso 1: code block markdown (```json ... ``` oppure ``` ... ```)
     if stripped.startswith("```"):
         first_newline = stripped.find("\n")
         if first_newline != -1:
@@ -169,11 +148,9 @@ def _strip_markdown_json(text: str) -> str:
                 inner = inner.rstrip()[:-3].rstrip()
             return inner.strip()
 
-    # Caso 2: testo extra prima o dopo il JSON — estrae dal primo '{' all'ultimo '}'
     start = stripped.find("{")
     end = stripped.rfind("}")
     if start != -1 and end != -1 and end > start:
         return stripped[start : end + 1]
 
-    # Caso 3: stringa invariata (gia JSON puro o vuota — gestita a monte)
     return stripped
