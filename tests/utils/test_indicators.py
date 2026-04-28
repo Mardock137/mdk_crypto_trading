@@ -1,6 +1,16 @@
 from __future__ import annotations
 
-from src.utils.indicators import ema, macd, rsi, sma
+from src.utils.indicators import compute_indicators_bundle, ema, macd, rsi, sma
+
+
+_EXPECTED_BUNDLE_KEYS = {
+    "rsi", "rsi_prev",
+    "ema_21", "ema_21_prev",
+    "sma_50", "sma_50_prev",
+    "macd", "macd_prev",
+    "macd_signal", "macd_signal_prev",
+    "macd_hist", "macd_hist_prev",
+}
 
 
 # ---- Dati insufficienti → None ----
@@ -67,3 +77,53 @@ def test_macd_returns_three_floats() -> None:
     assert isinstance(histogram, float)
     # Con serie crescente, MACD dovrebbe essere positivo
     assert macd_line > 0
+
+
+# ---- compute_indicators_bundle ----
+
+
+def test_bundle_returns_all_12_keys_on_sufficient_data() -> None:
+    """Con una serie abbastanza lunga, il dict ritornato ha tutte le 12 chiavi attese
+    e i valori non sono None."""
+    closes = [100.0 + i * 0.5 for i in range(60)]
+    bundle = compute_indicators_bundle(closes)
+
+    assert set(bundle.keys()) == _EXPECTED_BUNDLE_KEYS
+    for key, value in bundle.items():
+        assert value is not None, f"Atteso valore non-None per {key!r}"
+
+
+def test_bundle_prev_values_match_calc_on_closes_minus_last() -> None:
+    """I valori `*_prev` devono coincidere con il calcolo degli indicatori
+    sulla serie `closes[:-1]`."""
+    closes = [100.0 + i * 0.5 for i in range(60)]
+    bundle = compute_indicators_bundle(closes)
+    closes_prev = closes[:-1]
+
+    assert bundle["rsi_prev"] == rsi(closes_prev, period=14)
+    assert bundle["ema_21_prev"] == ema(closes_prev, period=21)
+    assert bundle["sma_50_prev"] == sma(closes_prev, period=50)
+
+    macd_prev = macd(closes_prev)
+    assert macd_prev is not None
+    assert bundle["macd_prev"] == macd_prev[0]
+    assert bundle["macd_signal_prev"] == macd_prev[1]
+    assert bundle["macd_hist_prev"] == macd_prev[2]
+
+
+def test_bundle_returns_all_12_keys_with_none_on_short_input() -> None:
+    """Con una serie troppo corta, il dict ritornato ha comunque tutte le 12 chiavi,
+    con valori `None` per gli indicatori che richiedono più dati."""
+    bundle = compute_indicators_bundle([1.0, 2.0, 3.0])
+
+    assert set(bundle.keys()) == _EXPECTED_BUNDLE_KEYS
+    for value in bundle.values():
+        assert value is None
+
+
+def test_bundle_with_empty_list_returns_all_none() -> None:
+    bundle = compute_indicators_bundle([])
+
+    assert set(bundle.keys()) == _EXPECTED_BUNDLE_KEYS
+    for value in bundle.values():
+        assert value is None

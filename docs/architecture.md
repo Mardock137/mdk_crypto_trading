@@ -111,18 +111,18 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 `BinanceClient` espone:
 
 - `ping()` / `get_account_info()`: verifica connessione e autenticazione
-- `get_market_snapshot(symbol)`: raccoglie prezzo, volume, order book, candele multi-timeframe e calcola indicatori tecnici (RSI, EMA, SMA, MACD)
+- `get_market_snapshot(symbol)`: raccoglie prezzo, volume, order book, candele multi-timeframe e fetcha i closes 1h. Il calcolo degli indicatori tecnici (RSI, EMA, SMA, MACD su serie corrente e precedente) è delegato a `utils/indicators.py::compute_indicators_bundle`
 - `get_portfolio_state(symbol)`: raccoglie saldi quote currency e coin, ordini aperti, ultimi trade. La quote currency (es. USDC) è configurabile in `symbols.yaml` e passata al costruttore
 - `place_market_order(symbol, side, quantity)`: piazza un ordine a mercato (solo BUY/SELL, altrimenti `ValueError`)
 - `place_limit_order(symbol, side, quantity, price)`: piazza un ordine limit GTC (solo BUY/SELL, altrimenti `ValueError`)
 - `cancel_order(symbol, order_id)`: cancella un ordine aperto
 
-I 4 metodi di sola lettura (`ping`, `get_account_info`, `get_market_snapshot`, `get_portfolio_state`) hanno retry automatico con backoff esponenziale tramite `tenacity` (max 3 tentativi, solo su errori retriabili). I metodi di scrittura non hanno retry per evitare operazioni duplicate.
+**Retry policy**: i 4 metodi di sola lettura (`ping`, `get_account_info`, `get_market_snapshot`, `get_portfolio_state`) e `cancel_order` hanno retry automatico con backoff esponenziale tramite `tenacity` (max 3 tentativi, solo su errori retriabili). `cancel_order` è incluso perché Binance lo gestisce in modo idempotente: cancellare due volte un ordine già cancellato è innocuo. `place_market_order` e `place_limit_order` invece **non hanno retry**: senza idempotency key (`newClientOrderId`) un retry su risposta persa per timeout potrebbe creare un ordine duplicato. La gestione di failure transienti sui place order è demandata al chiamante (`ExecutionTraderAgent`).
 
 ### `src/utils/`
 
 - `config.py`: caricamento variabili d'ambiente (`.env`) e file YAML (`trading.yaml`, `symbols.yaml`, configurazioni LLM); include `load_mandate` per parsare l'investment mandate
-- `indicators.py`: funzioni pure per il calcolo di RSI, EMA, SMA, MACD da una serie di prezzi di chiusura
+- `indicators.py`: funzioni pure per il calcolo di RSI, EMA, SMA, MACD da una serie di prezzi di chiusura, più `compute_indicators_bundle(closes)` che produce in un'unica chiamata il dict di 12 chiavi (valore corrente + valore precedente) consumato da `MarketDataSnapshot.indicators`
 - `logging_config.py`: logging su console (Rich) e su file con rotazione automatica (5 MB, 5 backup)
 - `event_logger.py`: log JSON strutturato per le decisioni di ogni ciclo operativo
 - `event_log_reader.py`: `load_recent_events` legge i file JSONL degli ultimi N giorni filtrati per simbolo (usato dal Performance Reviewer)

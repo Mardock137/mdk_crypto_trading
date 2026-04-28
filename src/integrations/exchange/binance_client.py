@@ -88,9 +88,11 @@ class BinanceClient(BaseExchangeClient):
 
         candles = self._fetch_candles(symbol)
 
-        # Indicatori calcolati sulle kline 1h (almeno 60 candele)
+        # Indicatori calcolati sulle kline 1h (almeno 60 candele).
+        # Il calcolo vero e proprio vive in src/utils/indicators.py: l'exchange si
+        # limita a fetchare i closes e a delegare il bundle.
         closes_1h = self._get_hourly_closes(symbol)
-        indicator_values = self._compute_indicators(closes_1h)
+        indicator_values = indicators.compute_indicators_bundle(closes_1h)
 
         return MarketDataSnapshot(
             symbol=symbol,
@@ -148,6 +150,10 @@ class BinanceClient(BaseExchangeClient):
 
     # ---- Esecuzione ordini ----
 
+    # NOTE: nessun @_binance_retry su place_market_order/place_limit_order.
+    # Senza idempotency key (newClientOrderId) un retry su risposta persa per timeout
+    # potrebbe creare un secondo ordine duplicato. La gestione di un'eventuale failure
+    # transiente sugli ordini è demandata al chiamante (ExecutionTraderAgent).
     def place_market_order(
         self, symbol: str, side: str, quantity: float,
     ) -> dict[str, Any]:
@@ -173,6 +179,8 @@ class BinanceClient(BaseExchangeClient):
             )
         return result
 
+    # Stessa motivazione di place_market_order: nessun retry per evitare ordini
+    # duplicati in caso di risposta persa per timeout.
     def place_limit_order(
         self, symbol: str, side: str, quantity: float, price: float,
     ) -> dict[str, Any]:
@@ -197,7 +205,10 @@ class BinanceClient(BaseExchangeClient):
             )
         return result
 
+    @_binance_retry
     def cancel_order(self, symbol: str, order_id: str) -> dict[str, Any]:
+        # Cancel è idempotente lato Binance: cancellare due volte un ordine
+        # già cancellato/inesistente è innocuo, quindi il retry è sicuro.
         result: dict[str, Any] = self._client.cancel_order(
             symbol=symbol, orderId=order_id,
         )
@@ -330,37 +341,3 @@ class BinanceClient(BaseExchangeClient):
             symbol=symbol, interval="1h", limit=60,
         )
         return [float(k[4]) for k in raw]
-
-    def _compute_indicators(
-        self, closes: list[float],
-    ) -> dict[str, float | None]:
-        """Calcola tutti gli indicatori tecnici e i valori precedenti."""
-        # Valori attuali (su tutta la serie) e precedenti (serie senza l'ultimo valore)
-        closes_prev = closes[:-1] if len(closes) > 1 else closes
-
-        rsi_val = indicators.rsi(closes, period=14)
-        rsi_prev = indicators.rsi(closes_prev, period=14)
-
-        ema_val = indicators.ema(closes, period=21)
-        ema_prev = indicators.ema(closes_prev, period=21)
-
-        sma_val = indicators.sma(closes, period=50)
-        sma_prev = indicators.sma(closes_prev, period=50)
-
-        macd_val = indicators.macd(closes)
-        macd_prev = indicators.macd(closes_prev)
-
-        return {
-            "rsi": rsi_val,
-            "rsi_prev": rsi_prev,
-            "ema_21": ema_val,
-            "ema_21_prev": ema_prev,
-            "sma_50": sma_val,
-            "sma_50_prev": sma_prev,
-            "macd": macd_val[0] if macd_val else None,
-            "macd_prev": macd_prev[0] if macd_prev else None,
-            "macd_signal": macd_val[1] if macd_val else None,
-            "macd_signal_prev": macd_prev[1] if macd_prev else None,
-            "macd_hist": macd_val[2] if macd_val else None,
-            "macd_hist_prev": macd_prev[2] if macd_prev else None,
-        }

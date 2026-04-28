@@ -80,7 +80,7 @@
  │    │    ├── 📄 cycle_skip.py                              # Pre-check deterministico: decide se saltare un ciclo quando il contesto e' invariato.
  │    │    ├── 📄 event_log_reader.py                        # Lettura eventi JSONL recenti usata dal Performance Reviewer.
  │    │    ├── 📄 event_logger.py                            # Logger JSON strutturato per le decisioni di ogni ciclo.
- │    │    ├── 📄 indicators.py                              # Indicatori tecnici: RSI, EMA, SMA, MACD.
+ │    │    ├── 📄 indicators.py                              # Indicatori tecnici (RSI, EMA, SMA, MACD) + `compute_indicators_bundle` (valori correnti + precedenti).
  │    │    ├── 📄 logging_config.py                          # Configurazione centralizzata del logging (console + file).
  │    │    ├── 📄 memory_manager.py                          # Persistenza e recupero delle decisioni passate (JSONL) per la memoria del Decision Maker.
  │    │    ├── 📄 performance_stats.py                       # build_performance_stats deterministica + writer del report markdown.

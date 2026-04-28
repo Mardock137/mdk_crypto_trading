@@ -1,6 +1,22 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.10 — 2026-04-28
+
+### Modificato
+
+- `src/utils/indicators.py`: aggiunta la funzione pubblica `compute_indicators_bundle(closes)` che calcola RSI(14), EMA(21), SMA(50) e MACD sia sulla serie intera sia sulla serie precedente (`closes[:-1]`) e restituisce il dict di 12 chiavi consumato da `MarketDataSnapshot.indicators` (`rsi`, `rsi_prev`, `ema_21`, `ema_21_prev`, ecc.). Le 4 funzioni base (`sma`, `ema`, `rsi`, `macd`) restano invariate.
+- `src/integrations/exchange/binance_client.py`: rimosso il metodo privato `_compute_indicators` (~33 righe). Il calcolo degli indicatori non era responsabilità dell'exchange e viveva nel posto sbagliato. `get_market_snapshot` ora fetcha solo i closes 1h e delega tutto il calcolo a `indicators.compute_indicators_bundle`. `_get_hourly_closes` resta dov'è (è exchange-specific).
+- `src/integrations/exchange/binance_client.py`: aggiunto `@_binance_retry` a `cancel_order`. L'operazione è idempotente lato Binance (cancellare due volte un ordine inesistente è innocuo), quindi il retry è sicuro e uniforma il comportamento agli altri metodi di lettura.
+- `src/integrations/exchange/binance_client.py`: aggiunto sopra `place_market_order` e `place_limit_order` un commento che spiega esplicitamente perché **non** hanno retry: senza idempotency key (`newClientOrderId`) un retry su risposta persa per timeout potrebbe creare un secondo ordine duplicato. La gestione di failure transienti sui place order è demandata al chiamante (`ExecutionTraderAgent`).
+- `tests/utils/test_indicators.py`: aggiunti 4 test per `compute_indicators_bundle`: presenza di tutte e 12 le chiavi su input sufficiente, coerenza dei valori `*_prev` con il calcolo su `closes[:-1]`, gestione dell'input troppo corto e dell'input vuoto (tutte le chiavi presenti con valore `None`).
+- `docs/architecture.md`: aggiornata la descrizione di `get_market_snapshot` (delega del calcolo a `indicators.py`) e introdotta una sezione esplicita sulla retry policy del `BinanceClient` (read + `cancel_order` con retry, place order senza retry e perché). Aggiornata anche la descrizione di `indicators.py` per menzionare `compute_indicators_bundle`.
+- `docs/repo_structure.md`: aggiornata la descrizione di `indicators.py` per menzionare `compute_indicators_bundle`.
+
+Nessun cambio di comportamento osservabile dall'esterno: `MarketDataSnapshot.indicators` continua ad essere popolato con esattamente le stesse 12 chiavi e gli stessi valori di prima.
+
+---
+
 ## 1.13.9 — 2026-04-28
 
 ### Modificato
