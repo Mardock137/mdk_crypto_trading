@@ -131,6 +131,7 @@ def test_workflow_runs_agents_in_expected_order() -> None:
         constraints=OperationConstraints(
             cycle_interval_seconds=7200,
             min_order_usdc=10.0,
+            max_order_notional_usdc=100.0,
         ),
         mandate=InvestmentMandate(
             max_drawdown_pct=15.0,
@@ -178,6 +179,7 @@ def test_workflow_does_not_execute_when_risk_blocks() -> None:
         constraints=OperationConstraints(
             cycle_interval_seconds=7200,
             min_order_usdc=10.0,
+            max_order_notional_usdc=100.0,
         ),
         mandate=InvestmentMandate(
             max_drawdown_pct=15.0,
@@ -221,6 +223,7 @@ def test_workflow_does_not_execute_when_risk_requests_adjustment() -> None:
         constraints=OperationConstraints(
             cycle_interval_seconds=7200,
             min_order_usdc=10.0,
+            max_order_notional_usdc=100.0,
         ),
         mandate=InvestmentMandate(
             max_drawdown_pct=15.0,

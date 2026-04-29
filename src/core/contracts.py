@@ -81,6 +81,7 @@ class PortfolioState:
 class OperationConstraints:
     cycle_interval_seconds: int
     min_order_usdc: float
+    max_order_notional_usdc: float
 
 
 @dataclass(slots=True)
@@ -230,6 +231,10 @@ class ExecutionInput:
     symbol: str
     proposal: TradeProposal
     risk_assessment: RiskAssessment
+    portfolio: PortfolioState
+    mandate: InvestmentMandate
+    max_order_notional_usdc: float
+    current_price: float | None = None
 
 
 @dataclass(slots=True)

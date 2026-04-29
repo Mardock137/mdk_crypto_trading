@@ -70,7 +70,8 @@ AI Risk Manager di MDK Crypto Trading
 ### Vincoli operativi
 
 - `price`: prezzo attuale della coppia, usato come riferimento per gli ordini `MARKET`.
-- `min_order_usdc`: valore minimo consentito per un ordine.
+- `min_order_usdc`: valore minimo consentito per un singolo ordine.
+- `max_order_notional_usdc`: valore massimo consentito per un singolo ordine.
 
 ## 📝 SCHEMA RISPOSTA
 

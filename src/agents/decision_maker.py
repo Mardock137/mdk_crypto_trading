@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import math
 from typing import Any
 
 from src.agents.base_agent import BaseLlmAgent, unwrap_llm_response
@@ -49,7 +50,7 @@ def _parse_trade_proposal(data: Any) -> TradeProposal:
 
     action = TradeAction(data["action"])
     order_type = OrderType(data["order_type"])
-    confidence = float(data["confidence"])
+    confidence = _validate_confidence(float(data["confidence"]))
     reason = str(data["reason"])
     raw_details: dict[str, Any] = data.get("details", {})
 
@@ -58,16 +59,20 @@ def _parse_trade_proposal(data: Any) -> TradeProposal:
         details = TradeProposalDetails()
     elif action is TradeAction.CANCEL_AND_REPLACE_ORDER:
         details = TradeProposalDetails(
-            quantity=float(raw_details["quantity"]),
-            price=float(raw_details["price"]),
+            quantity=_validate_finite_positive(float(raw_details["quantity"]), "quantity"),
+            price=_validate_finite_positive(float(raw_details["price"]), "price"),
             order_id=str(raw_details["order_id"]),
             side=OrderSide(raw_details["side"]),
         )
     else:
         # BUY o SELL
         details = TradeProposalDetails(
-            quantity=float(raw_details["quantity"]),
-            price=float(raw_details["price"]) if "price" in raw_details else None,
+            quantity=_validate_finite_positive(float(raw_details["quantity"]), "quantity"),
+            price=(
+                _validate_finite_positive(float(raw_details["price"]), "price")
+                if "price" in raw_details
+                else None
+            ),
         )
 
     return TradeProposal(
@@ -77,3 +82,21 @@ def _parse_trade_proposal(data: Any) -> TradeProposal:
         reason=reason,
         details=details,
     )
+
+
+def _validate_finite_positive(value: float, field_name: str) -> float:
+    """Verifica che il valore sia un numero finito e positivo."""
+    if not math.isfinite(value):
+        raise ValueError(f"Campo '{field_name}' non finito: {value}")
+    if value <= 0:
+        raise ValueError(f"Campo '{field_name}' deve essere > 0, ricevuto: {value}")
+    return value
+
+
+def _validate_confidence(value: float) -> float:
+    """Verifica che la confidence sia nel range [0.0, 1.0]."""
+    if not math.isfinite(value):
+        raise ValueError(f"Campo 'confidence' non finito: {value}")
+    if not (0.0 <= value <= 1.0):
+        raise ValueError(f"Campo 'confidence' fuori range [0, 1]: {value}")
+    return value

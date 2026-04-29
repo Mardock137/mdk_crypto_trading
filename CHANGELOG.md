@@ -1,6 +1,23 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.12 — 2026-04-29
+
+### Aggiunto
+
+- `config/trading.yaml`: nuovo campo `max_order_notional_usdc` (default `100.0`) che definisce il cap massimo di notional per singolo ordine, in USDC.
+- `src/core/contracts.py`: `OperationConstraints` esteso con `max_order_notional_usdc: float`; `ExecutionInput` esteso con `portfolio: PortfolioState`, `mandate: InvestmentMandate`, `max_order_notional_usdc: float` e `current_price: float | None`. I nuovi campi portano all'executor tutte le informazioni necessarie per i guardrail deterministici.
+- `src/core/runner.py`: `_build_cycle_input` legge `max_order_notional_usdc` dal `trading_config` e lo popola in `OperationConstraints`.
+- `src/core/workflow.py`: `run_cycle` passa i nuovi campi (`portfolio`, `mandate`, `current_price`, `max_order_notional_usdc`) a `ExecutionInput`.
+- `src/agents/decision_maker.py`: due helper privati `_validate_finite_positive` e `_validate_confidence` validano ogni valore numerico estratto dalla risposta LLM (`quantity`, `price`, `confidence`) controllando `math.isfinite`, positività e range `[0, 1]`. Un valore invalido solleva `ValueError`, che il retry di `BaseLlmAgent._call_llm_with_retry` gestisce già.
+- `src/agents/execution_trader.py`: nuovo metodo privato `_validate_guardrails(agent_input)` invocato dopo i check `is_approved` e `is_hold`, prima di `_execute_order`. Implementa 4 controlli in ordine: (1) validazione numerica difensiva di `quantity` e `price`; (2) cap notional massimo per ordine (`quantity × reference_price > max_order_notional_usdc`); (3) cap percentuale sul portafoglio (`notional / portfolio.usdc_value > mandate.max_position_pct`); (4) verifica che l'`order_id` di `CANCEL_AND_REPLACE_ORDER` esista in `portfolio.open_orders`. Ogni blocco produce un `ExecutionReport` con `execution_status=NOT_EXECUTED` e `reason` con prefisso `"Guardrail: …"` riconoscibile nei log eventi.
+- `docs/config.md`: aggiunta documentazione del campo `max_order_notional_usdc`.
+- Test aggiornati e ampliati: `tests/agents/test_decision_maker.py` (5 nuovi test per validazione `nan`/`inf`/negativo/confidence fuori range), `tests/agents/test_execution_trader.py` (5 nuovi test guardrail + helper `_make_input` aggiornato con i nuovi campi), `tests/core/test_workflow.py` (aggiornati i 3 costruttori di `OperationConstraints`).
+
+Nessun cambio comportamentale per i cicli in cui le proposte LLM sono valide e il notional è entro i limiti. Il guardrail ha l'ultima parola solo in caso di valori anomali o superamento dei cap.
+
+---
+
 ## 1.13.11 — 2026-04-29
 
 ### Modificato

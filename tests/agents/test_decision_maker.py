@@ -221,7 +221,7 @@ def _make_dm_input() -> DecisionMakerInput:
             summary="Neutrale.",
             suggested_action=SuggestedAction.NO_TRADE_BIAS,
         ),
-        constraints=OperationConstraints(cycle_interval_seconds=3600, min_order_usdc=10.0),
+        constraints=OperationConstraints(cycle_interval_seconds=3600, min_order_usdc=10.0, max_order_notional_usdc=100.0),
         mandate=_make_mandate(),
     )
 
@@ -311,3 +311,65 @@ def test_agent_warning_includes_raw_response() -> None:
     mock_logger.warning.assert_called_once()
     warning_args = mock_logger.warning.call_args.args
     assert "Risposta:" in warning_args[0]
+
+
+# --- Validazione numerica: isfinite / positive / confidence range ---
+
+def test_parse_buy_market_nan_quantity_raises() -> None:
+    data = {
+        "action": "BUY",
+        "order_type": "MARKET",
+        "confidence": 0.8,
+        "reason": "segnale",
+        "details": {"quantity": float("nan")},
+    }
+    with pytest.raises(ValueError, match="quantity"):
+        _parse_trade_proposal(data)
+
+
+def test_parse_sell_limit_inf_price_raises() -> None:
+    data = {
+        "action": "SELL",
+        "order_type": "LIMIT",
+        "confidence": 0.7,
+        "reason": "segnale",
+        "details": {"quantity": 0.001, "price": float("inf")},
+    }
+    with pytest.raises(ValueError, match="price"):
+        _parse_trade_proposal(data)
+
+
+def test_parse_buy_market_negative_quantity_raises() -> None:
+    data = {
+        "action": "BUY",
+        "order_type": "MARKET",
+        "confidence": 0.8,
+        "reason": "segnale",
+        "details": {"quantity": -0.001},
+    }
+    with pytest.raises(ValueError, match="quantity"):
+        _parse_trade_proposal(data)
+
+
+def test_parse_confidence_out_of_range_raises() -> None:
+    data = {
+        "action": "HOLD",
+        "order_type": "NONE",
+        "confidence": 1.5,
+        "reason": "segnale",
+        "details": {},
+    }
+    with pytest.raises(ValueError, match="confidence"):
+        _parse_trade_proposal(data)
+
+
+def test_parse_confidence_nan_raises() -> None:
+    data = {
+        "action": "HOLD",
+        "order_type": "NONE",
+        "confidence": float("nan"),
+        "reason": "segnale",
+        "details": {},
+    }
+    with pytest.raises(ValueError, match="confidence"):
+        _parse_trade_proposal(data)

@@ -152,7 +152,7 @@ def _make_rm_input() -> RiskManagerInput:
             summary="Neutrale.",
             suggested_action=SuggestedAction.NO_TRADE_BIAS,
         ),
-        constraints=OperationConstraints(cycle_interval_seconds=3600, min_order_usdc=10.0),
+        constraints=OperationConstraints(cycle_interval_seconds=3600, min_order_usdc=10.0, max_order_notional_usdc=100.0),
     )
 
 

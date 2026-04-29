@@ -8,8 +8,10 @@ from src.agents.execution_trader import ExecutionTraderAgent
 from src.core.contracts import (
     ExecutionInput,
     ExecutionStatus,
+    InvestmentMandate,
     OrderSide,
     OrderType,
+    PortfolioState,
     RiskAssessment,
     RiskDecision,
     TradeAction,
@@ -17,14 +19,37 @@ from src.core.contracts import (
     TradeProposalDetails,
 )
 
+_DEFAULT_PORTFOLIO = PortfolioState(
+    usdc_balance=1000.0,
+    usdc_balance_total=1000.0,
+    usdc_value=1000.0,
+    portfolio_qty_free=0.0,
+    portfolio_qty_total=0.0,
+)
+
+_DEFAULT_MANDATE = InvestmentMandate(
+    max_drawdown_pct=15.0,
+    horizon="Intraday to swing",
+    max_position_pct=70.0,
+)
+
+
 def _make_input(
     proposal: TradeProposal,
     risk: RiskAssessment,
+    portfolio: PortfolioState = _DEFAULT_PORTFOLIO,
+    mandate: InvestmentMandate = _DEFAULT_MANDATE,
+    current_price: float | None = 100_000.0,
+    max_order_notional_usdc: float = 100_000.0,
 ) -> ExecutionInput:
     return ExecutionInput(
         symbol="BTCUSDC",
         proposal=proposal,
         risk_assessment=risk,
+        portfolio=portfolio,
+        mandate=mandate,
+        max_order_notional_usdc=max_order_notional_usdc,
+        current_price=current_price,
     )
 
 
@@ -154,8 +179,16 @@ def test_cancel_and_replace_calls_cancel_then_limit() -> None:
             order_id="999", side=OrderSide.BUY, quantity=0.001, price=97250.0,
         ),
     )
+    portfolio_with_open_order = PortfolioState(
+        usdc_balance=1000.0,
+        usdc_balance_total=1000.0,
+        usdc_value=1000.0,
+        portfolio_qty_free=0.0,
+        portfolio_qty_total=0.0,
+        open_orders=[{"orderId": "999", "clientOrderId": "abc"}],
+    )
     agent = ExecutionTraderAgent(exchange_client=mock_exchange)
-    report = agent.run(_make_input(proposal, APPROVED))
+    report = agent.run(_make_input(proposal, APPROVED, portfolio=portfolio_with_open_order))
 
     assert report.execution_status is ExecutionStatus.EXECUTED
     mock_exchange.cancel_order.assert_called_once_with("BTCUSDC", "999")
@@ -197,6 +230,7 @@ def test_sell_limit_without_price_returns_failed() -> None:
 
 
 def test_cancel_replace_without_order_id_returns_failed() -> None:
+    """Con order_id=None il guardrail blocca l'operazione prima dell'exchange (NOT_EXECUTED)."""
     proposal = TradeProposal(
         action=TradeAction.CANCEL_AND_REPLACE_ORDER,
         order_type=OrderType.LIMIT,
@@ -209,7 +243,7 @@ def test_cancel_replace_without_order_id_returns_failed() -> None:
     agent = ExecutionTraderAgent(exchange_client=MagicMock())
     report = agent.run(_make_input(proposal, APPROVED))
 
-    assert report.execution_status is ExecutionStatus.FAILED
+    assert report.execution_status is ExecutionStatus.NOT_EXECUTED
     assert "order_id" in report.reason
 
 
@@ -229,8 +263,16 @@ def test_cancel_and_replace_partial_failure_returns_failed() -> None:
             order_id="999", side=OrderSide.BUY, quantity=0.001, price=97250.0,
         ),
     )
+    portfolio_with_open_order = PortfolioState(
+        usdc_balance=1000.0,
+        usdc_balance_total=1000.0,
+        usdc_value=1000.0,
+        portfolio_qty_free=0.0,
+        portfolio_qty_total=0.0,
+        open_orders=[{"orderId": "999", "clientOrderId": "abc"}],
+    )
     agent = ExecutionTraderAgent(exchange_client=mock_exchange)
-    report = agent.run(_make_input(proposal, APPROVED))
+    report = agent.run(_make_input(proposal, APPROVED, portfolio=portfolio_with_open_order))
 
     assert report.execution_status is ExecutionStatus.FAILED
     assert "cancelled but replacement failed" in report.reason
@@ -254,3 +296,139 @@ def test_exchange_exception_returns_failed() -> None:
 
     assert report.execution_status is ExecutionStatus.FAILED
     assert "Timeout API" in report.reason
+
+
+# --- Guardrail: cap notional ---
+
+def test_guardrail_notional_cap_blocks_order() -> None:
+    """Un ordine il cui notional supera max_order_notional_usdc viene bloccato."""
+    proposal = TradeProposal(
+        action=TradeAction.BUY,
+        order_type=OrderType.LIMIT,
+        confidence=0.85,
+        reason="segnale forte",
+        details=TradeProposalDetails(quantity=0.01, price=50_000.0),
+    )
+    agent = ExecutionTraderAgent(exchange_client=MagicMock())
+    report = agent.run(_make_input(proposal, APPROVED, max_order_notional_usdc=400.0))
+
+    assert report.execution_status is ExecutionStatus.NOT_EXECUTED
+    assert "Guardrail" in report.reason
+    assert "notional" in report.reason
+
+
+def test_guardrail_notional_within_cap_passes() -> None:
+    """Un ordine entro il cap notional viene eseguito normalmente."""
+    mock_exchange = MagicMock()
+    mock_exchange.place_limit_order.return_value = {"orderId": "X"}
+    proposal = TradeProposal(
+        action=TradeAction.BUY,
+        order_type=OrderType.LIMIT,
+        confidence=0.85,
+        reason="segnale",
+        details=TradeProposalDetails(quantity=0.001, price=50_000.0),
+    )
+    agent = ExecutionTraderAgent(exchange_client=mock_exchange)
+    report = agent.run(_make_input(proposal, APPROVED, max_order_notional_usdc=1000.0))
+
+    assert report.execution_status is ExecutionStatus.EXECUTED
+
+
+# --- Guardrail: cap percentuale portafoglio ---
+
+def test_guardrail_portfolio_pct_cap_blocks_order() -> None:
+    """Un ordine che supera max_position_pct del portafoglio viene bloccato."""
+    portfolio = PortfolioState(
+        usdc_balance=0.0,
+        usdc_balance_total=0.0,
+        usdc_value=1000.0,
+        portfolio_qty_free=0.0,
+        portfolio_qty_total=0.0,
+    )
+    mandate = InvestmentMandate(
+        max_drawdown_pct=15.0,
+        horizon="Intraday",
+        max_position_pct=10.0,
+    )
+    proposal = TradeProposal(
+        action=TradeAction.BUY,
+        order_type=OrderType.LIMIT,
+        confidence=0.8,
+        reason="segnale",
+        details=TradeProposalDetails(quantity=0.002, price=100_000.0),
+    )
+    agent = ExecutionTraderAgent(exchange_client=MagicMock())
+    report = agent.run(
+        _make_input(
+            proposal, APPROVED,
+            portfolio=portfolio,
+            mandate=mandate,
+            max_order_notional_usdc=1_000_000.0,
+        )
+    )
+
+    assert report.execution_status is ExecutionStatus.NOT_EXECUTED
+    assert "Guardrail" in report.reason
+    assert "%" in report.reason
+
+
+# --- Guardrail: order_id non trovato per CANCEL_AND_REPLACE ---
+
+def test_guardrail_cancel_replace_unknown_order_id_blocks() -> None:
+    """CANCEL_AND_REPLACE bloccato se order_id non è negli open_orders."""
+    portfolio = PortfolioState(
+        usdc_balance=500.0,
+        usdc_balance_total=500.0,
+        usdc_value=1000.0,
+        portfolio_qty_free=0.0,
+        portfolio_qty_total=0.0,
+        open_orders=[{"orderId": "111", "clientOrderId": "abc"}],
+    )
+    proposal = TradeProposal(
+        action=TradeAction.CANCEL_AND_REPLACE_ORDER,
+        order_type=OrderType.LIMIT,
+        confidence=0.7,
+        reason="update prezzo",
+        details=TradeProposalDetails(
+            order_id="999", side=OrderSide.BUY, quantity=0.001, price=97000.0,
+        ),
+    )
+    agent = ExecutionTraderAgent(exchange_client=MagicMock())
+    report = agent.run(
+        _make_input(proposal, APPROVED, portfolio=portfolio, max_order_notional_usdc=1_000_000.0)
+    )
+
+    assert report.execution_status is ExecutionStatus.NOT_EXECUTED
+    assert "Guardrail" in report.reason
+    assert "order_id" in report.reason
+
+
+def test_guardrail_cancel_replace_known_order_id_passes() -> None:
+    """CANCEL_AND_REPLACE procede se order_id è presente in open_orders."""
+    mock_exchange = MagicMock()
+    mock_exchange.cancel_order.return_value = {"status": "CANCELED"}
+    mock_exchange.place_limit_order.return_value = {"orderId": "new_order"}
+
+    portfolio = PortfolioState(
+        usdc_balance=500.0,
+        usdc_balance_total=500.0,
+        usdc_value=1_000_000.0,
+        portfolio_qty_free=0.0,
+        portfolio_qty_total=0.0,
+        open_orders=[{"orderId": "999", "clientOrderId": "abc"}],
+    )
+    proposal = TradeProposal(
+        action=TradeAction.CANCEL_AND_REPLACE_ORDER,
+        order_type=OrderType.LIMIT,
+        confidence=0.7,
+        reason="update prezzo",
+        details=TradeProposalDetails(
+            order_id="999", side=OrderSide.BUY, quantity=0.001, price=97000.0,
+        ),
+    )
+    agent = ExecutionTraderAgent(exchange_client=mock_exchange)
+    report = agent.run(
+        _make_input(proposal, APPROVED, portfolio=portfolio, max_order_notional_usdc=1_000_000.0)
+    )
+
+    assert report.execution_status is ExecutionStatus.EXECUTED

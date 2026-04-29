@@ -66,6 +66,10 @@ class TradingWorkflow:
                 symbol=cycle_input.symbol,
                 proposal=trade_proposal,
                 risk_assessment=risk_assessment,
+                portfolio=cycle_input.portfolio,
+                mandate=cycle_input.mandate,
+                max_order_notional_usdc=cycle_input.constraints.max_order_notional_usdc,
+                current_price=cycle_input.market_data.price,
             )
         )
 

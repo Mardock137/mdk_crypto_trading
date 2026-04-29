@@ -220,6 +220,9 @@ class TradingRunner:
         constraints = OperationConstraints(
             cycle_interval_seconds=self._settings.cycle_interval_seconds,
             min_order_usdc=float(self._trading_config.get("min_order_usdc", 10.0)),
+            max_order_notional_usdc=float(
+                self._trading_config.get("max_order_notional_usdc", 100.0)
+            ),
         )
         return TradingCycleInput(
             symbol=self._symbol,

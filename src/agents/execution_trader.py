@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from typing import Any
 
 from src.agents.base_agent import BaseAgent
@@ -54,6 +55,10 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
                 reason="HOLD: nessuna operazione da eseguire.",
             )
 
+        guardrail_block = self._validate_guardrails(agent_input)
+        if guardrail_block is not None:
+            return guardrail_block
+
         try:
             details = self._execute_order(agent_input)
         except Exception as exc:
@@ -72,6 +77,99 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
             reason="Ordine eseguito con successo.",
             execution_details=details,
         )
+
+    def _validate_guardrails(self, agent_input: ExecutionInput) -> ExecutionReport | None:
+        """Controlla i guardrail deterministici prima di eseguire un ordine.
+
+        Ritorna un ``ExecutionReport`` di blocco se un guardrail fallisce,
+        ``None`` se tutti i controlli passano.
+        """
+        proposal = agent_input.proposal
+        details = proposal.details
+        portfolio = agent_input.portfolio
+        mandate = agent_input.mandate
+        max_notional = agent_input.max_order_notional_usdc
+
+        # 1. Validazione numerica difensiva
+        qty = details.quantity
+        price = details.price
+        if qty is not None and (not math.isfinite(qty) or qty <= 0):
+            return ExecutionReport(
+                execution_status=ExecutionStatus.NOT_EXECUTED,
+                executed_action=proposal.action,
+                order_type=proposal.order_type,
+                reason=f"Guardrail: quantity non valida ({qty})",
+            )
+        if price is not None and (not math.isfinite(price) or price <= 0):
+            return ExecutionReport(
+                execution_status=ExecutionStatus.NOT_EXECUTED,
+                executed_action=proposal.action,
+                order_type=proposal.order_type,
+                reason=f"Guardrail: price non valido ({price})",
+            )
+
+        # 2. Cap notional massimo per ordine
+        if qty is not None:
+            reference_price = price if price is not None else agent_input.current_price
+            if reference_price is None:
+                return ExecutionReport(
+                    execution_status=ExecutionStatus.NOT_EXECUTED,
+                    executed_action=proposal.action,
+                    order_type=proposal.order_type,
+                    reason=(
+                        "Guardrail: nessun reference price disponibile per "
+                        "calcolare il notional, ordine bloccato"
+                    ),
+                )
+
+            notional = qty * reference_price
+            if notional > max_notional:
+                return ExecutionReport(
+                    execution_status=ExecutionStatus.NOT_EXECUTED,
+                    executed_action=proposal.action,
+                    order_type=proposal.order_type,
+                    reason=(
+                        f"Guardrail: notional {notional:.2f} USDC supera il cap "
+                        f"{max_notional:.2f} USDC"
+                    ),
+                )
+
+            # 3. Cap percentuale sul portafoglio
+            if portfolio.usdc_value > 0:
+                pct = (notional / portfolio.usdc_value) * 100
+                if pct > mandate.max_position_pct:
+                    return ExecutionReport(
+                        execution_status=ExecutionStatus.NOT_EXECUTED,
+                        executed_action=proposal.action,
+                        order_type=proposal.order_type,
+                        reason=(
+                            f"Guardrail: notional {notional:.2f} USDC rappresenta "
+                            f"{pct:.1f}% del portafoglio, oltre il limite "
+                            f"{mandate.max_position_pct:.1f}%"
+                        ),
+                    )
+
+        # 4. Verifica order_id per CANCEL_AND_REPLACE
+        if proposal.action is TradeAction.CANCEL_AND_REPLACE_ORDER:
+            order_id = details.order_id
+            known_ids = {
+                str(o.get("orderId", "")) for o in portfolio.open_orders
+            } | {
+                str(o.get("clientOrderId", "")) for o in portfolio.open_orders
+            }
+            known_ids.discard("")
+            if order_id not in known_ids:
+                return ExecutionReport(
+                    execution_status=ExecutionStatus.NOT_EXECUTED,
+                    executed_action=proposal.action,
+                    order_type=proposal.order_type,
+                    reason=(
+                        f"Guardrail: order_id '{order_id}' non trovato negli "
+                        "ordini aperti del portafoglio"
+                    ),
+                )
+
+        return None
 
     def _execute_order(self, agent_input: ExecutionInput) -> dict[str, Any]:
         """Esegue l'ordine sull'exchange e ritorna i dettagli della risposta."""
