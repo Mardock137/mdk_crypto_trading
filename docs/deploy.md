@@ -1,3 +1,4 @@
+<!-- markdownlint-disable -->
 # Guida al Deploy su Google Compute Engine
 
 MDK Crypto Trading gira in loop continuo 24/7. La soluzione scelta è una VM Google Compute Engine con Docker Compose.
@@ -65,7 +66,12 @@ gcloud compute instances create mdk-crypto-trading \
 gcloud compute ssh mdk-crypto-trading --zone=europe-west1-b
 ```
 
-La prima volta gcloud genera automaticamente le chiavi SSH. Se chiede una passphrase, premere Invio per lasciarla vuota.
+La prima volta gcloud genera automaticamente le chiavi SSH. Quando chiede una passphrase, **impostane una**: protegge la chiave in caso di furto del file. Per non doverla reinserire ad ogni connessione, usa `ssh-agent`:
+
+```bash
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/google_compute_engine
+```
 
 ### Da Google Cloud Console (alternativa via browser)
 
@@ -124,14 +130,40 @@ docker compose version
 
 ### 4a. Clona la repo dalla VM
 
-**Opzione raccomandata — HTTPS con token GitHub:**
+**Metodo raccomandato — Deploy key SSH read-only:**
 
-1. Vai su GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
-2. Genera un token con permesso `repo`
-3. Clona con:
+Una deploy key è una chiave SSH collegata a un singolo repo. Ha scope ristretto (solo quel repo), non lascia token nella shell history e si revoca istantaneamente dalla pagina GitHub.
+
+1. **Sulla VM**, genera la chiave:
 
 ```bash
-git clone https://<tuo-token>@github.com/<tuo-utente>/mdk_crypto_trading.git
+ssh-keygen -t ed25519 -C "mdk-crypto-trading-deploy" -f ~/.ssh/github_mdk_crypto
+```
+
+> Quando chiede una passphrase, **impostane una**. Per non reinserirla ogni volta: `eval "$(ssh-agent -s)" && ssh-add ~/.ssh/github_mdk_crypto`.
+
+2. Copia la chiave pubblica:
+
+```bash
+cat ~/.ssh/github_mdk_crypto.pub
+```
+
+3. **Su GitHub**: repo → **Settings** → **Deploy keys** → **Add deploy key**. Incolla la chiave pubblica. Lascia "Allow write access" **disabilitato** (read-only è sufficiente).
+
+4. **Sulla VM**, crea o aggiorna `~/.ssh/config`:
+
+```txt
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/github_mdk_crypto
+  IdentitiesOnly yes
+```
+
+5. Clona via SSH:
+
+```bash
+git clone git@github.com:<tuo-utente>/mdk_crypto_trading.git
 cd mdk_crypto_trading
 ```
 
@@ -231,40 +263,37 @@ df -h
 
 ### Scaricare log ed eventi in locale
 
-I log e gli eventi sono creati da Docker come `root`. Per scaricarli serve creare un tarball con `sudo` dalla VM, poi trasferirlo in locale.
+Il container gira come utente `app` (UID 1000). I file in `logs/` e `data/` sono di proprietà di UID 1000, che coincide con il tuo utente SSH standard — quindi **non serve `sudo`**.
 
-**Dalla VM** (con l'utente che ha il progetto, es. `chief`):
+**Dalla VM**:
 
 ```bash
 cd ~/mdk_crypto_trading
-sudo tar czf ~/logs_export.tar.gz logs/
-sudo chown $USER:$USER ~/logs_export.tar.gz
+tar czf ~/logs_export.tar.gz logs/
 exit
-```
-
-**Se il tarball è stato creato da un utente diverso** (es. `chief`) da quello con cui ci si connette via SSH (es. `mardock`):
-
-```bash
-sudo cp /home/chief/logs_export.tar.gz ~/
-sudo chown $USER:$USER ~/logs_export.tar.gz
 ```
 
 **Dal Mac/PC locale**:
 
 ```bash
-gcloud compute scp --zone=europe-west1-b mdk-crypto-trading:/home/chief/logs_export.tar.gz ./
+gcloud compute scp --zone=europe-west1-b mdk-crypto-trading:~/logs_export.tar.gz ./
 tar xzf logs_export.tar.gz -C logs/
 rm logs_export.tar.gz
 ```
 
-> **Nota**: `gcloud scp` si connette con l'utente di default (`mardock`), ma il tarball è nella home di `chief`. Usare il percorso assoluto `/home/chief/` evita l'errore "No such file or directory".
-
-**Pulizia sulla VM** (rimuovere i tarball temporanei):
+**Pulizia sulla VM**:
 
 ```bash
 rm ~/logs_export.tar.gz
-sudo rm -f /home/chief/logs_export.tar.gz
 ```
+
+> **Nota — upgrade da versione precedente**: se hai già file in `logs/` o `data/` creati dal vecchio container (che girava come `root`), esegui questo comando **una sola volta** sulla VM per allineare i permessi:
+
+  ```bash
+  sudo chown -R 1000:1000 ~/mdk_crypto_trading/logs/ ~/mdk_crypto_trading/data/
+  ```
+
+> Dopo questo passaggio non sarà più necessario `sudo` per nessuna operazione sui log.
 
 ---
 
@@ -338,13 +367,21 @@ find mdk_crypto_trading/logs/events/ -name "*.jsonl" -mtime +30 -delete
 
 ### Errore "Permission denied" quando si cancellano log o memory
 
-I file in `logs/` e `data/memory/` vengono creati dal container Docker, che gira come `root`. L'utente SSH normale non ha i permessi per cancellarli con `rm` diretto. Usare `sudo`:
+A partire dalla versione attuale, il container gira come utente `app` (UID 1000) e i file in `logs/` e `data/` sono accessibili direttamente senza `sudo`:
 
 ```bash
-sudo rm -rf logs/events/
-sudo rm -f logs/mdk_crypto_trading.log*
-sudo rm -rf data/memory/
+rm -rf logs/events/
+rm -f logs/mdk_crypto_trading.log*
+rm -rf data/memory/
 ```
+
+Se i file erano stati creati da una versione precedente del container (che girava come `root`), esegui prima il chown una tantum:
+
+```bash
+sudo chown -R 1000:1000 ~/mdk_crypto_trading/logs/ ~/mdk_crypto_trading/data/
+```
+
+Dopo di che, `rm` senza `sudo` funzionerà normalmente.
 
 ---
 

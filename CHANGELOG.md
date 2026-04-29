@@ -1,6 +1,19 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.14 — 2026-04-29
+
+### Sicurezza / Infrastruttura
+
+- `Dockerfile`: il container gira ora come utente non privilegiato `app` (UID/GID 1000). Aggiunto `RUN groupadd -g 1000 app && useradd -m -u 1000 -g app app`, creazione di `/app/logs` e `/app/data` con `chown -R app:app /app`, e `USER app` prima del `CMD`. I file in `logs/` e `data/` sono ora leggibili e cancellabili dall'utente SSH standard (UID 1000) senza `sudo`.
+- `.github/workflows/ci.yml`: aggiunto blocco `permissions: contents: read` a livello workflow per limitare il `GITHUB_TOKEN` automatico alla sola lettura del repo.
+- `docs/deploy.md` — sezione `4a. Clona la repo dalla VM`: sostituita la procedura HTTPS con PAT con la procedura basata su **deploy key SSH read-only** (scope ristretto a un singolo repo, niente token in shell history, revoca istantanea). Inclusa istruzione per configurare `~/.ssh/config`.
+- `docs/deploy.md` — sezione `2. Accesso SSH alla VM`: rimossa la raccomandazione di lasciare la passphrase vuota; aggiunta indicazione di impostare una passphrase e usare `ssh-agent` per non reinserirla ogni volta.
+- `docs/deploy.md` — sezione `6. Scaricare log ed eventi in locale` e troubleshooting `Permission denied`: rimossi i `sudo` non più necessari grazie al container non-root; aggiunta nota con il `chown -R 1000:1000` una tantum per allineare i file preesistenti creati dal vecchio container root.
+- `.gitignore`: aggiunti pattern difensivi nella sezione `Secrets / local config` per prevenire commit accidentali di chiavi e certificati: `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa`, `id_rsa.pub`, `id_ed25519`, `id_ed25519.pub`, `credentials.json`, `secrets/`.
+
+---
+
 ## 1.13.13 — 2026-04-29
 
 ### Modificato

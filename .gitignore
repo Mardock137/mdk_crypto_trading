@@ -29,6 +29,16 @@ logs/
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+credentials.json
+secrets/
 
 ## OS / IDE files / Support files
 .DS_Store
