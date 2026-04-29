@@ -4,22 +4,18 @@ import logging
 import signal
 import threading
 import types
-from datetime import date
 from pathlib import Path
 
 from src.agents.performance_reviewer import PerformanceReviewerAgent
+from src.core import notifications
 from src.core.contracts import (
-    CycleContextSnapshot,
-    CycleSkipConfig,
     MarketDataSnapshot,
     OperationConstraints,
-    OrderType,
-    PerformanceReviewerInput,
     PortfolioState,
-    TradeAction,
     TradingCycleInput,
-    TradingCycleResult,
 )
+from src.core.cycle_skip_handler import CycleSkipHandler
+from src.core.performance_review_runner import PerformanceReviewRunner
 from src.core.workflow import TradingWorkflow
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
 from src.utils.config import (
@@ -28,20 +24,21 @@ from src.utils.config import (
     load_mandate,
     load_trading_config,
 )
-from src.utils.cycle_skip import extract_open_order_ids, should_skip_cycle
-from src.utils.event_log_reader import load_recent_events
 from src.utils.event_logger import EventLogger
 from src.utils.memory_manager import MemoryManager
-from src.utils.performance_stats import build_performance_stats, write_performance_report
-from src.utils.telegram_notifier import TelegramNotifier, escape_html
+from src.utils.telegram_notifier import TelegramNotifier
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-_PERFORMANCE_REVIEW_DAYS = 7
 _PERFORMANCE_REPORTS_DIR = _PROJECT_ROOT / "data/performance_reports"
 
 
 class TradingRunner:
-    """Loop operativo che esegue TradingWorkflow in modo ciclico."""
+    """Loop operativo che esegue TradingWorkflow in modo ciclico.
+
+    Direttore d'orchestra: gestisce loop, segnali e notifiche, delegando
+    le decisioni specialistiche a ``CycleSkipHandler`` (skip deterministico)
+    e ``PerformanceReviewRunner`` (review giornaliero).
+    """
 
     def __init__(
         self,
@@ -63,16 +60,27 @@ class TradingRunner:
         self._symbol = symbol
         self._exchange_client = exchange_client
         self._memory_manager = memory_manager
-        self._performance_reviewer = performance_reviewer
         self._telegram_notifier = telegram_notifier
-        self._performance_reports_dir = performance_reports_dir
         self._trading_config = load_trading_config()
         self._mandate = load_mandate(self._trading_config)
-        self._cycle_skip_config: CycleSkipConfig = load_cycle_skip_config()
-        self._previous_snapshot: CycleContextSnapshot | None = None
-        self._consecutive_skips: int = 0
         self._shutdown_requested = False
         self._shutdown_event = threading.Event()
+
+        self._cycle_skip_handler = CycleSkipHandler(
+            symbol=symbol,
+            trading_mode=settings.trading_mode.value,
+            config=load_cycle_skip_config(),
+            event_logger=event_logger,
+            logger=logger,
+        )
+        self._review_runner = PerformanceReviewRunner(
+            symbol=symbol,
+            mandate=self._mandate,
+            memory_manager=memory_manager,
+            performance_reviewer=performance_reviewer,
+            reports_dir=performance_reports_dir,
+            logger=logger,
+        )
 
     def run(self) -> None:
         """Avvia il loop operativo. Esce su KeyboardInterrupt o SIGTERM."""
@@ -98,10 +106,11 @@ class TradingRunner:
 
         if self._telegram_notifier:
             self._telegram_notifier.send_message(
-                f"<b>🚀 Bot STARTED</b>\n\n"
-                f"Symbol: {self._symbol}\n"
-                f"Mode: {self._settings.trading_mode.value}\n"
-                f"Interval: {self._settings.cycle_interval_seconds}s"
+                notifications.build_startup_message(
+                    symbol=self._symbol,
+                    mode=self._settings.trading_mode.value,
+                    interval_seconds=self._settings.cycle_interval_seconds,
+                )
             )
 
         try:
@@ -120,24 +129,22 @@ class TradingRunner:
         self._logger.info("Shutdown richiesto. Arresto pulito del runner.")
         if self._telegram_notifier:
             self._telegram_notifier.send_message(
-                f"<b>🛑 Bot STOPPED</b>\n\n"
-                f"Symbol: {self._symbol}"
+                notifications.build_stop_message(symbol=self._symbol)
             )
 
     def _run_single_cycle(self) -> None:
         """Esegue un singolo ciclo operativo con gestione degli errori.
 
-        Se un'eccezione interrompe il ciclo, ne' ``_previous_snapshot`` ne'
-        ``_consecutive_skips`` vengono aggiornati: il ciclo successivo partira'
-        quindi sempre con la catena LLM completa (nessun rischio di saltare
-        dopo un fallimento).
+        Se un'eccezione interrompe il ciclo, lo stato del ``CycleSkipHandler``
+        non viene aggiornato: il ciclo successivo partirà quindi sempre con
+        la catena LLM completa (nessun rischio di saltare dopo un fallimento).
         """
         self._logger.info("Inizio ciclo operativo")
-        self._maybe_run_performance_review()
+        self._review_runner.maybe_run_today()
         try:
             market_data = self._exchange_client.get_market_snapshot(self._symbol)
             portfolio = self._exchange_client.get_portfolio_state(self._symbol)
-            if self._try_skip_cycle(market_data, portfolio):
+            if self._cycle_skip_handler.try_skip(market_data, portfolio):
                 return
             cycle_input = self._build_cycle_input(market_data, portfolio)
             result = self._workflow.run_cycle(cycle_input)
@@ -176,15 +183,18 @@ class TradingRunner:
                 result=result,
                 current_price=cycle_input.market_data.price,
             )
-            self._previous_snapshot = self._build_snapshot(
+            self._cycle_skip_handler.record_completed_cycle(
                 market_data=cycle_input.market_data,
                 portfolio=cycle_input.portfolio,
                 proposed_action=result.trade_proposal.action,
             )
-            self._consecutive_skips = 0
             if self._telegram_notifier and result.execution_report.was_executed:
                 self._telegram_notifier.send_message(
-                    self._build_order_notification(result)
+                    notifications.build_order_notification(
+                        symbol=self._symbol,
+                        mode=self._settings.trading_mode.value,
+                        result=result,
+                    )
                 )
             self._logger.info("Ciclo completato con successo")
         except Exception as exc:
@@ -196,9 +206,9 @@ class TradingRunner:
             )
             if self._telegram_notifier:
                 self._telegram_notifier.send_message(
-                    f"<b>⚠️ Cycle ERROR</b>\n\n"
-                    f"Symbol: {self._symbol}\n"
-                    f"Error: {escape_html(str(exc))}"
+                    notifications.build_error_message(
+                        symbol=self._symbol, error=str(exc),
+                    )
                 )
 
     def _build_cycle_input(
@@ -206,7 +216,7 @@ class TradingRunner:
         market_data: MarketDataSnapshot,
         portfolio: PortfolioState,
     ) -> TradingCycleInput:
-        """Costruisce l'input del ciclo a partire da market data e portafoglio gia' raccolti."""
+        """Costruisce l'input del ciclo a partire da market data e portafoglio già raccolti."""
         constraints = OperationConstraints(
             cycle_interval_seconds=self._settings.cycle_interval_seconds,
             min_order_usdc=float(self._trading_config.get("min_order_usdc", 10.0)),
@@ -220,169 +230,5 @@ class TradingRunner:
             decision_memory=self._memory_manager.get_memory(self._symbol),
             performance_summary=self._memory_manager.get_performance_summary(self._symbol),
             recent_performance=self._memory_manager.get_recent_performance(self._symbol),
-            latest_performance_review=self._load_latest_performance_review(),
+            latest_performance_review=self._review_runner.load_latest_review(),
         )
-
-    def _try_skip_cycle(
-        self,
-        market_data: MarketDataSnapshot,
-        portfolio: PortfolioState,
-    ) -> bool:
-        """Decide se saltare il ciclo corrente. Se si', logga e aggiorna il counter."""
-        if not self._cycle_skip_config.enabled:
-            return False
-
-        skip, reason = should_skip_cycle(
-            previous=self._previous_snapshot,
-            current_market=market_data,
-            current_portfolio=portfolio,
-            config=self._cycle_skip_config,
-            consecutive_skips=self._consecutive_skips,
-        )
-        if not skip:
-            self._logger.debug("Cycle skip non applicabile: %s", reason)
-            return False
-
-        assert self._previous_snapshot is not None
-        self._logger.info("Ciclo saltato dal pre-check deterministico: %s", reason)
-        self._event_logger.log_skipped_cycle(
-            symbol=self._symbol,
-            trading_mode=self._settings.trading_mode.value,
-            reason=reason,
-            snapshot=self._previous_snapshot,
-        )
-        self._consecutive_skips += 1
-        return True
-
-    @staticmethod
-    def _build_snapshot(
-        market_data: MarketDataSnapshot,
-        portfolio: PortfolioState,
-        proposed_action: TradeAction,
-    ) -> CycleContextSnapshot:
-        """Costruisce uno snapshot del contesto del ciclo appena concluso.
-
-        ``proposed_action`` e' l'azione proposta dal Decision Maker (non quella
-        effettivamente eseguita). Scelta voluta: se il DM propone BUY/SELL ma
-        il Risk Manager blocca, il ciclo successivo deve comunque girare per
-        dare al DM l'opportunita' di rivalutare, quindi il pre-check non deve
-        saltarlo.
-        """
-        indicators = market_data.indicators
-        return CycleContextSnapshot(
-            price=market_data.price,
-            rsi=_coerce_float(indicators.get("rsi")),
-            macd=_coerce_float(indicators.get("macd")),
-            macd_signal=_coerce_float(indicators.get("macd_signal")),
-            previous_action=proposed_action,
-            open_order_ids=extract_open_order_ids(portfolio),
-        )
-
-    def _maybe_run_performance_review(self) -> None:
-        """Genera il report giornaliero se non esiste gia per oggi.
-
-        Errori del Reviewer non bloccano il ciclo: vengono loggati come warning
-        e il DM riceve stringa vuota (fallback sicuro).
-        """
-        today = date.today()
-        today_report = self._performance_reports_dir / f"{today.isoformat()}.md"
-        if today_report.exists():
-            return
-
-        try:
-            events = load_recent_events(
-                self._symbol, days=_PERFORMANCE_REVIEW_DAYS,
-            )
-            stats = build_performance_stats(
-                symbol=self._symbol,
-                memory_manager=self._memory_manager,
-                events=events,
-                days=_PERFORMANCE_REVIEW_DAYS,
-            )
-            review = self._performance_reviewer.run(
-                PerformanceReviewerInput(
-                    symbol=self._symbol,
-                    mandate=self._mandate,
-                    stats=stats,
-                    days_analyzed=_PERFORMANCE_REVIEW_DAYS,
-                )
-            )
-            write_performance_report(
-                symbol=self._symbol,
-                mandate=self._mandate,
-                stats=stats,
-                review=review,
-                days_analyzed=_PERFORMANCE_REVIEW_DAYS,
-                reports_dir=self._performance_reports_dir,
-            )
-            self._logger.info(
-                "Performance Reviewer → %s (%d suggerimenti)",
-                review.mandate_adherence.value,
-                len(review.suggestions),
-            )
-        except Exception as exc:
-            self._logger.warning(
-                "Performance Reviewer fallito (ciclo continua): %s", exc,
-            )
-
-    def _load_latest_performance_review(self) -> str:
-        """Ritorna il contenuto del report piu recente, o stringa vuota."""
-        if not self._performance_reports_dir.exists():
-            return ""
-        files = sorted(self._performance_reports_dir.glob("*.md"))
-        if not files:
-            return ""
-        try:
-            return files[-1].read_text(encoding="utf-8")
-        except OSError:
-            return ""
-
-    def _build_order_notification(self, result: TradingCycleResult) -> str:
-        """Costruisce il testo della notifica per un ordine eseguito."""
-        report = result.execution_report
-        proposal = result.trade_proposal
-        details = proposal.details
-
-        lines: list[str] = [
-            "<b>✅ Order EXECUTED</b>",
-            "",
-            f"Action: {report.executed_action.value}",
-            f"Type: {report.order_type.value}",
-        ]
-
-        if details.quantity is not None:
-            lines.append(f"Quantity: {details.quantity}")
-
-        if report.order_type is OrderType.MARKET:
-            exec_d = report.execution_details
-            cum_quote = exec_d.get("cummulativeQuoteQty")
-            exec_qty = exec_d.get("executedQty")
-            if cum_quote and exec_qty:
-                try:
-                    avg_price = float(cum_quote) / float(exec_qty)
-                    lines.append(f"Price: {avg_price:.2f}")
-                    lines.append(f"Value: {float(cum_quote):.2f} USDC")
-                except (ValueError, ZeroDivisionError):
-                    pass
-        elif report.order_type is OrderType.LIMIT:
-            if details.price is not None:
-                lines.append(f"Price: {details.price:.2f}")
-            notional = details.estimated_notional()
-            if notional is not None:
-                lines.append(f"Est. Value: {notional:.2f} USDC")
-
-        lines.append(f"DM Confidence: {proposal.confidence:.2f}")
-        lines.append(f"Symbol: {self._symbol}")
-        lines.append(f"Mode: {self._settings.trading_mode.value}")
-
-        return "\n".join(lines)
-
-
-def _coerce_float(value: object) -> float | None:
-    """Converte un valore in ``float``, ritornando ``None`` se non possibile."""
-    if value is None:
-        return None
-    try:
-        return float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return None

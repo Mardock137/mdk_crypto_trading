@@ -101,7 +101,10 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 
 - `contracts.py`: strutture dati condivise tra agenti (input, output, enum)
 - `workflow.py`: catena lineare Market Analyst → Decision Maker → Risk Manager → Execution Trader
-- `runner.py`: loop operativo ciclico con gestione errori e shutdown pulito
+- `runner.py`: `TradingRunner`, direttore d'orchestra del loop operativo (loop, segnali, orchestrazione del singolo ciclo). Delega le decisioni specialistiche a 3 collaboratori dedicati:
+  - `cycle_skip_handler.py`: `CycleSkipHandler` — possiede lo snapshot del ciclo precedente e il counter dei salti consecutivi, decide se saltare il ciclo (pre-check deterministico)
+  - `performance_review_runner.py`: `PerformanceReviewRunner` — esegue il review giornaliero (al massimo una volta al giorno) e legge l'ultimo report markdown
+  - `notifications.py`: funzioni pure che costruiscono i messaggi Telegram (start/stop/error/order), inclusi i dettagli Binance-specific (`cummulativeQuoteQty`/`executedQty`) per il prezzo medio dei MARKET order
 
 ### `src/integrations/`
 
@@ -163,7 +166,7 @@ Il ciclo operativo è gestito da due componenti complementari:
 Il runner:
 
 1. Logga l'avvio e lo stato del kill switch
-2. Ad ogni iterazione: eventualmente genera il report giornaliero (`_maybe_run_performance_review`) → raccoglie dati da Binance → legge la memoria storica e l'ultimo report → costruisce `TradingCycleInput` → esegue il workflow → logga il risultato → salva il ciclo in memoria
+2. Ad ogni iterazione: eventualmente genera il report giornaliero (`PerformanceReviewRunner.maybe_run_today`) → raccoglie dati da Binance → eventualmente salta il ciclo via `CycleSkipHandler.try_skip` → legge la memoria storica e l'ultimo report → costruisce `TradingCycleInput` → esegue il workflow → logga il risultato → salva il ciclo in memoria → registra lo snapshot via `CycleSkipHandler.record_completed_cycle`
 3. In caso di errore: logga l'eccezione, registra l'evento e continua
 4. Su `Ctrl+C`: termina in modo pulito
 

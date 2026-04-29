@@ -308,8 +308,8 @@ def test_maybe_run_performance_review_skips_if_today_report_exists(
     mock_reviewer.run.assert_not_called()
 
 
-@patch("src.core.runner.build_performance_stats")
-@patch("src.core.runner.load_recent_events", return_value=[])
+@patch("src.core.performance_review_runner.build_performance_stats")
+@patch("src.core.performance_review_runner.load_recent_events", return_value=[])
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
 def test_maybe_run_performance_review_writes_report_when_missing(
     mock_wait: MagicMock,
@@ -352,7 +352,10 @@ def test_maybe_run_performance_review_writes_report_when_missing(
     assert today_file.exists()
 
 
-@patch("src.core.runner.load_recent_events", side_effect=RuntimeError("boom"))
+@patch(
+    "src.core.performance_review_runner.load_recent_events",
+    side_effect=RuntimeError("boom"),
+)
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
 def test_maybe_run_performance_review_failure_does_not_block_cycle(
     mock_wait: MagicMock,
@@ -379,7 +382,7 @@ def test_load_latest_performance_review_returns_empty_if_dir_missing(
 ) -> None:
     runner = _make_runner(performance_reports_dir=tmp_path / "missing")
 
-    assert runner._load_latest_performance_review() == ""
+    assert runner._review_runner.load_latest_review() == ""
 
 
 def test_load_latest_performance_review_returns_file_content(
@@ -390,7 +393,7 @@ def test_load_latest_performance_review_returns_file_content(
 
     runner = _make_runner(performance_reports_dir=tmp_path)
 
-    assert runner._load_latest_performance_review() == "latest content"
+    assert runner._review_runner.load_latest_review() == "latest content"
 
 
 # ---------- Cycle skip ----------
@@ -441,7 +444,7 @@ def test_cycle_is_skipped_when_context_unchanged(mock_wait: MagicMock) -> None:
         event_logger=mock_event_logger,
         cycle_skip_config=_ENABLED_SKIP_CONFIG,
     )
-    runner._previous_snapshot = CycleContextSnapshot(
+    runner._cycle_skip_handler._previous_snapshot = CycleContextSnapshot(
         price=100.0,
         rsi=50.0,
         macd=1.0,
@@ -454,7 +457,7 @@ def test_cycle_is_skipped_when_context_unchanged(mock_wait: MagicMock) -> None:
 
     mock_workflow.run_cycle.assert_not_called()
     mock_event_logger.log_skipped_cycle.assert_called_once()
-    assert runner._consecutive_skips == 1
+    assert runner._cycle_skip_handler._consecutive_skips == 1
 
 
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
@@ -469,7 +472,7 @@ def test_cycle_runs_normally_when_skip_disabled(mock_wait: MagicMock) -> None:
         exchange_client=mock_exchange,
         workflow=mock_workflow,
     )
-    runner._previous_snapshot = CycleContextSnapshot(
+    runner._cycle_skip_handler._previous_snapshot = CycleContextSnapshot(
         price=100.0,
         rsi=50.0,
         macd=1.0,

@@ -1,6 +1,21 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.11 — 2026-04-29
+
+### Modificato
+
+- `src/core/runner.py`: refactoring puro (Single Responsibility). `TradingRunner` resta il direttore d'orchestra del loop ma delega le decisioni specialistiche a 3 nuovi collaboratori. Il file scende da ~388 a ~230 righe e perde 7 responsabilità mescolate.
+- `src/core/cycle_skip_handler.py` (nuovo): classe `CycleSkipHandler` che possiede lo stato cross-cycle (snapshot del ciclo precedente + counter dei salti consecutivi) e la logica di skip deterministico (`try_skip`, `record_completed_cycle`). Le funzioni helper `_build_snapshot` e `_coerce_float` sono state spostate qui.
+- `src/core/performance_review_runner.py` (nuovo): classe `PerformanceReviewRunner` che orchestra il giudizio giornaliero (`maybe_run_today`) e legge l'ultimo report markdown (`load_latest_review`).
+- `src/core/notifications.py` (nuovo): funzioni pure che costruiscono i messaggi Telegram (`build_startup_message`, `build_stop_message`, `build_error_message`, `build_order_notification`). I dettagli Binance-specific (`cummulativeQuoteQty`/`executedQty` per il prezzo medio dei MARKET order) sono ora incapsulati in `build_order_notification` invece di vivere mescolati con la logica del loop.
+- `tests/core/test_runner.py`: aggiornati gli accessi a stato/metodi privati spostati (`runner._previous_snapshot` → `runner._cycle_skip_handler._previous_snapshot`, `runner._load_latest_performance_review()` → `runner._review_runner.load_latest_review()`) e i path di `@patch` per `build_performance_stats` e `load_recent_events` (ora importati da `src.core.performance_review_runner`).
+- `docs/architecture.md` e `docs/repo_structure.md`: aggiornati per descrivere la nuova architettura a 4 componenti in `src/core/` (Runner + CycleSkipHandler + PerformanceReviewRunner + notifications).
+
+Nessun cambio di comportamento osservabile dall'esterno: la firma di `TradingRunner.__init__` è invariata, ogni `event_logger.log_*`, ogni messaggio Telegram e ogni file scritto in `data/performance_reports/` sono identici a prima. `src/main.py` non viene toccato.
+
+---
+
 ## 1.13.10 — 2026-04-28
 
 ### Modificato

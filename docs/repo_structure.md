@@ -64,7 +64,10 @@
  │    │    └── 📄 risk_manager.py                            # Agente di controllo rischio.
  │    ├── 📁 core/                                           # Contratti condivisi e orchestrazione del workflow.
  │    │    ├── 📄 contracts.py                               # Schemi condivisi per input/output degli agenti.
- │    │    ├── 📄 runner.py                                  # Loop operativo ciclico (TradingRunner).
+ │    │    ├── 📄 cycle_skip_handler.py                      # CycleSkipHandler: stato cross-cycle e decisione di skip deterministico.
+ │    │    ├── 📄 notifications.py                           # Funzioni pure che costruiscono i messaggi Telegram (start/stop/error/order).
+ │    │    ├── 📄 performance_review_runner.py               # PerformanceReviewRunner: review giornaliero e lettura ultimo report.
+ │    │    ├── 📄 runner.py                                  # Loop operativo ciclico (TradingRunner), direttore d'orchestra.
  │    │    └── 📄 workflow.py                                # Orchestratore della catena di agenti.
  │    ├── 📁 integrations/                                   # Integrazione delle API esterne.
  │    │    ├── 📁 exchange/                                  # Interfaccia verso gli exchange crypto.
@@ -97,6 +100,9 @@
  │    │    └── 📄 test_risk_manager.py
  │    ├── 📁 core/                                           # Test dei contratti, workflow e runner.
  │    │    ├── 📄 test_contracts.py
+ │    │    ├── 📄 test_cycle_skip_handler.py
+ │    │    ├── 📄 test_notifications.py
+ │    │    ├── 📄 test_performance_review_runner.py
  │    │    ├── 📄 test_runner.py
  │    │    └── 📄 test_workflow.py
  │    ├── 📁 integrations/                                   # Test delle integrazioni.
@@ -119,7 +125,7 @@
  │    │    └── 📄 test_telegram_notifier.py
  │    └── 📄 test_main.py
  │
- ├── 📄 .dockerignore                                         # File e cartelle esclusi dal build context Docker.
+ ├── 📄 .dockerignore                                        # File e cartelle esclusi dal build context Docker.
  ├── 📄 .env                                                 # Contiene le chiavi API e variabili d'ambiente riservate.
  ├── 📄 .env.example                                         # Contiene un esempio delle variabili d'ambiente in uso.
  ├── 📄 .gitignore                                           # Elenco dei file e delle cartelle esclusi dal controllo di versione.
