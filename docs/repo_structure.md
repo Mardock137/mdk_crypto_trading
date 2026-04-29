@@ -4,13 +4,14 @@
  │
  ├── 📁 .github/                                             # Configurazione GitHub.
  │    └── 📁 workflows/                                      # Workflow GitHub Actions.
- │         └── 📄 ci.yml                                     # CI: esegue i test pytest automaticamente ad ogni push e pull request.
+ │         └── 📄 ci.yml                                     # CI: esegue pip-audit (CVE check) e i test pytest automaticamente ad ogni push e pull request.
  │
  ├── 📁 .venv/                                               # Ambiente virtuale con tutte le dipendenze installate.
  │
  ├── 📁 data/                                                # Dati persistenti del sistema (ignorata da git).
  │    ├── 📁 memory/                                         # Memoria decisionale per simbolo (un file JSONL per coppia).
- │    └── 📁 performance_reports/                            # Report giornalieri del Performance Reviewer (YYYY-MM-DD.md).
+ │    ├── 📁 performance_reports/                            # Report giornalieri del Performance Reviewer (YYYY-MM-DD.md).
+ │    └── 📄 heartbeat                                       # Timestamp UTC dell'ultimo ciclo avviato; usato dal HEALTHCHECK Docker.
  │
  ├── 📁 config/                                              # Configurazioni statiche del sistema.
  │    ├── 📁 llm_models/                                     # Configurazione dei modelli IA (model, temperature, max token, ecc.).
@@ -132,6 +133,6 @@
  ├── 📄 .gitignore                                           # Elenco dei file e delle cartelle esclusi dal controllo di versione.
  ├── 📄 CHANGELOG.md                                         # Storico versioni e modifiche del progetto.
  ├── 📄 docker-compose.yaml                                  # Configurazione Docker Compose per il deploy su GCE.
- ├── 📄 Dockerfile                                           # Immagine Docker per il container di produzione.
+ ├── 📄 Dockerfile                                           # Immagine Docker per il container di produzione (utente non-root UID 1000, HEALTHCHECK sul file heartbeat).
  ├── 📄 README.md                                            # Panoramica, istruzioni e info rapide sul progetto.
  └── 📄 requirements.txt                                     # Elenco delle dipendenze Python e relative versioni.

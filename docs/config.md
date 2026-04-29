@@ -123,7 +123,7 @@ max_tokens: 4096
 ```yaml
 provider: anthropic
 model: claude-opus-4-7
-thinking_effort: medium
+thinking_effort: high
 max_tokens: 16384
 ```
 

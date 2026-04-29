@@ -5,6 +5,7 @@ import signal
 import threading
 import types
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from src.agents.performance_reviewer import PerformanceReviewerAgent
@@ -31,6 +32,7 @@ from src.utils.telegram_notifier import TelegramNotifier
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _PERFORMANCE_REPORTS_DIR = _PROJECT_ROOT / "data/performance_reports"
+_HEARTBEAT_PATH = _PROJECT_ROOT / "data/heartbeat"
 
 
 class TradingRunner:
@@ -133,6 +135,20 @@ class TradingRunner:
                 notifications.build_stop_message(symbol=self._symbol)
             )
 
+    def _touch_heartbeat(self) -> None:
+        """Scrive il timestamp UTC corrente in data/heartbeat.
+
+        Il file viene usato dal HEALTHCHECK Docker per verificare che il loop
+        sia ancora attivo. Gli errori I/O vengono ignorati per non bloccare il ciclo.
+        """
+        try:
+            _HEARTBEAT_PATH.parent.mkdir(parents=True, exist_ok=True)
+            _HEARTBEAT_PATH.write_text(
+                datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            )
+        except OSError:
+            pass
+
     def _run_single_cycle(self) -> None:
         """Esegue un singolo ciclo operativo con gestione degli errori.
 
@@ -140,6 +156,7 @@ class TradingRunner:
         non viene aggiornato: il ciclo successivo partirà quindi sempre con
         la catena LLM completa (nessun rischio di saltare dopo un fallimento).
         """
+        self._touch_heartbeat()
         self._logger.info("Inizio ciclo operativo")
         self._review_runner.maybe_run_today()
         try:

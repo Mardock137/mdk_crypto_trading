@@ -1,6 +1,19 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.15 — 2026-04-29
+
+### Sicurezza / Infrastruttura
+
+- `src/utils/memory_manager.py`: aggiunta validazione regex `_SYMBOL_RE = re.compile(r"^[A-Z0-9]{2,20}$")` nel metodo `_symbol_path`. Se il simbolo contiene caratteri non ammessi (es. `..`, `/`, lettere minuscole), viene sollevata `ValueError` prima di costruire il path, eliminando qualsiasi rischio di path traversal verso file al di fuori di `data/memory/`.
+- `src/core/runner.py`: aggiunto metodo privato `_touch_heartbeat()` che scrive il timestamp UTC ISO 8601 corrente in `data/heartbeat` come prima operazione di `_run_single_cycle` (viene eseguito anche per i cicli skippati). Gli errori `OSError` vengono ignorati silenziosamente per non bloccare il loop.
+- `Dockerfile`: aggiunto `HEALTHCHECK --interval=10m --timeout=10s --start-period=5m --retries=2` basato su `find /app/data/heartbeat -mmin -180`. Il container viene marcato `unhealthy` se il file non viene aggiornato entro 3 ore (margine 2× rispetto al `CYCLE_INTERVAL_SECONDS` attuale di 90 min).
+- `.github/workflows/ci.yml`: aggiunto step `Audit dipendenze` che installa `pip-audit` e lo esegue su `requirements.txt` prima dei test. Blocca la CI in presenza di CVE noti nelle dipendenze, complementando Dependabot con feedback immediato ad ogni push.
+- `tests/utils/test_memory_manager.py`: aggiunti 3 test per `_symbol_path` (path traversal, lettere minuscole, simbolo valido).
+- `tests/core/test_runner.py`: aggiunti 2 test per `_touch_heartbeat` (scrittura file, chiamata ad ogni ciclo).
+
+---
+
 ## 1.13.14 — 2026-04-29
 
 ### Sicurezza / Infrastruttura

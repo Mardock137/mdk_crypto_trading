@@ -62,6 +62,32 @@ def _make_result(
 
 
 # ------------------------------------------------------------------
+# _symbol_path — whitelist regex
+# ------------------------------------------------------------------
+
+
+def test_symbol_path_rejects_path_traversal(tmp_path: Path) -> None:
+    """_symbol_path deve rifiutare simboli con caratteri non ammessi (path traversal)."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    with pytest.raises(ValueError, match="Symbol non valido"):
+        mm._symbol_path("../secrets")
+
+
+def test_symbol_path_rejects_lowercase(tmp_path: Path) -> None:
+    """_symbol_path deve rifiutare simboli con lettere minuscole."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    with pytest.raises(ValueError, match="Symbol non valido"):
+        mm._symbol_path("btcusdc")
+
+
+def test_symbol_path_accepts_valid_symbol(tmp_path: Path) -> None:
+    """_symbol_path deve accettare simboli di trading validi."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    path = mm._symbol_path("BTCUSDC")
+    assert path == tmp_path / "BTCUSDC.jsonl"
+
+
+# ------------------------------------------------------------------
 # save_cycle
 # ------------------------------------------------------------------
 

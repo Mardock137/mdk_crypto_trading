@@ -12,4 +12,8 @@ COPY config/ config/
 RUN mkdir -p /app/logs /app/data && chown -R app:app /app
 
 USER app
+
+HEALTHCHECK --interval=10m --timeout=10s --start-period=5m --retries=2 \
+  CMD test -n "$(find /app/data/heartbeat -mmin -180 2>/dev/null)" || exit 1
+
 CMD ["python", "-m", "src.main"]

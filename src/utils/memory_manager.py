@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 
 from src.core.contracts import TradingCycleResult
+
+_SYMBOL_RE = re.compile(r"^[A-Z0-9]{2,20}$")
 
 
 class MemoryManager:
@@ -113,6 +116,8 @@ class MemoryManager:
     # ------------------------------------------------------------------
 
     def _symbol_path(self, symbol: str) -> Path:
+        if not _SYMBOL_RE.fullmatch(symbol):
+            raise ValueError(f"Symbol non valido: {symbol!r}")
         return self._memory_dir / f"{symbol}.jsonl"
 
     def _read_all(self, symbol: str) -> list[dict]:

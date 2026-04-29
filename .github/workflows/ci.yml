@@ -23,5 +23,10 @@ jobs:
       - name: Installa dipendenze
         run: pip install -r requirements.txt
 
+      - name: Audit dipendenze
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
+
       - name: Lancia i test
         run: python -m pytest

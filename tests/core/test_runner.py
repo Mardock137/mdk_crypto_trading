@@ -107,6 +107,34 @@ def _make_runner(
         )
 
 
+# ---------- Heartbeat ----------
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_touch_heartbeat_writes_file(mock_wait: MagicMock, tmp_path: Path) -> None:
+    """_touch_heartbeat deve scrivere un file con timestamp ISO nella cartella data/."""
+    heartbeat_path = tmp_path / "heartbeat"
+    runner = _make_runner()
+
+    with patch("src.core.runner._HEARTBEAT_PATH", heartbeat_path):
+        runner._touch_heartbeat()
+
+    assert heartbeat_path.exists()
+    content = heartbeat_path.read_text(encoding="utf-8")
+    assert "T" in content  # formato ISO 8601
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_touch_heartbeat_called_each_cycle(mock_wait: MagicMock, tmp_path: Path) -> None:
+    """_touch_heartbeat deve essere chiamato ad ogni ciclo."""
+    runner = _make_runner()
+
+    with patch.object(runner, "_touch_heartbeat") as mock_touch:
+        runner.run()
+
+    mock_touch.assert_called_once()
+
+
 # ---------- Ciclo singolo ----------
 
 

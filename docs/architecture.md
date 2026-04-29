@@ -44,7 +44,7 @@ flowchart TD
 ### Decision Maker
 
 - Riceve l'analisi del `Market Analyst`, il portafoglio, i vincoli operativi, la memoria IA, le performance recenti e il report del `Performance Reviewer`.
-- Invia i dati a Claude Opus 4.7 con adaptive thinking (`thinking_effort: medium`) che produce una proposta operativa strutturata (`TradeProposal`).
+- Invia i dati a Claude Opus 4.7 con adaptive thinking (`thinking_effort: high`) che produce una proposta operativa strutturata (`TradeProposal`).
 - Azioni possibili: `BUY`, `SELL`, `HOLD`, `CANCEL_AND_REPLACE_ORDER`.
 - Non esegue ordini reali.
 - Modello LLM e parametri configurati in `config/llm_models/decision_maker.yaml`.

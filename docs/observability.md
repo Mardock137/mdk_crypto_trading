@@ -9,6 +9,7 @@ MDK Crypto Trading produce due tipi di log complementari: un log testuale per il
 - [Log testuale (`logs/mdk_crypto_trading.log`)](#log-testuale-logsmdk_crypto_tradinglog)
 - [Log eventi JSON (`logs/events/`)](#log-eventi-json-logsevents)
 - [Report performance (`data/performance_reports/`)](#report-performance-dataperformance_reports)
+- [Heartbeat Docker (`data/heartbeat`)](#heartbeat-docker-dataheartbeat)
 - [Struttura della cartella `logs/`](#struttura-della-cartella-logs)
 - [🔧 Configurazione](#-configurazione)
 - [📱 Notifiche Telegram](#-notifiche-telegram)
@@ -103,6 +104,20 @@ Ogni report contiene:
 Questo stesso file viene letto dal DM nei cicli successivi (campo `latest_performance_review`). La cartella `data/` è ignorata da git: i report restano locali alla VM.
 
 Il trigger è giornaliero: se il file del giorno esiste già, il Reviewer non viene chiamato (zero costo LLM).
+
+---
+
+## Heartbeat Docker (`data/heartbeat`)
+
+Il runner scrive il file `data/heartbeat` come **prima operazione di ogni ciclo** (inclusi i cicli skippati dal `CycleSkipHandler`). Il contenuto è il timestamp UTC ISO 8601 dell'ultimo ciclo avviato, ad esempio:
+
+```text
+2026-04-29T14:30:00+00:00
+```
+
+Questo file non ha valore di osservabilità diretta per il Chief, ma è usato dal `HEALTHCHECK` Docker: se il file non viene aggiornato entro 180 minuti, Docker marca il container come `unhealthy` (visibile con `docker compose ps`).
+
+> **Nota**: il file viene creato alla prima esecuzione. Se non esiste ancora (container appena avviato), Docker applica il `start-period` di 5 minuti prima di iniziare i controlli.
 
 ---
 
