@@ -93,7 +93,7 @@ def test_generate_json_invalid_json_logs_raw_and_raises(
         interface.generate_json("system prompt", {"chiave": "valore"})
 
     mock_logger.warning.assert_called_once()
-    assert "questo non e json" in mock_logger.warning.call_args.args[1]
+    assert "questo non e json" in mock_logger.warning.call_args.args[2]
 
 
 @patch("src.integrations.llm_interfaces.openai_interface.OpenAI")

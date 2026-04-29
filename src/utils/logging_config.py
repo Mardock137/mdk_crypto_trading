@@ -40,7 +40,7 @@ def _build_console_handler() -> logging.Handler:
     try:
         from rich.logging import RichHandler
 
-        return RichHandler(rich_tracebacks=True, show_path=False)
+        return RichHandler(rich_tracebacks=False, show_path=False)
     except ImportError:
         return logging.StreamHandler()
 

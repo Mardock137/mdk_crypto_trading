@@ -4,6 +4,7 @@ import logging
 import signal
 import threading
 import types
+import uuid
 from pathlib import Path
 
 from src.agents.performance_reviewer import PerformanceReviewerAgent
@@ -198,16 +199,22 @@ class TradingRunner:
                 )
             self._logger.info("Ciclo completato con successo")
         except Exception as exc:
-            self._logger.error("Errore durante il ciclo: %s", exc, exc_info=True)
+            cid = uuid.uuid4().hex[:8]
+            self._logger.error(
+                "Errore durante il ciclo [cid=%s]: %s", cid, exc, exc_info=True,
+            )
             self._event_logger.log_error(
                 symbol=self._symbol,
                 trading_mode=self._settings.trading_mode.value,
                 error=str(exc),
+                correlation_id=cid,
             )
             if self._telegram_notifier:
                 self._telegram_notifier.send_message(
                     notifications.build_error_message(
-                        symbol=self._symbol, error=str(exc),
+                        symbol=self._symbol,
+                        correlation_id=cid,
+                        exc_class=type(exc).__name__,
                     )
                 )
 

@@ -238,4 +238,4 @@ def test_agent_warning_includes_raw_response() -> None:
 
     mock_logger.warning.assert_called_once()
     warning_args = mock_logger.warning.call_args.args
-    assert "Risposta:" in warning_args[0]
+    assert "Risposta (troncata):" in warning_args[0]

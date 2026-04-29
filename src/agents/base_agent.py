@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Generic, TypeVar
 
 from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
+from src.utils.log_utils import truncate_for_log
 
 InputT = TypeVar("InputT")
 OutputT = TypeVar("OutputT")
@@ -101,14 +102,14 @@ class BaseLlmAgent(BaseAgent[InputT, OutputT]):
                 if attempt < max_attempts:
                     sleep_time = base_delay * (2 ** attempt)
                     self._logger.warning(
-                        "Tentativo %d/%d — parsing fallito: %s | Risposta: %s | riprovo tra %ds",
-                        attempt, max_attempts, exc, response, sleep_time,
+                        "Tentativo %d/%d — parsing fallito: %s | Risposta (troncata): %s | riprovo tra %ds",
+                        attempt, max_attempts, exc, truncate_for_log(response), sleep_time,
                     )
                     time.sleep(sleep_time)
                 else:
                     self._logger.warning(
-                        "Tentativo %d/%d — parsing fallito: %s | Risposta: %s",
-                        attempt, max_attempts, exc, response,
+                        "Tentativo %d/%d — parsing fallito: %s | Risposta (troncata): %s",
+                        attempt, max_attempts, exc, truncate_for_log(response),
                     )
                     raise
         raise RuntimeError("Unexpected: retry loop completed without returning or raising")

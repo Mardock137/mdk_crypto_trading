@@ -29,6 +29,7 @@ class TelegramNotifier:
         """
         if not self._enabled:
             return
+        response: requests.Response | None = None
         try:
             url = _TELEGRAM_API_URL.format(token=self._bot_token)
             response = requests.post(
@@ -41,8 +42,13 @@ class TelegramNotifier:
                 timeout=10,
             )
             response.raise_for_status()
+        except requests.HTTPError:
+            _logger.warning(
+                "Telegram: invio fallito (HTTP %s)",
+                response.status_code if response is not None else "?",
+            )
         except Exception as exc:
-            _logger.warning("Telegram: invio fallito: %s", exc)
+            _logger.warning("Telegram: invio fallito (%s)", exc.__class__.__name__)
 
 
 def escape_html(text: str) -> str:

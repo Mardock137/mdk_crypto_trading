@@ -62,15 +62,18 @@ def test_build_stop_message_contains_symbol() -> None:
     assert "BTCUSDC" in msg
 
 
-def test_build_error_message_escapes_html() -> None:
+def test_build_error_message_contains_correlation_id_and_type() -> None:
     msg = notifications.build_error_message(
-        symbol="BTCUSDC", error="<script>alert(1)</script>",
+        symbol="BTCUSDC",
+        correlation_id="a1b2c3d4",
+        exc_class="RuntimeError",
     )
 
     assert "ERROR" in msg
     assert "BTCUSDC" in msg
-    assert "<script>" not in msg
-    assert "&lt;script&gt;" in msg
+    assert "a1b2c3d4" in msg
+    assert "RuntimeError" in msg
+    assert "Error ID:" in msg
 
 
 def test_build_order_notification_market_computes_avg_price() -> None:

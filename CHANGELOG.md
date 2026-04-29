@@ -1,6 +1,21 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.13 — 2026-04-29
+
+### Modificato
+
+- `src/utils/telegram_notifier.py`: il blocco `except` in `send_message` non logga più `str(exc)`, che poteva contenere l'URL completo con il bot token nel path. Gli errori HTTP loggano ora solo lo status code (`HTTP 4xx`); gli altri errori loggano solo il nome della classe dell'eccezione (`exc.__class__.__name__`). Aggiunta funzione helper privata `_redact_token(text, token)` come ultima difesa per rimuovere il token da qualsiasi stringa prima che venga loggata.
+- `src/utils/log_utils.py` (nuovo): helper `truncate_for_log(value, max_len=200)` che converte un valore in stringa e la tronca a `max_len` caratteri, aggiungendo un indicatore del numero di caratteri omessi. Evita che blob di risposta LLM (potenzialmente molto grandi) finiscano per intero nei WARNING su file e console Docker.
+- `src/agents/base_agent.py`: i due messaggi WARNING in `_call_llm_with_retry` (retry intermedi e tentativo finale) ora usano `truncate_for_log(response)` invece di `response` grezzo. Il contenuto integrale della risposta resta visibile a livello DEBUG (riga già presente).
+- `src/integrations/llm_interfaces/base_llm_interface.py`: il WARNING in `_generate_json_once` su `JSONDecodeError` ora usa `truncate_for_log(stripped)` invece di `%r` sulla stringa completa. Rimosso anche l'uso di f-string nel formato del messaggio di log (uniformato a `%s`).
+- `src/core/runner.py`: nel blocco `except Exception` di `_run_single_cycle`, viene ora generato un correlation ID corto (`uuid.uuid4().hex[:8]`). Il log locale include il correlation ID (`[cid=XXXXXXXX]`); `EventLogger.log_error` riceve il nuovo campo `correlation_id`; la notifica Telegram viene costruita con `build_error_message(correlation_id=..., exc_class=...)` senza mai passare `str(exc)`.
+- `src/utils/event_logger.py`: `log_error` accetta il nuovo parametro opzionale `correlation_id: str = ""`. Il campo viene scritto nel record JSONL (`"correlation_id": "XXXXXXXX"` oppure `null` se assente), permettendo di correlare il record con il log locale e il messaggio Telegram.
+- `src/core/notifications.py`: `build_error_message` aggiornato — firma cambiata da `(symbol, error)` a `(symbol, correlation_id, exc_class)`. Il messaggio Telegram ora mostra `Error ID` e `Type` senza mai includere `str(exc)`. Rimossa la dipendenza da `escape_html` (non più necessaria).
+- `src/utils/logging_config.py`: `RichHandler` creato con `rich_tracebacks=False` (era `True`). I traceback completi restano disponibili nel file di log via `exc_info=True`; la console Docker è più compatta e non espone stack trace nei log visibili esternamente.
+- `tests/core/test_runner.py`: `test_run_logs_error_on_exception` aggiornato per verificare la presenza del campo `correlation_id` (8 caratteri) nella chiamata a `log_error`; `test_run_sends_error_notification_on_exception` aggiornato per verificare che il messaggio Telegram contenga `RuntimeError` e `Error ID:` e **non** contenga `str(exc)`.
+- `tests/core/test_notifications.py`: `test_build_error_message_escapes_html` sostituito da `test_build_error_message_contains_correlation_id_and_type` che verifica la nuova firma e il nuovo formato del messaggio.
+
 ## 1.13.12 — 2026-04-29
 
 ### Aggiunto

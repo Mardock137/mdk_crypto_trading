@@ -125,7 +125,7 @@ def test_run_sleeps_even_after_cycle_error(mock_wait: MagicMock) -> None:
 
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
 def test_run_logs_error_on_exception(mock_wait: MagicMock) -> None:
-    """Se il ciclo fallisce, il runner logga l'errore e non crasha."""
+    """Se il ciclo fallisce, il runner logga l'errore con correlation ID."""
     mock_event_logger = MagicMock()
     mock_workflow = MagicMock()
     mock_workflow.run_cycle.side_effect = RuntimeError("errore di test")
@@ -138,6 +138,7 @@ def test_run_logs_error_on_exception(mock_wait: MagicMock) -> None:
     assert call_kwargs["symbol"] == "BTCUSDC"
     assert call_kwargs["trading_mode"] == "DEMO"
     assert "errore di test" in call_kwargs["error"]
+    assert len(call_kwargs["correlation_id"]) == 8
 
 
 # ---------- Kill switch ----------
@@ -228,7 +229,8 @@ def test_run_sends_stop_notification_on_sigterm(
 
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
 def test_run_sends_error_notification_on_exception(mock_wait: MagicMock) -> None:
-    """Su errore nel ciclo, il runner deve inviare una notifica Telegram."""
+    """Su errore nel ciclo, il runner deve inviare una notifica Telegram
+    con correlation ID e tipo eccezione, senza str(exc)."""
     mock_notifier = MagicMock(spec=TelegramNotifier)
     mock_workflow = MagicMock()
     mock_workflow.run_cycle.side_effect = RuntimeError("boom")
@@ -237,7 +239,11 @@ def test_run_sends_error_notification_on_exception(mock_wait: MagicMock) -> None
     runner.run()
 
     texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
-    assert any("ERROR" in t and "boom" in t for t in texts)
+    error_text = next((t for t in texts if "ERROR" in t), None)
+    assert error_text is not None
+    assert "RuntimeError" in error_text
+    assert "boom" not in error_text
+    assert "Error ID:" in error_text
 
 
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)

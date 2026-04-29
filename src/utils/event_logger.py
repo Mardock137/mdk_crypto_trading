@@ -83,8 +83,14 @@ class EventLogger:
         symbol: str,
         trading_mode: str,
         error: str,
+        correlation_id: str = "",
     ) -> None:
-        """Registra un ciclo fallito con errore."""
+        """Registra un ciclo fallito con errore.
+
+        ``correlation_id`` è un token corto (es. 8 hex) che collega questo
+        record al messaggio Telegram di errore e al log locale, senza esporre
+        il dettaglio dell'eccezione fuori dai log interni.
+        """
         record: dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "symbol": symbol,
@@ -94,6 +100,7 @@ class EventLogger:
             "risk_assessment": None,
             "execution_report": None,
             "error": error,
+            "correlation_id": correlation_id or None,
         }
         self._append(record)
 

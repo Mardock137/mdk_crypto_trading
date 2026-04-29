@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from src.core.contracts import OrderType, TradingCycleResult
-from src.utils.telegram_notifier import escape_html
 
 
 def build_startup_message(symbol: str, mode: str, interval_seconds: int) -> str:
@@ -19,12 +18,18 @@ def build_stop_message(symbol: str) -> str:
     return f"<b>🛑 Bot STOPPED</b>\n\nSymbol: {symbol}"
 
 
-def build_error_message(symbol: str, error: str) -> str:
-    """Messaggio Telegram di errore ciclo."""
+def build_error_message(symbol: str, correlation_id: str, exc_class: str) -> str:
+    """Messaggio Telegram di errore ciclo.
+
+    Non include ``str(exc)`` per evitare leak di dati sensibili nei log
+    Telegram. Il dettaglio completo è recuperabile via ``correlation_id``
+    nei log locali.
+    """
     return (
         f"<b>⚠️ Cycle ERROR</b>\n\n"
         f"Symbol: {symbol}\n"
-        f"Error: {escape_html(error)}"
+        f"Error ID: {correlation_id}\n"
+        f"Type: {exc_class}"
     )
 
 

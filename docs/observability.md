@@ -22,7 +22,7 @@ MDK Crypto Trading produce due tipi di log complementari: un log testuale per il
 
 Output leggibile destinato al monitoraggio in tempo reale e al debug.
 
-- **Console**: output colorato tramite Rich (o StreamHandler come fallback)
+- **Console**: output colorato tramite Rich (o StreamHandler come fallback). I traceback Rich sono disabilitati (`rich_tracebacks=False`) per mantenere la console Docker compatta; il traceback completo è sempre presente nel file di log.
 - **File**: `logs/mdk_crypto_trading.log` con rotazione automatica
   - Rotazione al raggiungimento di 5 MB
   - Vengono mantenuti gli ultimi 5 file storici (`.log.1`, `.log.2`, ecc.)
@@ -79,9 +79,12 @@ Log strutturato che registra le decisioni di ogni ciclo operativo in formato mac
   "trade_proposal": null,
   "risk_assessment": null,
   "execution_report": null,
-  "error": "Connessione a Binance fallita: timeout"
+  "error": "Connessione a Binance fallita: timeout",
+  "correlation_id": "a1b2c3d4"
 }
 ```
+
+Il campo `correlation_id` è un token esadecimale di 8 caratteri generato dal runner al momento dell'eccezione. Permette di collegare il record JSONL, la riga `ERROR` nel log testuale (che include il traceback completo) e la notifica Telegram di errore, senza esporre il dettaglio dell'eccezione fuori dai log interni.
 
 ---
 
@@ -152,6 +155,18 @@ DM Confidence: 0.82
 Symbol: BTCUSDC
 Mode: DEMO
 ```
+
+**Esempio notifica errore ciclo:**
+
+```text
+⚠️ Cycle ERROR
+
+Symbol: BTCUSDC
+Error ID: a1b2c3d4
+Type: RuntimeError
+```
+
+La notifica di errore non include `str(exc)` per evitare leak di dati sensibili (es. chiavi, URL con token). Il dettaglio completo dell'eccezione — incluso il traceback — è disponibile nel log file locale (`mdk_crypto_trading.log`) cercando la riga con `[cid=a1b2c3d4]`.
 
 **Configurazione** (nel `.env`):
 

@@ -5,6 +5,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Mapping
 
+from src.utils.log_utils import truncate_for_log
+
 from tenacity import (
     Retrying,
     retry_if_exception_type,
@@ -114,8 +116,9 @@ class BaseLlmInterface(ABC):
             ) from exc
         except json.JSONDecodeError as exc:
             self._logger.warning(
-                f"Risposta non decodificabile di {self._PROVIDER_NAME}: %r",
-                stripped,
+                "Risposta non decodificabile di %s (troncata): %s",
+                self._PROVIDER_NAME,
+                truncate_for_log(stripped),
             )
             raise RuntimeError(
                 f"Impossibile decodificare la risposta JSON di {self._PROVIDER_NAME}: {exc}",
