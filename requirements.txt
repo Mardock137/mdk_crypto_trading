@@ -1,5 +1,5 @@
 # Core / Utility
-python-dotenv==1.2.1
+python-dotenv==1.2.2
 rich==14.3.2
 tenacity==9.1.4
 
