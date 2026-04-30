@@ -41,7 +41,7 @@ Elenco degli endpoint API esterni utilizzati da MDK Crypto Trading, raggruppati 
 - `GET https://api.binance.com/api/v3/myTrades?symbol=BTCUSDC` → Mostra lo storico dei trade.
 - `GET https://api.binance.com/api/v3/openOrders?symbol=BTCUSDC` → Mostra gli ordini aperti.
 - `GET https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDC` → Prezzo attuale del simbolo.
-- `GET https://api.binance.com/api/v3/depth?symbol=ETHUSDT&limit=100` → Mostra il livello degli ordini (bid/ask).
+- `GET https://api.binance.com/api/v3/depth?symbol=BTCUSDC&limit=100` → Mostra il livello degli ordini (bid/ask).
 - `GET https://api.binance.com/api/v3/trades?symbol=BTCUSDC&limit=50` → Mostra le ultime transazioni avvenute sul mercato.
 - `GET https://api.binance.com/api/v3/avgPrice?symbol=BTCUSDC` → Prezzo medio degli ultimi minuti.
 - `GET https://api.binance.com/api/v3/klines?symbol=BTCUSDC&interval=1h` → Klines / Candlestick (dati storici).

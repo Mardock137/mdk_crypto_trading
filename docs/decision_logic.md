@@ -90,13 +90,13 @@ Esegue la proposta se approvata. Nessuna decisione strategica.
 
 Agente consultivo fuori dalla catena decisionale. Gira **una volta al giorno**, all'inizio del primo ciclo della giornata in cui non esiste già un report in `data/performance_reports/`.
 
-- Il runner chiama `_maybe_run_performance_review()` a inizio ciclo: se il file `YYYY-MM-DD.md` esiste già per oggi, ritorna subito senza costi.
+- Il runner chiama `PerformanceReviewRunner.maybe_run_today()` a inizio ciclo: se il file `YYYY-MM-DD.md` esiste già per oggi, ritorna subito senza costi.
 - Altrimenti:
   1. `load_recent_events` legge i log JSONL degli ultimi 7 giorni filtrati per simbolo.
   2. `build_performance_stats` calcola statistiche **deterministiche** (zero LLM): `total_cycles`, `hold_ratio`, `strong_bullish_ignored`, `sell_failed`, `realized_pnl_usdc`, `days_without_executed_trade`, ecc.
   3. `PerformanceReviewerAgent` (Claude Sonnet 4.6) riceve stats + mandato e produce un `PerformanceReview`: summary conciso, `mandate_adherence` (`ALIGNED` / `DRIFTING` / `MISALIGNED`) e 1-3 suggerimenti concreti.
   4. Il risultato viene serializzato in markdown in `data/performance_reports/YYYY-MM-DD.md`.
-- Nei cicli successivi, `_load_latest_performance_review` legge il file più recente e lo passa al Decision Maker come stringa (`latest_performance_review`).
+- Nei cicli successivi, `PerformanceReviewRunner.load_latest_review()` legge il file più recente e lo passa al Decision Maker come stringa (`latest_performance_review`).
 - **Errori non bloccano il ciclo**: se il Reviewer fallisce (LLM down, stats non calcolabili, ecc.), viene loggato un warning e il DM riceve stringa vuota come fallback.
 
 ---

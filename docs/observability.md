@@ -87,6 +87,29 @@ Log strutturato che registra le decisioni di ogni ciclo operativo in formato mac
 
 Il campo `correlation_id` è un token esadecimale di 8 caratteri generato dal runner al momento dell'eccezione. Permette di collegare il record JSONL, la riga `ERROR` nel log testuale (che include il traceback completo) e la notifica Telegram di errore, senza esporre il dettaglio dell'eccezione fuori dai log interni.
 
+### Ciclo skippato dal pre-check deterministico
+
+```json
+{
+  "timestamp": "2026-03-24T14:30:00+00:00",
+  "symbol": "BTCUSDC",
+  "trading_mode": "DEMO",
+  "cycle_type": "skipped",
+  "reason": "Contesto invariato rispetto al ciclo precedente",
+  "snapshot": {
+    "price": 84521.30,
+    "rsi": 54.2,
+    "macd": 12.5,
+    "macd_signal": 11.8,
+    "previous_action": "HOLD",
+    "open_order_ids": []
+  },
+  "error": null
+}
+```
+
+I record con `cycle_type: "skipped"` non contengono i payload degli agenti (`market_analysis`, `trade_proposal`, ecc.) perché la catena LLM non è stata eseguita. Vengono generati da `EventLogger.log_skipped_cycle()` quando il `CycleSkipHandler` decide di saltare il ciclo. Configurazione dello skip in `config/cycle_skip.yaml` (vedi `docs/config.md`).
+
 ---
 
 ## Report performance (`data/performance_reports/`)
@@ -221,6 +244,6 @@ pytest tests/utils/test_event_logger.py -v
 
 ## 📚 Riferimenti
 
-- **Codice**: `src/utils/logging_config.py`, `src/utils/event_logger.py`, `src/utils/telegram_notifier.py`
+- **Codice**: `src/utils/logging_config.py`, `src/utils/event_logger.py`, `src/utils/telegram_notifier.py`, `src/utils/log_utils.py`
 - **Test**: `tests/utils/test_logging_config.py`, `tests/utils/test_event_logger.py`, `tests/utils/test_telegram_notifier.py`
 - **Doc correlati**: `docs/architecture.md`, `docs/config.md`
