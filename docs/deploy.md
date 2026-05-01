@@ -263,28 +263,39 @@ df -h
 
 ### Scaricare log ed eventi in locale
 
-Il container gira come utente `app` (UID 1000). I file in `logs/` e `data/` sono di proprietà di UID 1000, che coincide con il tuo utente SSH standard — quindi **non serve `sudo`**.
+I log e gli eventi sono creati da Docker come `root`. Per scaricarli serve creare un tarball con `sudo` dalla VM, poi trasferirlo in locale.
 
-**Dalla VM**:
+**Dalla VM** (con l'utente che ha il progetto, es. `chief`):
 
 ```bash
 cd ~/mdk_crypto_trading
-tar czf ~/logs_export.tar.gz logs/
+sudo tar czf ~/logs_export.tar.gz logs/
+sudo chown $USER:$USER ~/logs_export.tar.gz
 exit
+```
+
+**Se il tarball è stato creato da un utente diverso** (es. `chief`) da quello con cui ci si connette via SSH (es. `mardock`):
+
+```bash
+sudo cp /home/chief/logs_export.tar.gz ~/
+sudo chown $USER:$USER ~/logs_export.tar.gz
 ```
 
 **Dal Mac/PC locale**:
 
 ```bash
-gcloud compute scp --zone=europe-west1-b mdk-crypto-trading:~/logs_export.tar.gz ./
+gcloud compute scp --zone=europe-west1-b mdk-crypto-trading:/home/chief/logs_export.tar.gz ./
 tar xzf logs_export.tar.gz -C logs/
 rm logs_export.tar.gz
 ```
 
-**Pulizia sulla VM**:
+> **Nota**: `gcloud scp` si connette con l'utente di default (`mardock`), ma il tarball è nella home di `chief`. Usare il percorso assoluto `/home/chief/` evita l'errore "No such file or directory".
+
+**Pulizia sulla VM** (rimuovere i tarball temporanei):
 
 ```bash
 rm ~/logs_export.tar.gz
+sudo rm -f /home/chief/logs_export.tar.gz
 ```
 
 > **Nota — upgrade da versione precedente**: se hai già file in `logs/` o `data/` creati dal vecchio container (che girava come `root`), esegui questo comando **una sola volta** sulla VM per allineare i permessi:
