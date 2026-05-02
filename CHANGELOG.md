@@ -1,6 +1,19 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.13.16 — 2026-05-02
+
+### Corretto
+
+- `src/core/cycle_skip_handler.py`: `_coerce_float` ora converte `NaN` in `None` tramite `math.isnan`. In precedenza un RSI `NaN` veniva lasciato passare come float valido, aggirando silenziosamente il check `is not None` nel pre-check deterministico.
+- `src/core/cycle_skip_handler.py`: `record_completed_cycle` emette ora un `WARNING` esplicito quando lo snapshot salvato ha `rsi=None`, rendendo visibile nei log il fatto che il controllo `rsi_delta` è disattivato invece di fallire silenziosamente.
+- `src/integrations/exchange/binance_client.py`: aggiunto `WARNING` diagnostico in `get_market_snapshot` quando `indicators["rsi"]` è `None` ma `indicators["macd"]` non lo è (condizione contraddittoria che indica un problema nel calcolo degli indicatori 1h). Il messaggio include il conteggio delle candele ricevute da `_get_hourly_closes`, permettendo di identificare la causa root alla prossima run.
+- `tests/core/test_cycle_skip_handler.py`: aggiunto test per `_coerce_float(NaN) → None` e test che verifica l'emissione del WARNING quando RSI manca nello snapshot.
+- `tests/utils/test_cycle_skip.py`: aggiunto test che verifica che `should_skip_cycle` non crashi e ritorni `True` ("unchanged") quando RSI è `None` sia nello snapshot precedente sia nei dati correnti.
+- `tests/integrations/exchange/test_binance_client.py`: aggiunto test che verifica l'emissione del WARNING diagnostico quando `compute_indicators_bundle` restituisce RSI `None` con MACD disponibile.
+
+---
+
 ## 1.13.15 — 2026-04-29
 
 ### Sicurezza / Infrastruttura

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from decimal import ROUND_DOWN, Decimal
 from typing import Any
 
@@ -27,6 +28,8 @@ _binance_retry = retry(
     stop=stop_after_attempt(3),
     reraise=True,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class BinanceClient(BaseExchangeClient):
@@ -93,6 +96,15 @@ class BinanceClient(BaseExchangeClient):
         # limita a fetchare i closes e a delegare il bundle.
         closes_1h = self._get_hourly_closes(symbol)
         indicator_values = indicators.compute_indicators_bundle(closes_1h)
+        if (
+            indicator_values.get("rsi") is None
+            and indicator_values.get("macd") is not None
+        ):
+            logger.warning(
+                "RSI unavailable while MACD is available for %s; closes_1h=%d",
+                symbol,
+                len(closes_1h),
+            )
 
         return MarketDataSnapshot(
             symbol=symbol,

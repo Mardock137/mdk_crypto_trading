@@ -168,6 +168,18 @@ def test_rsi_delta_over_threshold_returns_false() -> None:
     assert "RSI delta" in reason
 
 
+def test_rsi_check_is_skipped_when_both_values_are_none() -> None:
+    result, reason = should_skip_cycle(
+        previous=_make_snapshot(rsi=None),
+        current_market=_make_market(rsi=None),
+        current_portfolio=_make_portfolio(),
+        config=_make_config(rsi_delta=2.0),
+        consecutive_skips=0,
+    )
+    assert result is True
+    assert "unchanged" in reason
+
+
 def test_macd_sign_flip_returns_false() -> None:
     result, reason = should_skip_cycle(
         previous=_make_snapshot(macd=1.0, macd_signal=0.5),

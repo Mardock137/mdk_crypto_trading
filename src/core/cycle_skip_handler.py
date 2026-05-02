@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 
 from src.core.contracts import (
     CycleContextSnapshot,
@@ -79,6 +80,10 @@ class CycleSkipHandler:
             portfolio=portfolio,
             proposed_action=proposed_action,
         )
+        if self._previous_snapshot.rsi is None:
+            self._logger.warning(
+                "RSI unavailable in cycle snapshot; rsi_delta guard is disabled",
+            )
         self._consecutive_skips = 0
 
 
@@ -111,6 +116,9 @@ def _coerce_float(value: object) -> float | None:
     if value is None:
         return None
     try:
-        return float(value)  # type: ignore[arg-type]
+        result = float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return None
+    if math.isnan(result):
+        return None
+    return result

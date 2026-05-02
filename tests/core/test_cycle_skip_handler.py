@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import logging
+import math
 from unittest.mock import MagicMock
+
+import pytest
 
 from src.core.contracts import (
     CycleContextSnapshot,
@@ -10,7 +13,7 @@ from src.core.contracts import (
     PortfolioState,
     TradeAction,
 )
-from src.core.cycle_skip_handler import CycleSkipHandler
+from src.core.cycle_skip_handler import CycleSkipHandler, _coerce_float
 
 
 _ENABLED_CONFIG = CycleSkipConfig(
@@ -132,3 +135,30 @@ def test_record_completed_cycle_handles_missing_indicators() -> None:
     assert handler._previous_snapshot.rsi is None
     assert handler._previous_snapshot.macd is None
     assert handler._previous_snapshot.macd_signal is None
+
+
+def test_coerce_float_returns_none_for_nan() -> None:
+    assert _coerce_float(math.nan) is None
+
+
+def test_record_completed_cycle_warns_when_rsi_is_missing(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    handler, _ = _make_handler(_ENABLED_CONFIG)
+    market = MarketDataSnapshot(
+        symbol="BTCUSDC",
+        price=100.0,
+        indicators={"rsi": None, "macd": 1.0, "macd_signal": 0.5},
+    )
+
+    with caplog.at_level(
+        logging.WARNING,
+        logger="mdk_crypto_trading.test_cycle_skip_handler",
+    ):
+        handler.record_completed_cycle(
+            market_data=market,
+            portfolio=_portfolio(),
+            proposed_action=TradeAction.HOLD,
+        )
+
+    assert "rsi_delta guard is disabled" in caplog.text

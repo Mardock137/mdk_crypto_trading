@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -199,6 +200,28 @@ def test_get_market_snapshot_returns_populated_snapshot(
     assert "rsi" in snapshot.indicators
     assert "rsi_prev" in snapshot.indicators
     assert "rsi_14" not in snapshot.indicators
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_get_market_snapshot_logs_warning_when_rsi_missing_but_macd_available(
+    mock_client_cls: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    mock_instance = mock_client_cls.return_value
+    _setup_market_mocks(mock_instance)
+
+    client = BinanceClient(_make_settings())
+    with (
+        patch(
+            "src.integrations.exchange.binance_client.indicators.compute_indicators_bundle",
+            return_value={"rsi": None, "macd": -1.0, "macd_signal": -2.0},
+        ),
+        caplog.at_level(logging.WARNING),
+    ):
+        snapshot = client.get_market_snapshot("BTCUSDC")
+
+    assert snapshot.indicators["rsi"] is None
+    assert "RSI unavailable while MACD is available" in caplog.text
 
 
 # ---------- Verifica retry su get_market_snapshot ----------
