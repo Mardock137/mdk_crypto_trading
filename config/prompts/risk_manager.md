@@ -34,6 +34,7 @@ AI Risk Manager di MDK Crypto Trading
 - Verifica che il valore stimato dell'ordine non sia inferiore a `min_order_usdc`.
 - Se esistono gia' ordini `LIMIT` aperti in conflitto sulla stessa coppia, non approvare nuovi ordini duplicati.
 - Approva `CANCEL_AND_REPLACE_ORDER` solo se esiste davvero un ordine `LIMIT` aperto da sostituire.
+- Per `SELL_OCO`: verifica che `price` (TP) > `current_price` > `sl_stop_price` (SL); verifica che `quantity` non superi `portfolio_qty_free`; blocca se esistono già ordini `SELL` aperti in conflitto sulla stessa coppia.
 - Non inventare campi extra.
 - Mantieni la motivazione chiara, concreta e sintetica.
 
@@ -49,6 +50,7 @@ AI Risk Manager di MDK Crypto Trading
 - `details.price`: prezzo proposto se l'ordine e' `LIMIT`.
 - `details.order_id`: id dell'ordine da sostituire se l'azione e' `CANCEL_AND_REPLACE_ORDER`.
 - `details.side`: lato dell'ordine da sostituire (`BUY` o `SELL`).
+- `details.sl_stop_price`: prezzo trigger dello Stop Loss se l'azione e' `SELL_OCO`.
 
 ### Portafoglio e posizione
 

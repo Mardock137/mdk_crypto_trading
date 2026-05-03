@@ -169,6 +169,57 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
                     ),
                 )
 
+        # 5. Guardrail specifici per SELL_OCO
+        if proposal.action is TradeAction.SELL_OCO:
+            sl_stop = details.sl_stop_price
+            tp = details.price
+            sell_qty = details.quantity
+
+            if tp is None or sl_stop is None or sell_qty is None:
+                return ExecutionReport(
+                    execution_status=ExecutionStatus.NOT_EXECUTED,
+                    executed_action=proposal.action,
+                    order_type=proposal.order_type,
+                    reason=(
+                        "Guardrail SELL_OCO: price (TP), sl_stop_price e quantity "
+                        "sono tutti obbligatori"
+                    ),
+                )
+
+            current_price = agent_input.current_price
+            if current_price is None:
+                return ExecutionReport(
+                    execution_status=ExecutionStatus.NOT_EXECUTED,
+                    executed_action=proposal.action,
+                    order_type=proposal.order_type,
+                    reason=(
+                        "Guardrail SELL_OCO: current_price non disponibile, "
+                        "impossibile verificare l'ordinamento dei prezzi"
+                    ),
+                )
+
+            if not (tp > current_price > sl_stop):
+                return ExecutionReport(
+                    execution_status=ExecutionStatus.NOT_EXECUTED,
+                    executed_action=proposal.action,
+                    order_type=proposal.order_type,
+                    reason=(
+                        f"Guardrail SELL_OCO: ordinamento prezzi non valido — "
+                        f"atteso tp ({tp}) > current ({current_price}) > sl_stop ({sl_stop})"
+                    ),
+                )
+
+            if sell_qty > portfolio.portfolio_qty_free:
+                return ExecutionReport(
+                    execution_status=ExecutionStatus.NOT_EXECUTED,
+                    executed_action=proposal.action,
+                    order_type=proposal.order_type,
+                    reason=(
+                        f"Guardrail SELL_OCO: quantity {sell_qty} supera "
+                        f"portfolio_qty_free {portfolio.portfolio_qty_free}"
+                    ),
+                )
+
         return None
 
     def _execute_order(self, agent_input: ExecutionInput) -> dict[str, Any]:
@@ -203,6 +254,17 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
                     f"CRITICAL: Order {details.order_id} cancelled but replacement "
                     f"failed: {exc}. Manual intervention may be required."
                 ) from exc
+
+        if action is TradeAction.SELL_OCO:
+            if details.quantity is None:
+                raise ValueError("quantity is required for SELL_OCO.")
+            if details.price is None:
+                raise ValueError("price (tp_price) is required for SELL_OCO.")
+            if details.sl_stop_price is None:
+                raise ValueError("sl_stop_price is required for SELL_OCO.")
+            return self._exchange.place_oco_sell(
+                symbol, details.quantity, details.price, details.sl_stop_price,
+            )
 
         if details.quantity is None:
             raise ValueError("quantity is required for BUY/SELL orders.")

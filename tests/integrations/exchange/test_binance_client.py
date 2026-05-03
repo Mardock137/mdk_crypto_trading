@@ -488,3 +488,65 @@ def test_cancel_order(mock_client_cls: MagicMock) -> None:
         symbol="BTCUSDC", orderId="12345",
     )
     assert result == {"status": "CANCELED"}
+
+
+# ---------- Verifica place_oco_sell ----------
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_oco_sell_calls_create_oco_order_with_correct_params(
+    mock_client_cls: MagicMock,
+) -> None:
+    """place_oco_sell deve chiamare create_oco_order con i parametri quantizzati corretti."""
+    mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(
+        mock_instance,
+        step_size="0.00001",
+        min_qty="0.00001",
+        tick_size="0.01",
+        min_notional="10.0",
+    )
+    mock_instance.create_oco_order.return_value = {
+        "orderListId": 42,
+        "orders": [{"orderId": "200"}, {"orderId": "201"}],
+    }
+
+    client = BinanceClient(_make_settings())
+    result = client.place_oco_sell(
+        symbol="BTCUSDC",
+        quantity=0.003,
+        tp_price=115_000.0,
+        sl_stop_price=92_000.0,
+    )
+
+    assert result["orderListId"] == 42
+
+    call_kwargs = mock_instance.create_oco_order.call_args.kwargs
+    assert call_kwargs["symbol"] == "BTCUSDC"
+    assert call_kwargs["side"] == "SELL"
+    assert call_kwargs["quantity"] == Decimal("0.00300")
+    assert call_kwargs["price"] == "115000.00"
+    assert call_kwargs["stopPrice"] == "92000.00"
+    # sl_limit_price = 92000 * 0.995 = 91540 → troncato a tickSize 0.01
+    assert call_kwargs["stopLimitPrice"] == "91540.00"
+    assert call_kwargs["stopLimitTimeInForce"] == "GTC"
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_oco_sell_quantizes_prices(mock_client_cls: MagicMock) -> None:
+    """place_oco_sell quantizza tp_price e sl_stop_price al tickSize."""
+    mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(mock_instance, tick_size="1.0", min_notional="10.0")
+    mock_instance.create_oco_order.return_value = {"orderListId": 1, "orders": []}
+
+    client = BinanceClient(_make_settings())
+    client.place_oco_sell(
+        symbol="BTCUSDC",
+        quantity=0.001,
+        tp_price=115_000.99,   # deve essere troncato a 115000
+        sl_stop_price=92_000.75,  # deve essere troncato a 92000
+    )
+
+    call_kwargs = mock_instance.create_oco_order.call_args.kwargs
+    assert call_kwargs["price"] == "115000.0"
+    assert call_kwargs["stopPrice"] == "92000.0"

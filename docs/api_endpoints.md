@@ -49,6 +49,7 @@ Elenco degli endpoint API esterni utilizzati da MDK Crypto Trading, raggruppati 
 
 - `POST https://api.binance.com/api/v3/order` → Crea un ordine.
 - `POST https://api.binance.com/api/v3/order` (x2) → Per `CANCEL_AND_REPLACE_ORDER`: prima `DELETE /order` per cancellare l'ordine esistente, poi `POST /order` per piazzare il nuovo ordine limit.
+- `POST https://api.binance.com/api/v3/order/oco` → Piazza un ordine OCO SELL (`SELL_OCO`): Take Profit LIMIT_MAKER + Stop Loss STOP_LOSS_LIMIT abbinati sulla stessa quantità. Quando uno scatta, l'altro viene cancellato automaticamente da Binance.
 
 - `DELETE https://api.binance.com/api/v3/order` → Cancella un ordine già piazzato.
 

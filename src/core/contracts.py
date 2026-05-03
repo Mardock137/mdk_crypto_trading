@@ -20,6 +20,7 @@ class SuggestedAction(str, Enum):
 class TradeAction(str, Enum):
     BUY = "BUY"
     SELL = "SELL"
+    SELL_OCO = "SELL_OCO"
     HOLD = "HOLD"
     CANCEL_AND_REPLACE_ORDER = "CANCEL_AND_REPLACE_ORDER"
 
@@ -110,6 +111,7 @@ class TradeProposalDetails:
     price: float | None = None
     order_id: str | None = None
     side: OrderSide | None = None
+    sl_stop_price: float | None = None  # trigger stop loss per SELL_OCO
 
     def estimated_notional(self, reference_price: float | None = None) -> float | None:
         if self.quantity is None:

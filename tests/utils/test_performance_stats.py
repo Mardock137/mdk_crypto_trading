@@ -67,6 +67,20 @@ def test_build_stats_counters_basic() -> None:
     assert stats.hold_ratio == pytest.approx(0.4)
 
 
+def test_build_stats_sell_oco_counted_as_sell_executed() -> None:
+    events = [
+        _event(action="SELL_OCO", execution_status="EXECUTED"),
+        _event(action="SELL_OCO", execution_status="FAILED"),
+    ]
+    stats = build_performance_stats(
+        "BTCUSDC", _mock_mm_without_trades(), events, days=7,
+        today=date(2026, 4, 20),
+    )
+
+    assert stats.sell_executed == 1
+    assert stats.sell_failed == 1
+
+
 def test_build_stats_strong_signal_ignored() -> None:
     events = [
         _event(action="HOLD", market_bias="BULLISH", signal_strength=0.8),

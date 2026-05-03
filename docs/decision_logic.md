@@ -48,7 +48,7 @@ Analizza i dati di mercato e produce un segnale. Non decide operazioni.
 
 Riceve il segnale del Market Analyst e formula una proposta operativa usando come bussola il **mandato di investimento** definito in `config/trading.yaml`. Gira su Claude Opus 4.7 con adaptive thinking (`thinking_effort: high`): il modello esegue un ragionamento strutturato interno prima di emettere la proposta JSON.
 
-- **Azioni possibili**: `BUY`, `SELL`, `HOLD`, `CANCEL_AND_REPLACE_ORDER`
+- **Azioni possibili**: `BUY`, `SELL`, `SELL_OCO`, `HOLD`, `CANCEL_AND_REPLACE_ORDER`
 - **Tipi di ordine**: `MARKET`, `LIMIT`, `NONE` (solo per HOLD)
 - Usa il mandato (drawdown massimo, orizzonte, posizione massima) come vincoli di rischio e contesto strategico. L'obiettivo di generare rendimento sul capitale è parte dell'identità del DM ed è definito nel prompt.
 - Valuta esplicitamente memoria (`decision_memory`) e performance (`performance_summary`, `recent_performance`) **prima** di decidere: una sequenza di `HOLD` su mercato non fermo è un indizio di esitazione.
@@ -57,7 +57,8 @@ Riceve il segnale del Market Analyst e formula una proposta operativa usando com
 - Può usare **quantity frazionali** rispetto al portafoglio: non è obbligato a usare tutto il saldo USDC o a vendere sempre l'intera posizione.
 - **Scaling in**: quando un setup è chiaro ma vuole ridurre il rischio di timing, può dividere l'ingresso in 2-3 tranche (prima tranche `MARKET BUY`, successive `LIMIT BUY` a prezzi più bassi).
 - **Take profit parziali**: quando il prezzo è salito significativamente dall'ingresso, può piazzare un `LIMIT SELL` sopra il prezzo corrente con `quantity` parziale (es. 30-50% della posizione) per monetizzare una parte lasciando correre il resto. Eventuali aggiornamenti del TP nei cicli successivi passano da `CANCEL_AND_REPLACE_ORDER`.
-- Lo **stop loss proattivo** non è ancora implementato: gli order type `STOP_LOSS`, `STOP_LOSS_LIMIT`, `TAKE_PROFIT` e `OCO` saranno introdotti in una fase futura. Al momento, se il DM vede rischio ribassista concreto, deve fare `MARKET SELL` (totale o parziale) — non `LIMIT SELL` sotto mercato, che verrebbe eseguito immediatamente.
+- **OCO (One Cancels Other)**: con `SELL_OCO` il DM può abbinare in un'unica operazione un Take Profit (`price`, sopra il prezzo corrente) e uno Stop Loss (`sl_stop_price`, sotto il prezzo corrente) sulla stessa quantità. Quando uno dei due scatta, Binance cancella l'altro automaticamente. Da usare quando c'è una posizione aperta e nessun ordine SELL già attivo sulla coppia.
+- Se il DM vede rischio ribassista concreto senza voler usare OCO, deve fare `MARKET SELL` (totale o parziale) — non `LIMIT SELL` sotto mercato, che verrebbe eseguito immediatamente.
 - Non propone ordini sotto `min_order_usdc`.
 - Non propone ordini duplicati se ci sono già ordini aperti sulla stessa coppia.
 
@@ -82,6 +83,7 @@ Esegue la proposta se approvata. Nessuna decisione strategica.
 - Se `risk_decision` non è `APPROVE` → non esegue
 - Se l'azione è `HOLD` → non esegue
 - Se `CANCEL_AND_REPLACE_ORDER` → cancella l'ordine vecchio, poi piazza il nuovo
+- Se `SELL_OCO` → piazza un OCO SELL su Binance (Take Profit LIMIT + Stop Loss STOP_LOSS_LIMIT abbinati)
 - Se l'esecuzione fallisce → segnala `FAILED` nel report
 
 ---

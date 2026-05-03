@@ -432,3 +432,116 @@ def test_guardrail_cancel_replace_known_order_id_passes() -> None:
     )
 
     assert report.execution_status is ExecutionStatus.EXECUTED
+
+
+# --- SELL_OCO ---
+
+def test_sell_oco_calls_place_oco_sell() -> None:
+    """SELL_OCO approvato deve chiamare place_oco_sell con i parametri corretti."""
+    mock_exchange = MagicMock()
+    mock_exchange.place_oco_sell.return_value = {
+        "orderListId": 42,
+        "orders": [{"orderId": "101"}, {"orderId": "102"}],
+    }
+
+    portfolio = PortfolioState(
+        usdc_balance=0.0,
+        usdc_balance_total=0.0,
+        usdc_value=5000.0,
+        portfolio_qty_free=0.01,
+        portfolio_qty_total=0.01,
+    )
+    proposal = TradeProposal(
+        action=TradeAction.SELL_OCO,
+        order_type=OrderType.LIMIT,
+        confidence=0.79,
+        reason="OCO su posizione",
+        details=TradeProposalDetails(
+            quantity=0.005, price=115_000.0, sl_stop_price=92_000.0,
+        ),
+    )
+    agent = ExecutionTraderAgent(exchange_client=mock_exchange)
+    report = agent.run(
+        _make_input(
+            proposal, APPROVED,
+            portfolio=portfolio,
+            current_price=100_000.0,
+            max_order_notional_usdc=1_000_000.0,
+        )
+    )
+
+    assert report.execution_status is ExecutionStatus.EXECUTED
+    mock_exchange.place_oco_sell.assert_called_once_with(
+        "BTCUSDC", 0.005, 115_000.0, 92_000.0,
+    )
+    assert report.execution_details["orderListId"] == 42
+
+
+def test_sell_oco_guardrail_inverted_prices_blocks() -> None:
+    """SELL_OCO bloccato se tp_price <= current_price."""
+    portfolio = PortfolioState(
+        usdc_balance=0.0,
+        usdc_balance_total=0.0,
+        usdc_value=5000.0,
+        portfolio_qty_free=0.01,
+        portfolio_qty_total=0.01,
+    )
+    proposal = TradeProposal(
+        action=TradeAction.SELL_OCO,
+        order_type=OrderType.LIMIT,
+        confidence=0.79,
+        reason="OCO con TP sotto il prezzo corrente",
+        details=TradeProposalDetails(
+            quantity=0.005,
+            price=90_000.0,   # TP sotto il current (100k) → invalido
+            sl_stop_price=85_000.0,
+        ),
+    )
+    agent = ExecutionTraderAgent(exchange_client=MagicMock())
+    report = agent.run(
+        _make_input(
+            proposal, APPROVED,
+            portfolio=portfolio,
+            current_price=100_000.0,
+            max_order_notional_usdc=1_000_000.0,
+        )
+    )
+
+    assert report.execution_status is ExecutionStatus.NOT_EXECUTED
+    assert "Guardrail SELL_OCO" in report.reason
+    assert "ordinamento" in report.reason
+
+
+def test_sell_oco_guardrail_qty_exceeds_free_blocks() -> None:
+    """SELL_OCO bloccato se quantity supera portfolio_qty_free."""
+    portfolio = PortfolioState(
+        usdc_balance=0.0,
+        usdc_balance_total=0.0,
+        usdc_value=5000.0,
+        portfolio_qty_free=0.002,  # libera meno di quanto si vuole vendere
+        portfolio_qty_total=0.01,
+    )
+    proposal = TradeProposal(
+        action=TradeAction.SELL_OCO,
+        order_type=OrderType.LIMIT,
+        confidence=0.79,
+        reason="OCO con qty maggiore del disponibile",
+        details=TradeProposalDetails(
+            quantity=0.005,
+            price=115_000.0,
+            sl_stop_price=92_000.0,
+        ),
+    )
+    agent = ExecutionTraderAgent(exchange_client=MagicMock())
+    report = agent.run(
+        _make_input(
+            proposal, APPROVED,
+            portfolio=portfolio,
+            current_price=100_000.0,
+            max_order_notional_usdc=1_000_000.0,
+        )
+    )
+
+    assert report.execution_status is ExecutionStatus.NOT_EXECUTED
+    assert "Guardrail SELL_OCO" in report.reason
+    assert "portfolio_qty_free" in report.reason

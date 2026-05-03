@@ -58,9 +58,9 @@ def build_performance_stats(
             hold_count += 1
         if action == "BUY" and execution_status == "EXECUTED":
             buy_executed += 1
-        if action == "SELL" and execution_status == "EXECUTED":
+        if action in ("SELL", "SELL_OCO") and execution_status == "EXECUTED":
             sell_executed += 1
-        if action == "SELL" and execution_status == "FAILED":
+        if action in ("SELL", "SELL_OCO") and execution_status == "FAILED":
             sell_failed += 1
 
         if action == "HOLD":

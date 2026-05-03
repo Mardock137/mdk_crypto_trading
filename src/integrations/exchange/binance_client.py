@@ -226,6 +226,36 @@ class BinanceClient(BaseExchangeClient):
         )
         return result
 
+    # Stesso motivo di place_limit_order: nessun retry per evitare ordini
+    # duplicati in caso di risposta persa per timeout.
+    def place_oco_sell(
+        self,
+        symbol: str,
+        quantity: float,
+        tp_price: float,
+        sl_stop_price: float,
+    ) -> dict[str, Any]:
+        adjusted_tp = self._quantize_price(symbol, Decimal(str(tp_price)))
+        adjusted_sl_stop = self._quantize_price(symbol, Decimal(str(sl_stop_price)))
+        # sl_limit_price = 0.5% sotto il trigger per assorbire lo slippage
+        sl_limit_price = self._quantize_price(
+            symbol, adjusted_sl_stop * Decimal("0.995"),
+        )
+        adjusted_qty = self._quantize_quantity(
+            symbol, Decimal(str(quantity)), adjusted_tp,
+        )
+
+        result: dict[str, Any] = self._client.create_oco_order(
+            symbol=symbol,
+            side="SELL",
+            quantity=adjusted_qty,
+            price=str(adjusted_tp),
+            stopPrice=str(adjusted_sl_stop),
+            stopLimitPrice=str(sl_limit_price),
+            stopLimitTimeInForce="GTC",
+        )
+        return result
+
     # ---- Helper privati ----
 
     def _get_symbol_filters(self, symbol: str) -> dict[str, Decimal]:

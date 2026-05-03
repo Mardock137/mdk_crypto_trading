@@ -64,6 +64,14 @@ def _parse_trade_proposal(data: Any) -> TradeProposal:
             order_id=str(raw_details["order_id"]),
             side=OrderSide(raw_details["side"]),
         )
+    elif action is TradeAction.SELL_OCO:
+        details = TradeProposalDetails(
+            quantity=_validate_finite_positive(float(raw_details["quantity"]), "quantity"),
+            price=_validate_finite_positive(float(raw_details["price"]), "price"),
+            sl_stop_price=_validate_finite_positive(
+                float(raw_details["sl_stop_price"]), "sl_stop_price"
+            ),
+        )
     else:
         # BUY o SELL
         details = TradeProposalDetails(

@@ -1,6 +1,23 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.14.0 — 2026-05-03
+
+### Aggiunto
+
+- `src/core/contracts.py`: aggiunto `SELL_OCO = "SELL_OCO"` a `TradeAction` e campo opzionale `sl_stop_price: float | None = None` a `TradeProposalDetails`.
+- `src/integrations/exchange/base_exchange_client.py`: aggiunto metodo astratto `place_oco_sell(symbol, quantity, tp_price, sl_stop_price)`.
+- `src/integrations/exchange/binance_client.py`: implementato `place_oco_sell()` con quantize di `tp_price`, `sl_stop_price` e `quantity`; `sl_limit_price` calcolato automaticamente come `sl_stop_price * 0.995`; delega a `create_oco_order()` senza retry per evitare ordini duplicati.
+- `src/agents/decision_maker.py`: aggiunto branch `SELL_OCO` in `_parse_trade_proposal()` con validazione di `quantity`, `price` e `sl_stop_price`.
+- `src/agents/execution_trader.py`: aggiunti guardrail per `SELL_OCO` (verifica ordinamento `tp > current > sl_stop`, quantità disponibile) e branch in `_execute_order()` che delega a `place_oco_sell()`.
+- `config/prompts/decision_maker.md`: documentato `SELL_OCO` nelle regole operative e aggiunto esempio JSON nello schema risposta.
+- `config/prompts/risk_manager.md`: aggiunta regola di validazione per `SELL_OCO` e campo `details.sl_stop_price` nella sezione dati disponibili.
+- `tests/agents/test_decision_maker.py`: aggiunti test parsing `SELL_OCO` (caso valido, `sl_stop_price` mancante, `sl_stop_price` negativo).
+- `tests/agents/test_execution_trader.py`: aggiunti test esecuzione `SELL_OCO` (caso valido, guardrail TP invertito, guardrail qty > free).
+- `tests/integrations/exchange/test_binance_client.py`: aggiunti test `place_oco_sell` (parametri corretti, quantize prezzi).
+
+---
+
 ## 1.13.16 — 2026-05-02
 
 ### Corretto

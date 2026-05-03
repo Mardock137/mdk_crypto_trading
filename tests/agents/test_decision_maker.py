@@ -373,3 +373,60 @@ def test_parse_confidence_nan_raises() -> None:
     }
     with pytest.raises(ValueError, match="confidence"):
         _parse_trade_proposal(data)
+
+
+# --- SELL_OCO ---
+
+def test_parse_sell_oco() -> None:
+    data = {
+        "action": "SELL_OCO",
+        "order_type": "LIMIT",
+        "confidence": 0.79,
+        "reason": "OCO su posizione aperta: TP a +15%, SL a -8%",
+        "details": {
+            "quantity": 0.003,
+            "price": 115000.0,
+            "sl_stop_price": 92000.0,
+        },
+    }
+    result = _parse_trade_proposal(data)
+
+    assert result.action is TradeAction.SELL_OCO
+    assert result.order_type is OrderType.LIMIT
+    assert result.confidence == pytest.approx(0.79)
+    assert result.details.quantity == pytest.approx(0.003)
+    assert result.details.price == pytest.approx(115000.0)
+    assert result.details.sl_stop_price == pytest.approx(92000.0)
+    assert result.details.order_id is None
+    assert result.details.side is None
+
+
+def test_parse_sell_oco_missing_sl_stop_price_raises() -> None:
+    data = {
+        "action": "SELL_OCO",
+        "order_type": "LIMIT",
+        "confidence": 0.79,
+        "reason": "OCO senza sl_stop_price",
+        "details": {
+            "quantity": 0.003,
+            "price": 115000.0,
+        },
+    }
+    with pytest.raises((KeyError, ValueError)):
+        _parse_trade_proposal(data)
+
+
+def test_parse_sell_oco_invalid_sl_stop_price_raises() -> None:
+    data = {
+        "action": "SELL_OCO",
+        "order_type": "LIMIT",
+        "confidence": 0.79,
+        "reason": "OCO con sl_stop_price non valido",
+        "details": {
+            "quantity": 0.003,
+            "price": 115000.0,
+            "sl_stop_price": -500.0,
+        },
+    }
+    with pytest.raises(ValueError, match="sl_stop_price"):
+        _parse_trade_proposal(data)

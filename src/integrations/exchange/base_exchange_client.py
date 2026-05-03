@@ -40,3 +40,13 @@ class BaseExchangeClient(ABC):
     @abstractmethod
     def cancel_order(self, symbol: str, order_id: str) -> dict[str, Any]:
         """Cancella un ordine aperto tramite il suo ID."""
+
+    @abstractmethod
+    def place_oco_sell(
+        self,
+        symbol: str,
+        quantity: float,
+        tp_price: float,
+        sl_stop_price: float,
+    ) -> dict[str, Any]:
+        """Piazza OCO SELL: take profit LIMIT + stop loss STOP_LOSS_LIMIT."""
