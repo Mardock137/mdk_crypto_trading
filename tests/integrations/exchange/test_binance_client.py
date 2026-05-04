@@ -4,6 +4,7 @@ import logging
 from decimal import Decimal
 from typing import Any
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
 from binance.exceptions import BinanceAPIException, BinanceRequestException
@@ -51,6 +52,14 @@ def _make_settings(**overrides: Any) -> AppSettings:
     }
     defaults.update(overrides)
     return AppSettings(**defaults)
+
+
+def _assert_valid_uuid4(value: str) -> None:
+    """Verifica che il valore sia uno UUID v4 serializzato come stringa standard."""
+    parsed = UUID(value)
+    assert len(value) == 36
+    assert str(parsed) == value
+    assert parsed.version == 4
 
 
 # ---------- Verifica credenziali DEMO ----------
@@ -311,9 +320,11 @@ def test_place_market_order_buy(mock_client_cls: MagicMock) -> None:
     client = BinanceClient(_make_settings())
     result = client.place_market_order("BTCUSDC", "BUY", 0.001)
 
-    mock_instance.order_market_buy.assert_called_once_with(
-        symbol="BTCUSDC", quantity=Decimal("0.00100"),
-    )
+    mock_instance.order_market_buy.assert_called_once()
+    _, kwargs = mock_instance.order_market_buy.call_args
+    assert kwargs["symbol"] == "BTCUSDC"
+    assert kwargs["quantity"] == Decimal("0.00100")
+    _assert_valid_uuid4(kwargs["newClientOrderId"])
     assert result == {"orderId": "100"}
 
 
@@ -328,9 +339,11 @@ def test_place_market_order_sell(mock_client_cls: MagicMock) -> None:
     client = BinanceClient(_make_settings())
     result = client.place_market_order("BTCUSDC", "SELL", 0.001)
 
-    mock_instance.order_market_sell.assert_called_once_with(
-        symbol="BTCUSDC", quantity=Decimal("0.00100"),
-    )
+    mock_instance.order_market_sell.assert_called_once()
+    _, kwargs = mock_instance.order_market_sell.call_args
+    assert kwargs["symbol"] == "BTCUSDC"
+    assert kwargs["quantity"] == Decimal("0.00100")
+    _assert_valid_uuid4(kwargs["newClientOrderId"])
     assert result == {"orderId": "101"}
 
 
@@ -344,12 +357,13 @@ def test_place_limit_order_buy(mock_client_cls: MagicMock) -> None:
     client = BinanceClient(_make_settings())
     result = client.place_limit_order("BTCUSDC", "BUY", 0.001, 97000.0)
 
-    mock_instance.order_limit_buy.assert_called_once_with(
-        symbol="BTCUSDC",
-        quantity=Decimal("0.00100"),
-        price="97000.00",
-        timeInForce="GTC",
-    )
+    mock_instance.order_limit_buy.assert_called_once()
+    _, kwargs = mock_instance.order_limit_buy.call_args
+    assert kwargs["symbol"] == "BTCUSDC"
+    assert kwargs["quantity"] == Decimal("0.00100")
+    assert kwargs["price"] == "97000.00"
+    assert kwargs["timeInForce"] == "GTC"
+    _assert_valid_uuid4(kwargs["newClientOrderId"])
     assert result == {"orderId": "200"}
 
 
@@ -363,13 +377,61 @@ def test_place_limit_order_sell(mock_client_cls: MagicMock) -> None:
     client = BinanceClient(_make_settings())
     result = client.place_limit_order("BTCUSDC", "SELL", 0.001, 99000.0)
 
-    mock_instance.order_limit_sell.assert_called_once_with(
-        symbol="BTCUSDC",
-        quantity=Decimal("0.00100"),
-        price="99000.00",
-        timeInForce="GTC",
-    )
+    mock_instance.order_limit_sell.assert_called_once()
+    _, kwargs = mock_instance.order_limit_sell.call_args
+    assert kwargs["symbol"] == "BTCUSDC"
+    assert kwargs["quantity"] == Decimal("0.00100")
+    assert kwargs["price"] == "99000.00"
+    assert kwargs["timeInForce"] == "GTC"
+    _assert_valid_uuid4(kwargs["newClientOrderId"])
     assert result == {"orderId": "201"}
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_market_order_retry_uses_same_client_order_id(
+    mock_client_cls: MagicMock,
+) -> None:
+    """Il retry del market order deve riusare lo stesso newClientOrderId."""
+    mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(mock_instance)
+    mock_instance.get_symbol_ticker.return_value = {"price": "50000.0"}
+    mock_instance.order_market_buy.side_effect = [
+        BinanceRequestException("Connection error"),
+        {"orderId": "102"},
+    ]
+
+    client = BinanceClient(_make_settings())
+    result = client.place_market_order("BTCUSDC", "BUY", 0.001)
+
+    assert result == {"orderId": "102"}
+    assert mock_instance.order_market_buy.call_count == 2
+    first_kwargs = mock_instance.order_market_buy.call_args_list[0].kwargs
+    second_kwargs = mock_instance.order_market_buy.call_args_list[1].kwargs
+    assert first_kwargs["newClientOrderId"] == second_kwargs["newClientOrderId"]
+    _assert_valid_uuid4(first_kwargs["newClientOrderId"])
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_limit_order_retry_uses_same_client_order_id(
+    mock_client_cls: MagicMock,
+) -> None:
+    """Il retry del limit order deve riusare lo stesso newClientOrderId."""
+    mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(mock_instance)
+    mock_instance.order_limit_sell.side_effect = [
+        BinanceRequestException("Connection error"),
+        {"orderId": "202"},
+    ]
+
+    client = BinanceClient(_make_settings())
+    result = client.place_limit_order("BTCUSDC", "SELL", 0.001, 99000.0)
+
+    assert result == {"orderId": "202"}
+    assert mock_instance.order_limit_sell.call_count == 2
+    first_kwargs = mock_instance.order_limit_sell.call_args_list[0].kwargs
+    second_kwargs = mock_instance.order_limit_sell.call_args_list[1].kwargs
+    assert first_kwargs["newClientOrderId"] == second_kwargs["newClientOrderId"]
+    _assert_valid_uuid4(first_kwargs["newClientOrderId"])
 
 
 @patch("src.integrations.exchange.binance_client.BinanceApiClient")
@@ -530,6 +592,7 @@ def test_place_oco_sell_calls_create_oco_order_with_correct_params(
     # sl_limit_price = 92000 * 0.995 = 91540 → troncato a tickSize 0.01
     assert call_kwargs["stopLimitPrice"] == "91540.00"
     assert call_kwargs["stopLimitTimeInForce"] == "GTC"
+    _assert_valid_uuid4(call_kwargs["listClientOrderId"])
 
 
 @patch("src.integrations.exchange.binance_client.BinanceApiClient")
@@ -550,3 +613,52 @@ def test_place_oco_sell_quantizes_prices(mock_client_cls: MagicMock) -> None:
     call_kwargs = mock_instance.create_oco_order.call_args.kwargs
     assert call_kwargs["price"] == "115000.0"
     assert call_kwargs["stopPrice"] == "92000.0"
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_oco_sell_passes_list_client_order_id(
+    mock_client_cls: MagicMock,
+) -> None:
+    """place_oco_sell deve passare listClientOrderId a create_oco_order."""
+    mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(mock_instance)
+    mock_instance.create_oco_order.return_value = {"orderListId": 99, "orders": []}
+
+    client = BinanceClient(_make_settings())
+    client.place_oco_sell(
+        symbol="BTCUSDC",
+        quantity=0.001,
+        tp_price=115_000.0,
+        sl_stop_price=92_000.0,
+    )
+
+    call_kwargs = mock_instance.create_oco_order.call_args.kwargs
+    _assert_valid_uuid4(call_kwargs["listClientOrderId"])
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_place_oco_sell_retry_uses_same_list_client_order_id(
+    mock_client_cls: MagicMock,
+) -> None:
+    """Il retry dell'OCO sell deve riusare lo stesso listClientOrderId."""
+    mock_instance = mock_client_cls.return_value
+    _setup_symbol_info(mock_instance)
+    mock_instance.create_oco_order.side_effect = [
+        BinanceRequestException("Connection error"),
+        {"orderListId": 43, "orders": []},
+    ]
+
+    client = BinanceClient(_make_settings())
+    result = client.place_oco_sell(
+        symbol="BTCUSDC",
+        quantity=0.001,
+        tp_price=115_000.0,
+        sl_stop_price=92_000.0,
+    )
+
+    assert result["orderListId"] == 43
+    assert mock_instance.create_oco_order.call_count == 2
+    first_kwargs = mock_instance.create_oco_order.call_args_list[0].kwargs
+    second_kwargs = mock_instance.create_oco_order.call_args_list[1].kwargs
+    assert first_kwargs["listClientOrderId"] == second_kwargs["listClientOrderId"]
+    _assert_valid_uuid4(first_kwargs["listClientOrderId"])

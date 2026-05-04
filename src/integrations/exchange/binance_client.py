@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from decimal import ROUND_DOWN, Decimal
 from typing import Any
 
@@ -162,10 +163,6 @@ class BinanceClient(BaseExchangeClient):
 
     # ---- Esecuzione ordini ----
 
-    # NOTE: nessun @_binance_retry su place_market_order/place_limit_order.
-    # Senza idempotency key (newClientOrderId) un retry su risposta persa per timeout
-    # potrebbe creare un secondo ordine duplicato. La gestione di un'eventuale failure
-    # transiente sugli ordini è demandata al chiamante (ExecutionTraderAgent).
     def place_market_order(
         self, symbol: str, side: str, quantity: float,
     ) -> dict[str, Any]:
@@ -180,19 +177,37 @@ class BinanceClient(BaseExchangeClient):
         adjusted_qty = self._quantize_quantity(
             symbol, Decimal(str(quantity)), reference_price,
         )
+        client_order_id = str(uuid.uuid4())
 
-        if normalized == "BUY":
+        return self._place_market_order_with_retry(
+            symbol=symbol,
+            side=normalized,
+            quantity=adjusted_qty,
+            client_order_id=client_order_id,
+        )
+
+    @_binance_retry
+    def _place_market_order_with_retry(
+        self,
+        symbol: str,
+        side: str,
+        quantity: Decimal,
+        client_order_id: str,
+    ) -> dict[str, Any]:
+        if side == "BUY":
             result: dict[str, Any] = self._client.order_market_buy(
-                symbol=symbol, quantity=adjusted_qty,
+                symbol=symbol,
+                quantity=quantity,
+                newClientOrderId=client_order_id,
             )
         else:
             result = self._client.order_market_sell(
-                symbol=symbol, quantity=adjusted_qty,
+                symbol=symbol,
+                quantity=quantity,
+                newClientOrderId=client_order_id,
             )
         return result
 
-    # Stessa motivazione di place_market_order: nessun retry per evitare ordini
-    # duplicati in caso di risposta persa per timeout.
     def place_limit_order(
         self, symbol: str, side: str, quantity: float, price: float,
     ) -> dict[str, Any]:
@@ -204,16 +219,40 @@ class BinanceClient(BaseExchangeClient):
         adjusted_qty = self._quantize_quantity(
             symbol, Decimal(str(quantity)), adjusted_price,
         )
+        client_order_id = str(uuid.uuid4())
 
-        if normalized == "BUY":
+        return self._place_limit_order_with_retry(
+            symbol=symbol,
+            side=normalized,
+            quantity=adjusted_qty,
+            price=adjusted_price,
+            client_order_id=client_order_id,
+        )
+
+    @_binance_retry
+    def _place_limit_order_with_retry(
+        self,
+        symbol: str,
+        side: str,
+        quantity: Decimal,
+        price: Decimal,
+        client_order_id: str,
+    ) -> dict[str, Any]:
+        if side == "BUY":
             result: dict[str, Any] = self._client.order_limit_buy(
-                symbol=symbol, quantity=adjusted_qty, price=str(adjusted_price),
+                symbol=symbol,
+                quantity=quantity,
+                price=str(price),
                 timeInForce="GTC",
+                newClientOrderId=client_order_id,
             )
         else:
             result = self._client.order_limit_sell(
-                symbol=symbol, quantity=adjusted_qty, price=str(adjusted_price),
+                symbol=symbol,
+                quantity=quantity,
+                price=str(price),
                 timeInForce="GTC",
+                newClientOrderId=client_order_id,
             )
         return result
 
@@ -226,8 +265,6 @@ class BinanceClient(BaseExchangeClient):
         )
         return result
 
-    # Stesso motivo di place_limit_order: nessun retry per evitare ordini
-    # duplicati in caso di risposta persa per timeout.
     def place_oco_sell(
         self,
         symbol: str,
@@ -244,15 +281,36 @@ class BinanceClient(BaseExchangeClient):
         adjusted_qty = self._quantize_quantity(
             symbol, Decimal(str(quantity)), adjusted_tp,
         )
+        client_order_id = str(uuid.uuid4())
 
+        return self._place_oco_sell_with_retry(
+            symbol=symbol,
+            quantity=adjusted_qty,
+            tp_price=adjusted_tp,
+            sl_stop_price=adjusted_sl_stop,
+            sl_limit_price=sl_limit_price,
+            client_order_id=client_order_id,
+        )
+
+    @_binance_retry
+    def _place_oco_sell_with_retry(
+        self,
+        symbol: str,
+        quantity: Decimal,
+        tp_price: Decimal,
+        sl_stop_price: Decimal,
+        sl_limit_price: Decimal,
+        client_order_id: str,
+    ) -> dict[str, Any]:
         result: dict[str, Any] = self._client.create_oco_order(
             symbol=symbol,
             side="SELL",
-            quantity=adjusted_qty,
-            price=str(adjusted_tp),
-            stopPrice=str(adjusted_sl_stop),
+            quantity=quantity,
+            price=str(tp_price),
+            stopPrice=str(sl_stop_price),
             stopLimitPrice=str(sl_limit_price),
             stopLimitTimeInForce="GTC",
+            listClientOrderId=client_order_id,
         )
         return result
 

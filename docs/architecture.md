@@ -120,7 +120,11 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 - `place_limit_order(symbol, side, quantity, price)`: piazza un ordine limit GTC (solo BUY/SELL, altrimenti `ValueError`)
 - `cancel_order(symbol, order_id)`: cancella un ordine aperto
 
-**Retry policy**: i 4 metodi di sola lettura (`ping`, `get_account_info`, `get_market_snapshot`, `get_portfolio_state`) e `cancel_order` hanno retry automatico con backoff esponenziale tramite `tenacity` (max 3 tentativi, solo su errori retriabili). `cancel_order` è incluso perché Binance lo gestisce in modo idempotente: cancellare due volte un ordine già cancellato è innocuo. `place_market_order` e `place_limit_order` invece **non hanno retry**: senza idempotency key (`newClientOrderId`) un retry su risposta persa per timeout potrebbe creare un ordine duplicato. La gestione di failure transienti sui place order è demandata al chiamante (`ExecutionTraderAgent`).
+**Retry policy**: tutti i metodi di `BinanceClient` hanno retry automatico con backoff esponenziale tramite `tenacity` (max 3 tentativi, solo su errori retriabili: `BinanceRequestException`, codici 429/418/5xx).
+
+- I 4 metodi di sola lettura (`ping`, `get_account_info`, `get_market_snapshot`, `get_portfolio_state`) sono retry-safe per natura.
+- `cancel_order` è retry-safe perché Binance lo gestisce in modo idempotente: cancellare due volte un ordine già cancellato è innocuo.
+- `place_market_order`, `place_limit_order` e `place_oco_sell` generano un UUID (`newClientOrderId` / `listClientOrderId`) prima di chiamare Binance e lo passano all'exchange. Il UUID viene generato nel metodo pubblico (una sola volta) e passato al metodo privato interno che porta il decorator `@_binance_retry`: così tutti i tentativi usano lo stesso identificativo e Binance riconosce la richiesta come duplicato, senza creare un secondo ordine.
 
 ### `src/utils/`
 

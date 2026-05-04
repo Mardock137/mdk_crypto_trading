@@ -1,6 +1,16 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.14.1 — 2026-05-04
+
+### Aggiunto
+
+- `src/integrations/exchange/binance_client.py`: idempotency key (`newClientOrderId` / `listClientOrderId`) su `place_market_order`, `place_limit_order` e `place_oco_sell`. Prima di ogni chiamata all'SDK Binance viene generato un UUID v4 univoco nel metodo pubblico e passato al metodo privato interno decorato con `@_binance_retry`. In questo modo tutti i retry usano lo stesso identificativo: se la risposta viene persa per timeout e la chiamata viene ripetuta, Binance riconosce il duplicato e non crea un secondo ordine. I tre metodi hanno ora retry automatico al pari degli altri metodi del client.
+- `tests/integrations/exchange/test_binance_client.py`: aggiornati i 4 test esistenti su `place_market_order` e `place_limit_order` per verificare la presenza e la validità del `newClientOrderId` (UUID v4). Aggiunti 3 nuovi test: `test_place_market_order_retry_uses_same_client_order_id`, `test_place_limit_order_retry_uses_same_client_order_id`, `test_place_oco_sell_retry_uses_same_list_client_order_id`, che verificano che tutti i retry di un singolo ordine usino lo stesso identificativo. Aggiunto `test_place_oco_sell_passes_list_client_order_id`. Helper `_assert_valid_uuid4` aggiunto come utility condivisa.
+- `docs/architecture.md`: sezione "Retry policy" aggiornata per riflettere il nuovo comportamento (tutti i metodi ora hanno retry; spiegazione del pattern a due livelli UUID → retry).
+
+---
+
 ## 1.14.0 — 2026-05-03
 
 ### Aggiunto
