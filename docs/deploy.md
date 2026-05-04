@@ -378,21 +378,20 @@ find mdk_crypto_trading/logs/events/ -name "*.jsonl" -mtime +30 -delete
 
 ### Errore "Permission denied" quando si cancellano log o memory
 
-A partire dalla versione attuale, il container gira come utente `app` (UID 1000) e i file in `logs/` e `data/` sono accessibili direttamente senza `sudo`:
+I file in `logs/` e `data/` vengono creati dal container e appartengono all'utente di sistema sotto cui gira Docker sulla VM (tipicamente `ubuntu` su GCE). Il tuo utente SSH (`chief`) non è lo stesso proprietario, quindi serve `sudo` per cancellarli:
 
 ```bash
-rm -rf logs/events/
-rm -f logs/mdk_crypto_trading.log*
-rm -rf data/memory/
+sudo rm -rf ~/mdk_crypto_trading/logs/events/
+sudo rm -f ~/mdk_crypto_trading/logs/mdk_crypto_trading.log*
+sudo rm -rf ~/mdk_crypto_trading/data/memory/
 ```
 
-Se i file erano stati creati da una versione precedente del container (che girava come `root`), esegui prima il chown una tantum:
+Per verificare chi possiede i file in qualsiasi momento:
 
 ```bash
-sudo chown -R 1000:1000 ~/mdk_crypto_trading/logs/ ~/mdk_crypto_trading/data/
+ls -la ~/mdk_crypto_trading/logs/
+ls -la ~/mdk_crypto_trading/data/
 ```
-
-Dopo di che, `rm` senza `sudo` funzionerà normalmente.
 
 ---
 
