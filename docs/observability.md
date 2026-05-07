@@ -200,11 +200,20 @@ Mode: DEMO
 ⚠️ Cycle ERROR
 
 Symbol: BTCUSDC
+Categoria: API esterna non disponibile
 Error ID: a1b2c3d4
-Type: RuntimeError
 ```
 
-La notifica di errore non include `str(exc)` per evitare leak di dati sensibili (es. chiavi, URL con token). Il dettaglio completo dell'eccezione — incluso il traceback — è disponibile nel log file locale (`mdk_crypto_trading.log`) cercando la riga con `[cid=a1b2c3d4]`.
+Le categorie possibili sono:
+
+| Categoria                     | Causa tipica                            | Azione                                                   |
+|-------------------------------|-----------------------------------------|----------------------------------------------------------|
+| `API esterna non disponibile` | Binance 502/503, Anthropic 529, timeout | Nessuna — il bot si recupera da solo al ciclo successivo |
+| `Rate limit API`              | Codice 429 da qualsiasi provider        | Nessuna — il bot riprova automaticamente                 |
+| `Risposta LLM non valida`     | JSON malformato o vuoto da un modello   | Monitorare — se ricorrente, indagare                     |
+| `Errore interno`              | Bug nel codice, configurazione errata   | Controllare i log con l'Error ID                         |
+
+La notifica non include `str(exc)` per evitare leak di dati sensibili (es. chiavi, URL con token). Il dettaglio completo dell'eccezione — incluso il traceback — è disponibile nel log file locale (`mdk_crypto_trading.log`) cercando la riga con `[cid=a1b2c3d4]`.
 
 **Configurazione** (nel `.env`):
 

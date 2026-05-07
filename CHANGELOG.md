@@ -1,6 +1,22 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.14.2 — 2026-05-07
+
+### Corretto
+
+- `src/integrations/llm_interfaces/anthropic_interface.py`: aggiunto `OverloadedError` (HTTP 529) alla lista `_RETRYABLE_ERRORS`. In precedenza, quando i server Anthropic rispondevano con codice 529 ("Overloaded"), l'errore veniva classificato come `_NON_RETRYABLE_PROVIDER_ERROR` (`APIStatusError`) e convertito in `RuntimeError`, perdendo la semantica di errore transitorio del server. Ora viene riconosciuto correttamente come errore temporaneo e gestito dal layer Tenacity con backoff esponenziale, al pari di `RateLimitError` e `InternalServerError`. Import effettuato da `anthropic._exceptions` (non esportato dal modulo principale nella versione `0.87.0`).
+- `tests/integrations/llm_interfaces/test_anthropic_interface.py`: aggiunto test `test_generate_json_retries_on_overloaded_error` che verifica che su `OverloadedError` (HTTP 529) il sistema riprovi automaticamente e recuperi con successo al tentativo successivo. Corretta la docstring del test `test_generate_json_retries_on_internal_server_error` che indicava erroneamente "500/529".
+
+### Aggiunto
+
+- `src/core/runner.py`: aggiunta funzione privata `_classify_error(exc)` che classifica un'eccezione in una delle quattro categorie leggibili: `"API esterna non disponibile"` (Binance 502/503, Anthropic 529, timeout, connessione), `"Rate limit API"` (429), `"Risposta LLM non valida"` (JSON malformato o vuoto), `"Errore interno"` (tutto il resto). La classificazione avviene sul nome della classe e sul testo del messaggio, senza import aggiuntivi delle librerie specifiche dei provider. Aggiornata la chiamata a `build_error_message` per passare la categoria invece del nome grezzo della classe.
+- `src/core/notifications.py`: aggiornata `build_error_message` — rimosso il parametro `exc_class`, aggiunto `error_category: str`. La riga `Type: RuntimeError` è sostituita da `Categoria: <categoria>`, permettendo di capire immediatamente dalla notifica Telegram se l'errore è esterno (non preoccuparsi, il bot si recupera da solo) o interno (controllare i log).
+- `tests/core/test_notifications.py`: aggiornato `test_build_error_message_contains_correlation_id_and_type` (rinominato in `test_build_error_message_contains_correlation_id_and_category`) per il nuovo signature. Aggiunto `test_build_error_message_shows_external_api_category`.
+- `tests/core/test_runner.py`: aggiunti 12 test per `_classify_error` che coprono tutti i casi: `OverloadedError`, `InternalServerError`, `APIConnectionError`, `APITimeoutError`, `BinanceRequestException`, `BinanceAPIException` con status_code 502 e 0, `RateLimitError`, `RuntimeError` con messaggi LLM (risposta vuota, JSON non decodificabile, JSON vuoto), `ValueError` generico, `RuntimeError` generico.
+
+---
+
 ## 1.14.1 — 2026-05-04
 
 ### Aggiunto

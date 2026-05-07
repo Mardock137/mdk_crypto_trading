@@ -35,6 +35,40 @@ _PERFORMANCE_REPORTS_DIR = _PROJECT_ROOT / "data/performance_reports"
 _HEARTBEAT_PATH = _PROJECT_ROOT / "data/heartbeat"
 
 
+def _classify_error(exc: Exception) -> str:
+    """Classifica un'eccezione in una categoria leggibile per la notifica Telegram.
+
+    La classificazione avviene sul nome della classe e sul testo dell'errore,
+    senza import aggiuntivi delle librerie specifiche dei provider.
+    """
+    exc_class = type(exc).__name__
+    exc_msg = str(exc).lower()
+
+    if exc_class in {
+        "OverloadedError",
+        "InternalServerError",
+        "APIConnectionError",
+        "APITimeoutError",
+        "BinanceRequestException",
+    }:
+        return "API esterna non disponibile"
+
+    if exc_class == "BinanceAPIException":
+        code = getattr(exc, "status_code", 0)
+        if code == 0 or code >= 500:
+            return "API esterna non disponibile"
+
+    if exc_class == "RateLimitError":
+        return "Rate limit API"
+
+    if exc_class == "RuntimeError" and any(
+        kw in exc_msg for kw in ("risposta vuota", "json vuoto", "decodificare")
+    ):
+        return "Risposta LLM non valida"
+
+    return "Errore interno"
+
+
 class TradingRunner:
     """Loop operativo che esegue TradingWorkflow in modo ciclico.
 
@@ -231,7 +265,7 @@ class TradingRunner:
                     notifications.build_error_message(
                         symbol=self._symbol,
                         correlation_id=cid,
-                        exc_class=type(exc).__name__,
+                        error_category=_classify_error(exc),
                     )
                 )
 

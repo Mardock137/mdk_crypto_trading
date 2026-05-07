@@ -25,7 +25,7 @@ from src.core.contracts import (
     TradeProposal,
     TradeProposalDetails,
 )
-from src.core.runner import TradingRunner
+from src.core.runner import TradingRunner, _classify_error
 from src.utils.config import AppSettings, TradingMode
 from src.utils.memory_manager import MemoryManager
 from src.utils.telegram_notifier import TelegramNotifier
@@ -269,7 +269,8 @@ def test_run_sends_error_notification_on_exception(mock_wait: MagicMock) -> None
     texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
     error_text = next((t for t in texts if "ERROR" in t), None)
     assert error_text is not None
-    assert "RuntimeError" in error_text
+    assert "Categoria:" in error_text
+    assert "Errore interno" in error_text
     assert "boom" not in error_text
     assert "Error ID:" in error_text
 
@@ -518,6 +519,91 @@ def test_cycle_runs_normally_when_skip_disabled(mock_wait: MagicMock) -> None:
     runner.run()
 
     mock_workflow.run_cycle.assert_called_once()
+
+
+# --- Test per _classify_error ---
+
+
+def test_classify_error_overloaded_is_external_api() -> None:
+    """OverloadedError (Anthropic 529) → API esterna non disponibile."""
+    OverloadedError = type("OverloadedError", (Exception,), {})
+    assert _classify_error(OverloadedError("overloaded")) == "API esterna non disponibile"
+
+
+def test_classify_error_internal_server_error_is_external_api() -> None:
+    """InternalServerError (500) → API esterna non disponibile."""
+    InternalServerError = type("InternalServerError", (Exception,), {})
+    assert _classify_error(InternalServerError("internal server error")) == "API esterna non disponibile"
+
+
+def test_classify_error_api_connection_error_is_external_api() -> None:
+    """APIConnectionError → API esterna non disponibile."""
+    APIConnectionError = type("APIConnectionError", (Exception,), {})
+    assert _classify_error(APIConnectionError("connection error")) == "API esterna non disponibile"
+
+
+def test_classify_error_api_timeout_error_is_external_api() -> None:
+    """APITimeoutError → API esterna non disponibile."""
+    APITimeoutError = type("APITimeoutError", (Exception,), {})
+    assert _classify_error(APITimeoutError("timeout")) == "API esterna non disponibile"
+
+
+def test_classify_error_binance_request_exception_is_external_api() -> None:
+    """BinanceRequestException → API esterna non disponibile."""
+    BinanceRequestException = type("BinanceRequestException", (Exception,), {})
+    assert _classify_error(BinanceRequestException("connection refused")) == "API esterna non disponibile"
+
+
+def test_classify_error_binance_api_exception_502_is_external_api() -> None:
+    """BinanceAPIException con status_code 502 → API esterna non disponibile."""
+    BinanceAPIException = type("BinanceAPIException", (Exception,), {})
+    exc = BinanceAPIException("bad gateway")
+    exc.status_code = 502  # type: ignore[attr-defined]
+    assert _classify_error(exc) == "API esterna non disponibile"
+
+
+def test_classify_error_binance_api_exception_code0_is_external_api() -> None:
+    """BinanceAPIException con status_code 0 (risposta HTML non JSON) → API esterna non disponibile."""
+    BinanceAPIException = type("BinanceAPIException", (Exception,), {})
+    exc = BinanceAPIException("invalid json")
+    exc.status_code = 0  # type: ignore[attr-defined]
+    assert _classify_error(exc) == "API esterna non disponibile"
+
+
+def test_classify_error_rate_limit_error_is_rate_limit() -> None:
+    """RateLimitError (429) → Rate limit API."""
+    RateLimitError = type("RateLimitError", (Exception,), {})
+    assert _classify_error(RateLimitError("rate limited")) == "Rate limit API"
+
+
+def test_classify_error_runtime_error_empty_response_is_llm_invalid() -> None:
+    """RuntimeError con 'risposta vuota' nel messaggio → Risposta LLM non valida."""
+    exc = RuntimeError("Risposta vuota dal provider Anthropic.")
+    assert _classify_error(exc) == "Risposta LLM non valida"
+
+
+def test_classify_error_runtime_error_json_decode_is_llm_invalid() -> None:
+    """RuntimeError con 'decodificare' nel messaggio → Risposta LLM non valida."""
+    exc = RuntimeError("Impossibile decodificare la risposta JSON di OpenAI.")
+    assert _classify_error(exc) == "Risposta LLM non valida"
+
+
+def test_classify_error_runtime_error_empty_json_is_llm_invalid() -> None:
+    """RuntimeError con 'json vuoto' nel messaggio → Risposta LLM non valida."""
+    exc = RuntimeError("Il provider Gemini ha risposto con un JSON vuoto.")
+    assert _classify_error(exc) == "Risposta LLM non valida"
+
+
+def test_classify_error_value_error_is_internal() -> None:
+    """ValueError generico → Errore interno."""
+    exc = ValueError("campo mancante")
+    assert _classify_error(exc) == "Errore interno"
+
+
+def test_classify_error_generic_runtime_error_is_internal() -> None:
+    """RuntimeError senza keyword LLM → Errore interno."""
+    exc = RuntimeError("Unexpected state in runner")
+    assert _classify_error(exc) == "Errore interno"
 
 
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)

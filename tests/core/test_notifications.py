@@ -62,18 +62,31 @@ def test_build_stop_message_contains_symbol() -> None:
     assert "BTCUSDC" in msg
 
 
-def test_build_error_message_contains_correlation_id_and_type() -> None:
+def test_build_error_message_contains_correlation_id_and_category() -> None:
     msg = notifications.build_error_message(
         symbol="BTCUSDC",
         correlation_id="a1b2c3d4",
-        exc_class="RuntimeError",
+        error_category="Errore interno",
     )
 
     assert "ERROR" in msg
     assert "BTCUSDC" in msg
     assert "a1b2c3d4" in msg
-    assert "RuntimeError" in msg
+    assert "Errore interno" in msg
+    assert "Categoria:" in msg
     assert "Error ID:" in msg
+
+
+def test_build_error_message_shows_external_api_category() -> None:
+    """Verifica che la categoria venga mostrata correttamente per errori API esterne."""
+    msg = notifications.build_error_message(
+        symbol="BTCUSDC",
+        correlation_id="a1b2c3d4",
+        error_category="API esterna non disponibile",
+    )
+
+    assert "API esterna non disponibile" in msg
+    assert "Categoria:" in msg
 
 
 def test_build_order_notification_market_computes_avg_price() -> None:

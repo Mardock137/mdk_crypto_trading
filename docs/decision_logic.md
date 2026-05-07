@@ -116,7 +116,7 @@ Il sistema gestisce gli errori LLM su due livelli distinti.
 **Livello 1 — retry API (tenacity, nelle interfacce LLM):**
 Ogni interfaccia LLM riprova automaticamente le chiamate API in caso di errori temporanei del provider, con backoff esponenziale (max 3 tentativi):
 
-- `AnthropicInterface`: `RateLimitError`, `APIConnectionError`, `APITimeoutError`, `InternalServerError` (include errori 500 e 529)
+- `AnthropicInterface`: `RateLimitError`, `APIConnectionError`, `APITimeoutError`, `InternalServerError`, `OverloadedError` (rispettivamente: 429, errori di connessione, timeout, 500, 529)
 - `OpenAiInterface`: `RateLimitError`, `APIConnectionError`, `APITimeoutError`, `InternalServerError`
 - `GeminiInterface`: `ServerError`
 

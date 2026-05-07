@@ -12,6 +12,7 @@ from anthropic import (
     InternalServerError,
     RateLimitError,
 )
+from anthropic._exceptions import OverloadedError
 
 from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
 
@@ -40,6 +41,7 @@ class AnthropicInterface(BaseLlmInterface):
         APIConnectionError,
         APITimeoutError,
         InternalServerError,
+        OverloadedError,
     )
     _NON_RETRYABLE_PROVIDER_ERROR: ClassVar[type[BaseException]] = APIStatusError
 
