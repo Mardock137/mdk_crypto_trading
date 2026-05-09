@@ -261,6 +261,32 @@ htop
 df -h
 ```
 
+### Liberare spazio disco (pulizia Docker)
+
+Dopo più rebuild, Docker accumula immagini e layer inutilizzati che occupano diversi GB. Per rimuoverli tutti in una volta:
+
+```bash
+docker system prune -a
+```
+
+Chiede conferma prima di procedere. Non tocca il container attivo né i volumi con i dati del bot.
+
+Per vedere quanto spazio occupano log ed eventi del bot prima di decidere se pulirli:
+
+```bash
+du -sh ~/mdk_crypto_trading/logs/
+du -sh ~/mdk_crypto_trading/data/
+```
+
+Per ripartire da zero (cancella log, eventi JSONL, memoria del DM e performance reports):
+
+```bash
+sudo rm -rf ~/mdk_crypto_trading/logs/events/
+sudo rm -f ~/mdk_crypto_trading/logs/mdk_crypto_trading.log*
+sudo rm -rf ~/mdk_crypto_trading/data/memory/
+sudo rm -f ~/mdk_crypto_trading/data/performance_reports/*.md
+```
+
 ### Scaricare log ed eventi in locale
 
 I log e gli eventi sono creati da Docker come `root`. Per scaricarli serve creare un tarball con `sudo` dalla VM, poi trasferirlo in locale.
@@ -406,6 +432,34 @@ sudo systemctl start docker
 cd mdk_crypto_trading
 docker compose up -d
 ```
+
+---
+
+### Espandere il disco della VM
+
+Se il disco si avvicina all'80% di utilizzo, conviene portarlo da 10 GB a 20 GB. L'operazione non richiede di fermare il bot né di riavviare la VM.
+
+**1. Dal pannello GCP** (senza spegnere la VM):
+
+1. Vai su [console.cloud.google.com](https://console.cloud.google.com)
+2. Menu → **Compute Engine** → **Dischi**
+3. Clicca sul disco della VM (`mdk-crypto-trading`)
+4. Clicca **Modifica** → cambia la dimensione a `20` GB → **Salva**
+
+**2. Dalla VM**, espandi la partizione per usare lo spazio aggiunto:
+
+```bash
+sudo growpart /dev/sda 1
+sudo resize2fs /dev/sda1
+```
+
+Verifica il risultato:
+
+```bash
+df -h
+```
+
+Il disco ora mostra ~20 GB disponibili. Il bot continua a girare senza interruzioni durante tutta la procedura.
 
 ---
 
