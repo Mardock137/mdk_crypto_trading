@@ -384,6 +384,7 @@ I file in `logs/` e `data/` vengono creati dal container e appartengono all'uten
 sudo rm -rf ~/mdk_crypto_trading/logs/events/
 sudo rm -f ~/mdk_crypto_trading/logs/mdk_crypto_trading.log*
 sudo rm -rf ~/mdk_crypto_trading/data/memory/
+sudo rm -f ~/mdk_crypto_trading/data/performance_reports/*.md
 ```
 
 Per verificare chi possiede i file in qualsiasi momento:
