@@ -1,6 +1,15 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.14.3 — 2026-05-09
+
+### Corretto
+
+- `src/agents/execution_trader.py`: il guardrail percentuale sul portafoglio (guardrail #3 in `_validate_guardrails`) usava `portfolio.usdc_value` come denominatore per calcolare la percentuale dell'ordine sul portafoglio. `portfolio.usdc_value` rappresenta il valore in USDC della sola coin posseduta (BTC), non il portafoglio totale. Con un portafoglio da ~5000 USDC in cui ~152 USDC erano investiti in BTC, il guardrail calcolava `152 / 152 = 100%` invece di `152 / 5000 = 3%`, bloccando ogni tentativo di SELL per oltre 5 giorni. Corretto il denominatore in `portfolio.usdc_balance + portfolio.usdc_value` (USDC liberi + valore coin), che rappresenta il valore totale del portafoglio.
+- `tests/agents/test_execution_trader.py`: aggiunto test `test_guardrail_portfolio_pct_uses_total_portfolio_value` che riproduce esattamente il bug di produzione — portafoglio da 5000 USDC (4848 USDC liberi + 152 USDC in BTC), SELL da 152 USDC — e verifica che l'ordine venga eseguito correttamente (3% del portafoglio, ampiamente sotto il limite del 70%).
+
+---
+
 ## 1.14.2 — 2026-05-07
 
 ### Corretto

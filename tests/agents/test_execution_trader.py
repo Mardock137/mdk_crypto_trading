@@ -336,6 +336,44 @@ def test_guardrail_notional_within_cap_passes() -> None:
 
 # --- Guardrail: cap percentuale portafoglio ---
 
+def test_guardrail_portfolio_pct_uses_total_portfolio_value() -> None:
+    """Il guardrail deve usare (usdc_balance + usdc_value) come denominatore.
+
+    Scenario di produzione: portafoglio da 5000 USDC totali, di cui ~4848 USDC
+    liberi e ~152 USDC investiti in BTC. Un SELL da 152 USDC rappresenta il 3%
+    del portafoglio totale e deve passare il limite del 70%.
+    """
+    mock_exchange = MagicMock()
+    mock_exchange.place_market_order.return_value = {"orderId": "prod-bug-test"}
+
+    portfolio = PortfolioState(
+        usdc_balance=4848.0,
+        usdc_balance_total=4848.0,
+        usdc_value=152.0,
+        portfolio_qty_free=0.00189819,
+        portfolio_qty_total=0.00189819,
+    )
+    proposal = TradeProposal(
+        action=TradeAction.SELL,
+        order_type=OrderType.MARKET,
+        confidence=0.8,
+        reason="chiusura posizione",
+        details=TradeProposalDetails(quantity=0.00189819),
+    )
+    agent = ExecutionTraderAgent(exchange_client=mock_exchange)
+    report = agent.run(
+        _make_input(
+            proposal, APPROVED,
+            portfolio=portfolio,
+            current_price=80_000.0,
+            max_order_notional_usdc=1_000_000.0,
+        )
+    )
+
+    assert report.execution_status is ExecutionStatus.EXECUTED
+    mock_exchange.place_market_order.assert_called_once()
+
+
 def test_guardrail_portfolio_pct_cap_blocks_order() -> None:
     """Un ordine che supera max_position_pct del portafoglio viene bloccato."""
     portfolio = PortfolioState(

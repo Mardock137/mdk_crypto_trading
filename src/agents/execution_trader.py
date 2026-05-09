@@ -135,8 +135,9 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
                 )
 
             # 3. Cap percentuale sul portafoglio
-            if portfolio.usdc_value > 0:
-                pct = (notional / portfolio.usdc_value) * 100
+            total_portfolio_value = portfolio.usdc_balance + portfolio.usdc_value
+            if total_portfolio_value > 0:
+                pct = (notional / total_portfolio_value) * 100
                 if pct > mandate.max_position_pct:
                     return ExecutionReport(
                         execution_status=ExecutionStatus.NOT_EXECUTED,
