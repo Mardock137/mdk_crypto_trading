@@ -100,6 +100,7 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 ### `src/core/`
 
 - `contracts.py`: strutture dati condivise tra agenti (input, output, enum)
+- `exceptions.py`: gerarchia di eccezioni operative del sistema. `MdkTradingError` è la base per tutti gli errori attesi; `ExchangeError(MdkTradingError)` per errori provenienti dall'exchange; `LlmError(MdkTradingError, RuntimeError)` per errori provenienti da un provider LLM. L'ereditarietà multipla di `LlmError` garantisce backward-compatibility con il codice che cattura `RuntimeError`.
 - `workflow.py`: catena lineare Market Analyst → Decision Maker → Risk Manager → Execution Trader
 - `runner.py`: `TradingRunner`, direttore d'orchestra del loop operativo (loop, segnali, orchestrazione del singolo ciclo). Delega le decisioni specialistiche a 3 collaboratori dedicati:
   - `cycle_skip_handler.py`: `CycleSkipHandler` — possiede lo snapshot del ciclo precedente e il counter dei salti consecutivi, decide se saltare il ciclo (pre-check deterministico)
@@ -108,14 +109,14 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 
 ### `src/integrations/`
 
-- `llm_interfaces/`: interfaccia astratta (`BaseLlmInterface`) e implementazioni per Anthropic (`AnthropicInterface`), OpenAI (`OpenAiInterface`) e Gemini (`GeminiInterface`), con retry automatico via `tenacity`. Supportano `temperature` e `max_tokens` configurabili. La base usa il pattern **Template Method**: `generate_json` è concreto nella classe base e centralizza retry, controllo risposta vuota, parsing JSON e gestione errori; le sottoclassi implementano solo i metodi astratti specifici del provider (`_call_provider`, `_extract_text`, `_log_empty_response`) e possono fare override dell'hook `_strip_response` (Anthropic lo usa per togliere wrapping markdown).
+- `llm_interfaces/`: interfaccia astratta (`BaseLlmInterface`) e implementazioni per Anthropic (`AnthropicInterface`), OpenAI (`OpenAiInterface`) e Gemini (`GeminiInterface`), con retry automatico via `tenacity`. Supportano `temperature` e `max_tokens` configurabili. La base usa il pattern **Template Method**: `generate_json` è concreto nella classe base e centralizza retry, controllo risposta vuota, parsing JSON e gestione errori; le sottoclassi implementano solo i metodi astratti specifici del provider (`_call_provider`, `_extract_text`, `_log_empty_response`) e possono fare override dell'hook `_strip_response` (Anthropic lo usa per togliere wrapping markdown). Tutti gli errori sollevati da `generate_json` sono `LlmError` (definito in `src/core/exceptions.py`).
 - `exchange/`: interfaccia astratta (`BaseExchangeClient`) e implementazione per Binance (`BinanceClient`), con supporto modalità DEMO e REAL.
 
 `BinanceClient` espone:
 
 - `ping()` / `get_account_info()`: verifica connessione e autenticazione
-- `get_market_snapshot(symbol)`: raccoglie prezzo, volume, order book, candele multi-timeframe e fetcha i closes 1h. Il calcolo degli indicatori tecnici (RSI, EMA, SMA, MACD su serie corrente e precedente) è delegato a `utils/indicators.py::compute_indicators_bundle`
-- `get_portfolio_state(symbol)`: raccoglie saldi quote currency e coin, ordini aperti, ultimi trade. La quote currency (es. USDC) è configurabile in `symbols.yaml` e passata al costruttore
+- `get_market_snapshot(symbol)`: raccoglie prezzo, volume, order book, candele multi-timeframe e fetcha i closes 1h. Il calcolo degli indicatori tecnici (RSI, EMA, SMA, MACD su serie corrente e precedente) è delegato a `utils/indicators.py::compute_indicators_bundle`. Gli errori Binance vengono wrappati in `ExchangeError`.
+- `get_portfolio_state(symbol)`: raccoglie saldi quote currency e coin, ordini aperti, ultimi trade. La quote currency (es. USDC) è configurabile in `symbols.yaml` e passata al costruttore. Gli errori Binance vengono wrappati in `ExchangeError`.
 - `place_market_order(symbol, side, quantity)`: piazza un ordine a mercato (solo BUY/SELL, altrimenti `ValueError`)
 - `place_limit_order(symbol, side, quantity, price)`: piazza un ordine limit GTC (solo BUY/SELL, altrimenti `ValueError`)
 - `cancel_order(symbol, order_id)`: cancella un ordine aperto
@@ -125,6 +126,7 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 - I 4 metodi di sola lettura (`ping`, `get_account_info`, `get_market_snapshot`, `get_portfolio_state`) sono retry-safe per natura.
 - `cancel_order` è retry-safe perché Binance lo gestisce in modo idempotente: cancellare due volte un ordine già cancellato è innocuo.
 - `place_market_order`, `place_limit_order` e `place_oco_sell` generano un UUID (`newClientOrderId` / `listClientOrderId`) prima di chiamare Binance e lo passano all'exchange. Il UUID viene generato nel metodo pubblico (una sola volta) e passato al metodo privato interno che porta il decorator `@_binance_retry`: così tutti i tentativi usano lo stesso identificativo e Binance riconosce la richiesta come duplicato, senza creare un secondo ordine.
+- `get_market_snapshot` e `get_portfolio_state` seguono lo stesso pattern a due livelli: il metodo pubblico è un wrapper che cattura le eccezioni Binance e le rilancia come `ExchangeError`; il metodo privato `_*_with_retry` porta il decorator `@_binance_retry` ed esegue la logica effettiva.
 
 ### `src/utils/`
 
@@ -171,7 +173,7 @@ Il runner:
 
 1. Logga l'avvio e lo stato del kill switch
 2. Ad ogni iterazione: eventualmente genera il report giornaliero (`PerformanceReviewRunner.maybe_run_today`) → raccoglie dati da Binance → eventualmente salta il ciclo via `CycleSkipHandler.try_skip` → legge la memoria storica e l'ultimo report → costruisce `TradingCycleInput` → esegue il workflow → logga il risultato → salva il ciclo in memoria → registra lo snapshot via `CycleSkipHandler.record_completed_cycle`
-3. In caso di errore: logga l'eccezione, registra l'evento e continua
+3. In caso di errore: il runner distingue due categorie. Errori operativi attesi (`MdkTradingError`, `OSError` — es. exchange offline, LLM sovraccarico): logga, notifica Telegram e **continua il loop**. Bug imprevisti (qualsiasi altra eccezione — es. `AttributeError`, `NameError`): logga, notifica Telegram e **propaga l'eccezione**. `run()` intercetta il bug critico, logga come `CRITICAL`, notifica e termina il processo pulitamente (Docker lo riavvierà).
 4. Su `Ctrl+C`: termina in modo pulito
 
 Il punto di ingresso è `src/main.py`, che fa il bootstrap di tutti i componenti (settings, LLM, exchange client, agenti, workflow, memory manager, runner) e avvia il loop.

@@ -12,6 +12,7 @@ from src.core.contracts import (
     OrderType,
     TradeAction,
 )
+from src.core.exceptions import ExchangeError
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
 
 _logger = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
 
         try:
             details = self._execute_order(agent_input)
-        except Exception as exc:
+        except (ValueError, RuntimeError, ExchangeError) as exc:
             _logger.error("Esecuzione ordine fallita: %s", exc, exc_info=True)
             return ExecutionReport(
                 execution_status=ExecutionStatus.FAILED,

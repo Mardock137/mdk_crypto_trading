@@ -5,6 +5,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Mapping
 
+from src.core.exceptions import LlmError
 from src.utils.log_utils import truncate_for_log
 
 from tenacity import (
@@ -85,7 +86,7 @@ class BaseLlmInterface(ABC):
         for attempt in retrying:
             with attempt:
                 return self._generate_json_once(system_prompt, user_payload)
-        raise RuntimeError("Unexpected: Retrying loop completed without returning.")
+        raise LlmError("Unexpected: Retrying loop completed without returning.")
 
     def _generate_json_once(
         self,
@@ -98,20 +99,20 @@ class BaseLlmInterface(ABC):
             raw = self._extract_text(response)
             if not raw or not raw.strip():
                 self._log_empty_response(response)
-                raise RuntimeError(
+                raise LlmError(
                     f"Risposta vuota dal provider {self._PROVIDER_NAME}.",
                 )
             stripped = self._strip_response(raw)
             result: dict[str, Any] = json.loads(stripped)
             if not result:
-                raise RuntimeError(
+                raise LlmError(
                     f"Il provider {self._PROVIDER_NAME} ha risposto con un JSON vuoto.",
                 )
             return result
         except self._RETRYABLE_ERRORS:
             raise
         except self._NON_RETRYABLE_PROVIDER_ERROR as exc:
-            raise RuntimeError(
+            raise LlmError(
                 f"Errore API {self._PROVIDER_NAME}: {exc}",
             ) from exc
         except json.JSONDecodeError as exc:
@@ -120,6 +121,6 @@ class BaseLlmInterface(ABC):
                 self._PROVIDER_NAME,
                 truncate_for_log(stripped),
             )
-            raise RuntimeError(
+            raise LlmError(
                 f"Impossibile decodificare la risposta JSON di {self._PROVIDER_NAME}: {exc}",
             ) from exc

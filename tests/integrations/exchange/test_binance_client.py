@@ -9,6 +9,7 @@ from uuid import UUID
 import pytest
 from binance.exceptions import BinanceAPIException, BinanceRequestException
 
+from src.core.exceptions import ExchangeError
 from src.integrations.exchange.binance_client import BinanceClient
 from src.utils.config import AppSettings, TradingMode
 
@@ -259,7 +260,7 @@ def test_get_market_snapshot_retries_on_request_exception(
 def test_get_market_snapshot_no_retry_on_client_error(
     mock_client_cls: MagicMock,
 ) -> None:
-    """get_market_snapshot NON deve ritentare su errori 400 (client error)."""
+    """get_market_snapshot NON deve ritentare su errori 400 (client error) e rilancia ExchangeError."""
     mock_instance = mock_client_cls.return_value
     _setup_market_mocks(mock_instance)
     api_exc = BinanceAPIException(
@@ -270,10 +271,42 @@ def test_get_market_snapshot_no_retry_on_client_error(
     mock_instance.get_symbol_ticker.side_effect = api_exc
 
     client = BinanceClient(_make_settings())
-    with pytest.raises(BinanceAPIException):
+    with pytest.raises(ExchangeError):
         client.get_market_snapshot("BTCUSDC")
 
     assert mock_instance.get_symbol_ticker.call_count == 1
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_get_market_snapshot_raises_exchange_error_after_all_retries(
+    mock_client_cls: MagicMock,
+) -> None:
+    """get_market_snapshot deve sollevare ExchangeError dopo aver esaurito i retry."""
+    mock_instance = mock_client_cls.return_value
+    _setup_market_mocks(mock_instance)
+    mock_instance.get_symbol_ticker.side_effect = BinanceRequestException("Network error")
+
+    client = BinanceClient(_make_settings())
+    with pytest.raises(ExchangeError):
+        client.get_market_snapshot("BTCUSDC")
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_get_portfolio_state_raises_exchange_error_on_binance_exception(
+    mock_client_cls: MagicMock,
+) -> None:
+    """get_portfolio_state deve sollevare ExchangeError su errori Binance."""
+    mock_instance = mock_client_cls.return_value
+    api_exc = BinanceAPIException(
+        response=MagicMock(status_code=500, text="Internal Server Error"),
+        status_code=500,
+        text="Internal Server Error",
+    )
+    mock_instance.get_account.side_effect = api_exc
+
+    client = BinanceClient(_make_settings())
+    with pytest.raises(ExchangeError):
+        client.get_portfolio_state("BTCUSDC")
 
 
 # ---------- Verifica get_portfolio_state ----------

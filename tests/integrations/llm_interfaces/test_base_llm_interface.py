@@ -5,7 +5,10 @@ import logging
 from typing import Any, Mapping
 from unittest.mock import MagicMock
 
+import pytest
+
 from src.integrations.llm_interfaces.base_llm_interface import BaseLlmInterface
+from src.core.exceptions import LlmError
 
 
 class DummyLlmInterface(BaseLlmInterface):
@@ -52,3 +55,22 @@ def test_base_llm_interface_can_be_implemented() -> None:
         "system_prompt": "system",
         "user_payload": {"foo": "bar"},
     }
+
+
+def test_llm_error_raised_on_empty_response() -> None:
+    """generate_json deve sollevare LlmError (non RuntimeError generico) su risposta vuota."""
+    interface = DummyLlmInterface()
+    interface._call_provider = lambda *_: ""  # type: ignore[method-assign]
+    interface._extract_text = lambda response: ""  # type: ignore[method-assign]
+
+    with pytest.raises(LlmError, match="Risposta vuota"):
+        interface.generate_json("system", {"foo": "bar"})
+
+
+def test_llm_error_raised_on_non_retryable_provider_error() -> None:
+    """generate_json deve sollevare LlmError quando il provider lancia un errore non retryable."""
+    interface = DummyLlmInterface()
+    interface._call_provider = lambda *_: (_ for _ in ()).throw(RuntimeError("provider down"))  # type: ignore[method-assign]
+
+    with pytest.raises(LlmError, match="Errore API Dummy"):
+        interface.generate_json("system", {"foo": "bar"})

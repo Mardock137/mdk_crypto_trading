@@ -1,6 +1,23 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.14.4 — 2026-05-09
+
+### Aggiunto
+
+- `src/core/exceptions.py` (nuovo file): gerarchia di eccezioni operative del sistema. `MdkTradingError` è la classe base per tutti gli errori attesi; `ExchangeError(MdkTradingError)` rappresenta errori provenienti dall'exchange (API Binance, rete); `LlmError(MdkTradingError, RuntimeError)` rappresenta errori provenienti da un provider LLM. `LlmError` eredita da entrambi `MdkTradingError` e `RuntimeError` per garantire la backward-compatibility con il codice che cattura `RuntimeError` direttamente.
+- `src/integrations/llm_interfaces/base_llm_interface.py`: tutti i `raise RuntimeError(...)` sostituiti con `raise LlmError(...)`. I test esistenti che usano `pytest.raises(RuntimeError)` continuano a passare senza modifiche perché `LlmError IS-A RuntimeError`.
+- `src/integrations/exchange/binance_client.py`: `get_market_snapshot` e `get_portfolio_state` sono stati refactorati con lo stesso pattern già usato dai metodi di ordine. La logica con retry vive nei nuovi metodi privati `_get_market_snapshot_with_retry` e `_get_portfolio_state_with_retry` (decorati con `@_binance_retry`); i metodi pubblici fungono da wrapper che catturano `BinanceAPIException` / `BinanceRequestException` e li rilanciano come `ExchangeError`. In precedenza, le eccezioni Binance propagavano direttamente al chiamante senza essere wrappate nel tipo interno.
+- `src/core/runner.py`: `_run_single_cycle` ora usa due blocchi `except` distinti invece di un unico `except Exception` generico. `except (MdkTradingError, OSError)` cattura gli errori operativi attesi (exchange offline, LLM sovraccarico): logga e continua il loop. `except Exception` cattura i bug imprevisti (es. `AttributeError`, `NameError`): logga, notifica Telegram e ri-lancia. Il metodo `run()` aggiunge un `except Exception` esterno che intercetta il re-raise, logga come critico, invia notifica Telegram e termina il processo pulitamente (Docker lo riavvierà). Aggiornata `_classify_error` per gestire `LlmError` (→ "Risposta LLM non valida") e `ExchangeError` (→ "API esterna non disponibile") in base al nome della classe.
+- `src/agents/execution_trader.py`: il `except Exception` nel metodo `run()` è stato ristretto a `except (ValueError, RuntimeError, ExchangeError)`. `RuntimeError` copre il caso critico `CANCEL_AND_REPLACE` parziale; `ExchangeError` copre gli errori Binance dai metodi `place_*`; `ValueError` copre le validazioni input. Un'eccezione imprevista di tipo diverso ora propaga correttamente al chiamante anziché essere inghiottita silenziosamente.
+- `tests/integrations/llm_interfaces/test_base_llm_interface.py`: aggiunti `test_llm_error_is_instance_of_runtime_error` (verifica backward-compat), `test_llm_error_raised_on_empty_response` e `test_llm_error_raised_on_non_retryable_provider_error`.
+- `tests/integrations/exchange/test_binance_client.py`: importato `ExchangeError`. `test_get_market_snapshot_no_retry_on_client_error` aggiornato: ora si aspetta `ExchangeError` invece di `BinanceAPIException`. Aggiunti `test_get_market_snapshot_raises_exchange_error_after_all_retries` e `test_get_portfolio_state_raises_exchange_error_on_binance_exception`.
+- `tests/core/test_runner.py`: importati `ExchangeError`, `LlmError`, `MdkTradingError`. `test_run_logs_error_on_exception` rinominato in `test_run_logs_error_on_operational_exception` e aggiornato per usare `ExchangeError` (errore operativo che non interrompe il loop). `test_run_sends_error_notification_on_exception` rinominato in `test_run_sends_error_notification_on_operational_exception` e aggiornato per usare `LlmError`. I test `test_run_sends_stop_notification` e `test_run_sends_stop_notification_on_sigterm` corretti: aggiunto mock con `was_executed = False` per evitare che il ciclo entri nel ramo notifica-ordine con MagicMock non type-safe. Aggiunti `test_unexpected_exception_propagates_from_run_single_cycle` (verifica che `AttributeError` si propaghi dopo log e notifica) e `test_unexpected_exception_stops_run_loop_after_notifying`. Aggiunti `test_classify_error_llm_error_is_llm_invalid` e `test_classify_error_exchange_error_is_external_api`.
+- `docs/repo_structure.md`: aggiunto `exceptions.py` nella sezione `src/core/`.
+- `docs/architecture.md`: aggiornate le sezioni `src/core/`, `src/integrations/`, `BinanceClient` e `Orchestrazione` per riflettere la nuova gerarchia di eccezioni e il comportamento differenziato del runner.
+
+---
+
 ## 1.14.3 — 2026-05-09
 
 ### Corretto

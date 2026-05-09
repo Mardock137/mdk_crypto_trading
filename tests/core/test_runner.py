@@ -25,6 +25,7 @@ from src.core.contracts import (
     TradeProposal,
     TradeProposalDetails,
 )
+from src.core.exceptions import ExchangeError, LlmError, MdkTradingError
 from src.core.runner import TradingRunner, _classify_error
 from src.utils.config import AppSettings, TradingMode
 from src.utils.memory_manager import MemoryManager
@@ -152,11 +153,12 @@ def test_run_sleeps_even_after_cycle_error(mock_wait: MagicMock) -> None:
 
 
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
-def test_run_logs_error_on_exception(mock_wait: MagicMock) -> None:
-    """Se il ciclo fallisce, il runner logga l'errore con correlation ID."""
+def test_run_logs_error_on_operational_exception(mock_wait: MagicMock) -> None:
+    """Se il ciclo fallisce con un errore operativo (ExchangeError), il runner logga
+    l'errore con correlation ID e il loop continua."""
     mock_event_logger = MagicMock()
     mock_workflow = MagicMock()
-    mock_workflow.run_cycle.side_effect = RuntimeError("errore di test")
+    mock_workflow.run_cycle.side_effect = ExchangeError("errore di test")
     runner = _make_runner(event_logger=mock_event_logger, workflow=mock_workflow)
 
     runner.run()
@@ -222,7 +224,9 @@ def test_run_sends_startup_notification(mock_wait: MagicMock) -> None:
 def test_run_sends_stop_notification(mock_wait: MagicMock) -> None:
     """Il runner deve inviare una notifica di stop su KeyboardInterrupt."""
     mock_notifier = MagicMock(spec=TelegramNotifier)
-    runner = _make_runner(telegram_notifier=mock_notifier)
+    mock_workflow = MagicMock()
+    mock_workflow.run_cycle.return_value.execution_report.was_executed = False
+    runner = _make_runner(telegram_notifier=mock_notifier, workflow=mock_workflow)
 
     runner.run()
 
@@ -237,7 +241,9 @@ def test_run_sends_stop_notification_on_sigterm(
 ) -> None:
     """Il runner deve inviare la notifica di stop anche quando viene ricevuto SIGTERM."""
     mock_notifier = MagicMock(spec=TelegramNotifier)
-    runner = _make_runner(telegram_notifier=mock_notifier)
+    mock_workflow = MagicMock()
+    mock_workflow.run_cycle.return_value.execution_report.was_executed = False
+    runner = _make_runner(telegram_notifier=mock_notifier, workflow=mock_workflow)
 
     captured_handlers: dict[int, Any] = {}
 
@@ -256,12 +262,12 @@ def test_run_sends_stop_notification_on_sigterm(
 
 
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
-def test_run_sends_error_notification_on_exception(mock_wait: MagicMock) -> None:
-    """Su errore nel ciclo, il runner deve inviare una notifica Telegram
+def test_run_sends_error_notification_on_operational_exception(mock_wait: MagicMock) -> None:
+    """Su errore operativo (LlmError) nel ciclo, il runner deve inviare una notifica Telegram
     con correlation ID e tipo eccezione, senza str(exc)."""
     mock_notifier = MagicMock(spec=TelegramNotifier)
     mock_workflow = MagicMock()
-    mock_workflow.run_cycle.side_effect = RuntimeError("boom")
+    mock_workflow.run_cycle.side_effect = LlmError("Risposta vuota dal provider OpenAI.")
     runner = _make_runner(workflow=mock_workflow, telegram_notifier=mock_notifier)
 
     runner.run()
@@ -270,8 +276,7 @@ def test_run_sends_error_notification_on_exception(mock_wait: MagicMock) -> None
     error_text = next((t for t in texts if "ERROR" in t), None)
     assert error_text is not None
     assert "Categoria:" in error_text
-    assert "Errore interno" in error_text
-    assert "boom" not in error_text
+    assert "Risposta LLM non valida" in error_text
     assert "Error ID:" in error_text
 
 
@@ -604,6 +609,53 @@ def test_classify_error_generic_runtime_error_is_internal() -> None:
     """RuntimeError senza keyword LLM → Errore interno."""
     exc = RuntimeError("Unexpected state in runner")
     assert _classify_error(exc) == "Errore interno"
+
+
+def test_classify_error_llm_error_is_llm_invalid() -> None:
+    """LlmError → Risposta LLM non valida."""
+    exc = LlmError("Risposta vuota dal provider Anthropic.")
+    assert _classify_error(exc) == "Risposta LLM non valida"
+
+
+def test_classify_error_exchange_error_is_external_api() -> None:
+    """ExchangeError → API esterna non disponibile."""
+    exc = ExchangeError("BinanceRequestException: connection refused")
+    assert _classify_error(exc) == "API esterna non disponibile"
+
+
+def test_unexpected_exception_propagates_from_run_single_cycle() -> None:
+    """Un bug imprevisto (AttributeError) deve propagarsi fuori da _run_single_cycle
+    dopo aver loggato l'errore e inviato la notifica."""
+    mock_event_logger = MagicMock()
+    mock_notifier = MagicMock(spec=TelegramNotifier)
+    mock_workflow = MagicMock()
+    mock_workflow.run_cycle.side_effect = AttributeError("bug imprevisto")
+    runner = _make_runner(
+        event_logger=mock_event_logger,
+        workflow=mock_workflow,
+        telegram_notifier=mock_notifier,
+    )
+
+    with pytest.raises(AttributeError, match="bug imprevisto"):
+        runner._run_single_cycle()
+
+    mock_event_logger.log_error.assert_called_once()
+    texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
+    assert any("ERROR" in t for t in texts)
+
+
+def test_unexpected_exception_stops_run_loop_after_notifying() -> None:
+    """run() deve intercettare il bug imprevisto, notificare e terminare senza
+    propagare l'eccezione verso il chiamante."""
+    mock_notifier = MagicMock(spec=TelegramNotifier)
+    mock_workflow = MagicMock()
+    mock_workflow.run_cycle.side_effect = AttributeError("bug nel workflow")
+    runner = _make_runner(workflow=mock_workflow, telegram_notifier=mock_notifier)
+
+    runner.run()
+
+    texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
+    assert any("ERROR" in t for t in texts)
 
 
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)

@@ -10,6 +10,7 @@ from binance.exceptions import BinanceAPIException, BinanceRequestException
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from src.core.contracts import MarketDataSnapshot, PortfolioState
+from src.core.exceptions import ExchangeError
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
 from src.utils.config import AppSettings, TradingMode
 from src.utils import indicators
@@ -81,8 +82,14 @@ class BinanceClient(BaseExchangeClient):
 
     # ---- Dati di mercato ----
 
-    @_binance_retry
     def get_market_snapshot(self, symbol: str) -> MarketDataSnapshot:
+        try:
+            return self._get_market_snapshot_with_retry(symbol)
+        except (BinanceAPIException, BinanceRequestException) as exc:
+            raise ExchangeError(str(exc)) from exc
+
+    @_binance_retry
+    def _get_market_snapshot_with_retry(self, symbol: str) -> MarketDataSnapshot:
         price = float(self._client.get_symbol_ticker(symbol=symbol)["price"])
         avg_price = float(self._client.get_avg_price(symbol=symbol)["price"])
         ticker_24h = self._client.get_ticker(symbol=symbol)
@@ -118,8 +125,14 @@ class BinanceClient(BaseExchangeClient):
             candles=candles,
         )
 
-    @_binance_retry
     def get_portfolio_state(self, symbol: str) -> PortfolioState:
+        try:
+            return self._get_portfolio_state_with_retry(symbol)
+        except (BinanceAPIException, BinanceRequestException) as exc:
+            raise ExchangeError(str(exc)) from exc
+
+    @_binance_retry
+    def _get_portfolio_state_with_retry(self, symbol: str) -> PortfolioState:
         account = self._client.get_account()
         balances = {b["asset"]: b for b in account.get("balances", [])}
 

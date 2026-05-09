@@ -16,6 +16,7 @@ from src.core.contracts import (
     PortfolioState,
     TradingCycleInput,
 )
+from src.core.exceptions import MdkTradingError
 from src.core.cycle_skip_handler import CycleSkipHandler
 from src.core.performance_review_runner import PerformanceReviewRunner
 from src.core.workflow import TradingWorkflow
@@ -61,10 +62,14 @@ def _classify_error(exc: Exception) -> str:
     if exc_class == "RateLimitError":
         return "Rate limit API"
 
-    if exc_class == "RuntimeError" and any(
-        kw in exc_msg for kw in ("risposta vuota", "json vuoto", "decodificare")
+    if exc_class == "LlmError" or (
+        exc_class == "RuntimeError"
+        and any(kw in exc_msg for kw in ("risposta vuota", "json vuoto", "decodificare"))
     ):
         return "Risposta LLM non valida"
+
+    if exc_class == "ExchangeError":
+        return "API esterna non disponibile"
 
     return "Errore interno"
 
@@ -162,6 +167,19 @@ class TradingRunner:
                 self._shutdown_event.wait(self._settings.cycle_interval_seconds)
         except KeyboardInterrupt:
             pass
+        except Exception as exc:
+            self._logger.critical(
+                "Errore critico imprevisto: il loop si arresta. %s", exc, exc_info=True,
+            )
+            if self._telegram_notifier:
+                self._telegram_notifier.send_message(
+                    notifications.build_error_message(
+                        symbol=self._symbol,
+                        correlation_id="CRITICAL",
+                        error_category="Errore critico imprevisto",
+                    )
+                )
+            return
 
         self._logger.info("Shutdown richiesto. Arresto pulito del runner.")
         if self._telegram_notifier:
@@ -249,10 +267,10 @@ class TradingRunner:
                     )
                 )
             self._logger.info("Ciclo completato con successo")
-        except Exception as exc:
+        except (MdkTradingError, OSError) as exc:
             cid = uuid.uuid4().hex[:8]
             self._logger.error(
-                "Errore durante il ciclo [cid=%s]: %s", cid, exc, exc_info=True,
+                "Errore operativo durante il ciclo [cid=%s]: %s", cid, exc, exc_info=True,
             )
             self._event_logger.log_error(
                 symbol=self._symbol,
@@ -268,6 +286,26 @@ class TradingRunner:
                         error_category=_classify_error(exc),
                     )
                 )
+        except Exception as exc:
+            cid = uuid.uuid4().hex[:8]
+            self._logger.error(
+                "Bug imprevisto durante il ciclo [cid=%s]: %s", cid, exc, exc_info=True,
+            )
+            self._event_logger.log_error(
+                symbol=self._symbol,
+                trading_mode=self._settings.trading_mode.value,
+                error=str(exc),
+                correlation_id=cid,
+            )
+            if self._telegram_notifier:
+                self._telegram_notifier.send_message(
+                    notifications.build_error_message(
+                        symbol=self._symbol,
+                        correlation_id=cid,
+                        error_category=_classify_error(exc),
+                    )
+                )
+            raise
 
     def _build_cycle_input(
         self,
