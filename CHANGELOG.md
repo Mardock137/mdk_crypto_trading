@@ -1,6 +1,21 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.16.0 — 2026-05-13
+
+### Aggiunto
+
+- `src/integrations/exchange/binance_client.py`: aggiunto helper di modulo `_add_age_to_orders(orders)` che calcola `age_hours` (arrotondato a 1 decimale) per ogni ordine aperto con campo `time` valido (epoch ms Binance). Viene chiamato in `_get_portfolio_state_with_retry` subito dopo `get_open_orders`: gli ordini aperti nel `PortfolioState` ora includono sempre `age_hours`, che il Decision Maker può usare per rivalutare o cancellare `LIMIT` fermi da troppo tempo.
+- `src/integrations/exchange/binance_client.py`: rinominato `_get_hourly_closes` in `_get_hourly_ohlc`. Il nuovo metodo restituisce un dict `{"highs": [...], "lows": [...], "closes": [...]}` (60 candele 1h). La chiamata in `_get_market_snapshot_with_retry` è aggiornata per passare le tre serie a `compute_indicators_bundle`, che ora calcola anche l'ATR.
+- `src/integrations/exchange/binance_client.py`: aumentati i limiti di fetch candele — `candles_4h` da 14 a 50 (~8 giorni di contesto), `candles_1d` da 14 a 30 (~1 mese di contesto).
+- `src/utils/indicators.py`: aggiunta funzione `atr(highs, lows, closes, period=14)` che calcola l'Average True Range con lo smoothing classico di Wilder (True Range = max(H-L, |H-Cprev|, |L-Cprev|), poi EWM con α=1/period). Restituisce `None` se le serie hanno lunghezze diverse o i dati sono insufficienti. `compute_indicators_bundle` aggiornato per accettare `highs` e `lows` come kwargs opzionali e include ora `atr` e `atr_prev` tra le 14 chiavi del dict (entrambi `None` se OHLC non forniti). Le 12 chiavi precedenti rimangono invariate.
+- `config/prompts/decision_maker.md`: documentato `age_hours` nella sezione `open_orders`, con guida operativa su quando rivalutare o cancellare ordini limite fermi.
+- `config/prompts/market_analyst.md`: aggiunti `atr` e `atr_prev` tra gli indicatori disponibili, con spiegazione operativa (ATR↑ → volatilità crescente; ATR↓ → compressione/possibile breakout). Aggiornati i commenti sulle candele 4h (~8 giorni) e 1d (~1 mese).
+- `tests/utils/test_indicators.py`: aggiornato `_EXPECTED_BUNDLE_KEYS` a 14 chiavi. Aggiunti test per `atr()`: none su dati insufficienti, none su serie di lunghezza diversa, range costante converge al range, volatilità maggiore produce ATR maggiore. Adattati i test di `compute_indicators_bundle` per coprire sia il caso senza OHLC (atr=None) sia con OHLC (atr popolato).
+- `tests/integrations/exchange/test_binance_client.py`: aggiunti 3 test unitari su `_add_age_to_orders` (caso normale, `time` mancante, `time` non numerico), 1 test integrato su `get_portfolio_state` che verifica `age_hours` sugli ordini aperti, 2 test sul flusso ATR (highs/lows passati al bundle; snapshot espone `atr`/`atr_prev`), 1 test che verifica i nuovi limiti candele 4h/1d nelle chiamate a `get_klines`.
+
+---
+
 ## 1.15.0 — 2026-05-13
 
 ### Aggiunto

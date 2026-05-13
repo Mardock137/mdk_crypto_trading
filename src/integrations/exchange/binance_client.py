@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from decimal import ROUND_DOWN, Decimal
 from typing import Any
@@ -32,6 +33,25 @@ _binance_retry = retry(
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _add_age_to_orders(orders: list[dict[str, Any]]) -> None:
+    """Aggiunge ``age_hours`` a ogni ordine in-place.
+
+    Binance restituisce in ``time`` il timestamp di creazione in ms epoch.
+    Calcoliamo l'eta' in ore (arrotondata a un decimale). Ordini privi di
+    ``time`` o con timestamp non valido vengono ignorati silenziosamente.
+    """
+    now_ms = int(time.time() * 1000)
+    for order in orders:
+        raw_time = order.get("time")
+        if raw_time is None:
+            continue
+        try:
+            order_time_ms = int(raw_time)
+        except (TypeError, ValueError):
+            continue
+        order["age_hours"] = round((now_ms - order_time_ms) / 3_600_000, 1)
 
 
 class BinanceClient(BaseExchangeClient):
@@ -101,9 +121,13 @@ class BinanceClient(BaseExchangeClient):
 
         # Indicatori calcolati sulle kline 1h (almeno 60 candele).
         # Il calcolo vero e proprio vive in src/utils/indicators.py: l'exchange si
-        # limita a fetchare i closes e a delegare il bundle.
-        closes_1h = self._get_hourly_closes(symbol)
-        indicator_values = indicators.compute_indicators_bundle(closes_1h)
+        # limita a fetchare l'OHLC e a delegare il bundle.
+        ohlc_1h = self._get_hourly_ohlc(symbol)
+        indicator_values = indicators.compute_indicators_bundle(
+            ohlc_1h["closes"],
+            highs=ohlc_1h["highs"],
+            lows=ohlc_1h["lows"],
+        )
         if (
             indicator_values.get("rsi") is None
             and indicator_values.get("macd") is not None
@@ -111,7 +135,7 @@ class BinanceClient(BaseExchangeClient):
             logger.warning(
                 "RSI unavailable while MACD is available for %s; closes_1h=%d",
                 symbol,
-                len(closes_1h),
+                len(ohlc_1h["closes"]),
             )
 
         return MarketDataSnapshot(
@@ -156,6 +180,7 @@ class BinanceClient(BaseExchangeClient):
         usdc_value = (coin_free + coin_locked) * coin_price
 
         open_orders = self._client.get_open_orders(symbol=symbol)
+        _add_age_to_orders(open_orders)
         last_trades = self._client.get_my_trades(symbol=symbol, limit=10)
 
         snapshot = (
@@ -426,8 +451,8 @@ class BinanceClient(BaseExchangeClient):
         """Recupera le candele per i timeframe richiesti dal Market Analyst."""
         intervals: dict[str, tuple[str, int]] = {
             "candles_2h": ("2h", 12),
-            "candles_4h": ("4h", 14),
-            "candles_1d": ("1d", 14),
+            "candles_4h": ("4h", 50),
+            "candles_1d": ("1d", 30),
             "candles_1w": ("1w", 8),
             "candles_1M": ("1M", 6),
         }
@@ -448,9 +473,18 @@ class BinanceClient(BaseExchangeClient):
             ]
         return candles
 
-    def _get_hourly_closes(self, symbol: str) -> list[float]:
-        """Recupera i prezzi di chiusura delle ultime 60 candele 1h."""
+    def _get_hourly_ohlc(self, symbol: str) -> dict[str, list[float]]:
+        """Recupera high/low/close delle ultime 60 candele 1h.
+
+        Ritorna un dict con tre liste parallele (`highs`, `lows`, `closes`)
+        usate da `compute_indicators_bundle` per gli indicatori che
+        richiedono OHLC (es. ATR).
+        """
         raw = self._client.get_klines(
             symbol=symbol, interval="1h", limit=60,
         )
-        return [float(k[4]) for k in raw]
+        return {
+            "highs": [float(k[2]) for k in raw],
+            "lows": [float(k[3]) for k in raw],
+            "closes": [float(k[4]) for k in raw],
+        }

@@ -10,7 +10,7 @@ import pytest
 from binance.exceptions import BinanceAPIException, BinanceRequestException
 
 from src.core.exceptions import ExchangeError
-from src.integrations.exchange.binance_client import BinanceClient
+from src.integrations.exchange.binance_client import BinanceClient, _add_age_to_orders
 from src.utils.config import AppSettings, TradingMode
 
 
@@ -337,6 +337,127 @@ def test_get_portfolio_state_returns_populated_state(
     assert state.portfolio_qty_total == 0.01
     assert state.usdc_value == 0.01 * 50000.0
     assert state.last_trades == [{"id": 1}]
+
+
+# ---------- Verifica _add_age_to_orders ----------
+
+
+def test_add_age_to_orders_adds_age_hours() -> None:
+    """_add_age_to_orders aggiunge age_hours basandosi sul campo time."""
+    import time as _time
+
+    now_ms = int(_time.time() * 1000)
+    two_hours_ago_ms = now_ms - 2 * 3_600_000
+
+    orders = [{"orderId": 1, "time": two_hours_ago_ms}]
+    _add_age_to_orders(orders)
+
+    assert orders[0]["age_hours"] == pytest.approx(2.0, abs=0.1)
+
+
+def test_add_age_to_orders_skips_orders_without_time() -> None:
+    """Ordini privi del campo time vengono ignorati silenziosamente."""
+    orders = [{"orderId": 1}]
+    _add_age_to_orders(orders)
+    assert "age_hours" not in orders[0]
+
+
+def test_add_age_to_orders_skips_invalid_timestamp() -> None:
+    """Ordini con timestamp non numerico vengono ignorati senza errore."""
+    orders = [{"orderId": 1, "time": "not-a-number"}]
+    _add_age_to_orders(orders)
+    assert "age_hours" not in orders[0]
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_get_portfolio_state_adds_age_hours_to_open_orders(
+    mock_client_cls: MagicMock,
+) -> None:
+    """get_portfolio_state arricchisce gli ordini aperti con age_hours."""
+    import time as _time
+
+    now_ms = int(_time.time() * 1000)
+    one_hour_ago_ms = now_ms - 1 * 3_600_000
+
+    mock_instance = mock_client_cls.return_value
+    mock_instance.get_account.return_value = {
+        "balances": [{"asset": "USDC", "free": "100.0", "locked": "0.0"}],
+    }
+    mock_instance.get_symbol_ticker.return_value = {"price": "50000.0"}
+    mock_instance.get_open_orders.return_value = [
+        {"orderId": 7, "time": one_hour_ago_ms, "side": "BUY"},
+    ]
+    mock_instance.get_my_trades.return_value = []
+
+    client = BinanceClient(_make_settings())
+    state = client.get_portfolio_state("BTCUSDC")
+
+    assert len(state.open_orders) == 1
+    assert state.open_orders[0]["age_hours"] == pytest.approx(1.0, abs=0.1)
+
+
+# ---------- Verifica fetch OHLC + ATR ----------
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_get_market_snapshot_passes_ohlc_to_indicators(
+    mock_client_cls: MagicMock,
+) -> None:
+    """get_market_snapshot deve fetchare highs/lows/closes 1h e passarli al bundle."""
+    mock_instance = mock_client_cls.return_value
+    _setup_market_mocks(mock_instance)
+
+    client = BinanceClient(_make_settings())
+    with patch(
+        "src.integrations.exchange.binance_client.indicators.compute_indicators_bundle",
+        return_value={"rsi": 50.0, "atr": 100.0, "atr_prev": 95.0},
+    ) as mock_bundle:
+        client.get_market_snapshot("BTCUSDC")
+
+    args, kwargs = mock_bundle.call_args
+    # closes passati come primo positional, highs/lows come kwargs
+    assert len(args[0]) == 60
+    assert "highs" in kwargs and "lows" in kwargs
+    assert len(kwargs["highs"]) == 60
+    assert len(kwargs["lows"]) == 60
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_get_market_snapshot_indicators_include_atr(
+    mock_client_cls: MagicMock,
+) -> None:
+    """Lo snapshot prodotto deve contenere atr e atr_prev tra gli indicatori."""
+    mock_instance = mock_client_cls.return_value
+    _setup_market_mocks(mock_instance)
+
+    client = BinanceClient(_make_settings())
+    snapshot = client.get_market_snapshot("BTCUSDC")
+
+    assert "atr" in snapshot.indicators
+    assert "atr_prev" in snapshot.indicators
+
+
+# ---------- Verifica nuovi limiti candele 4h e 1d ----------
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_fetch_candles_uses_updated_limits_for_4h_and_1d(
+    mock_client_cls: MagicMock,
+) -> None:
+    """_fetch_candles deve richiedere 50 candele 4h e 30 candele 1d."""
+    mock_instance = mock_client_cls.return_value
+    _setup_market_mocks(mock_instance)
+
+    client = BinanceClient(_make_settings())
+    client.get_market_snapshot("BTCUSDC")
+
+    # Estrae le coppie (interval, limit) da tutte le chiamate get_klines
+    calls = [
+        (call.kwargs.get("interval"), call.kwargs.get("limit"))
+        for call in mock_instance.get_klines.call_args_list
+    ]
+    assert ("4h", 50) in calls
+    assert ("1d", 30) in calls
 
 
 # ---------- Verifica metodi ordini ----------

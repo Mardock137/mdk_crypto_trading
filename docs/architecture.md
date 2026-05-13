@@ -115,8 +115,8 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 `BinanceClient` espone:
 
 - `ping()` / `get_account_info()`: verifica connessione e autenticazione
-- `get_market_snapshot(symbol)`: raccoglie prezzo, volume, order book, candele multi-timeframe e fetcha i closes 1h. Il calcolo degli indicatori tecnici (RSI, EMA, SMA, MACD su serie corrente e precedente) è delegato a `utils/indicators.py::compute_indicators_bundle`. Gli errori Binance vengono wrappati in `ExchangeError`.
-- `get_portfolio_state(symbol)`: raccoglie saldi quote currency e coin, ordini aperti, ultimi trade. La quote currency (es. USDC) è configurabile in `symbols.yaml` e passata al costruttore. Gli errori Binance vengono wrappati in `ExchangeError`.
+- `get_market_snapshot(symbol)`: raccoglie prezzo, volume, order book, candele multi-timeframe e fetcha OHLC 1h (60 candele) via `_get_hourly_ohlc`. Il calcolo degli indicatori tecnici (RSI, EMA, SMA, MACD, ATR su serie corrente e precedente) è delegato a `utils/indicators.py::compute_indicators_bundle`, che riceve highs/lows/closes. Gli errori Binance vengono wrappati in `ExchangeError`.
+- `get_portfolio_state(symbol)`: raccoglie saldi quote currency e coin, ordini aperti (arricchiti con `age_hours` calcolato dall'helper di modulo `_add_age_to_orders`), ultimi trade. La quote currency (es. USDC) è configurabile in `symbols.yaml` e passata al costruttore. Gli errori Binance vengono wrappati in `ExchangeError`.
 - `place_market_order(symbol, side, quantity)`: piazza un ordine a mercato (solo BUY/SELL, altrimenti `ValueError`)
 - `place_limit_order(symbol, side, quantity, price)`: piazza un ordine limit GTC (solo BUY/SELL, altrimenti `ValueError`)
 - `cancel_order(symbol, order_id)`: cancella un ordine aperto
@@ -131,7 +131,7 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 ### `src/utils/`
 
 - `config.py`: caricamento variabili d'ambiente (`.env`) e file YAML (`trading.yaml`, `symbols.yaml`, configurazioni LLM); include `load_mandate` per parsare l'investment mandate
-- `indicators.py`: funzioni pure per il calcolo di RSI, EMA, SMA, MACD da una serie di prezzi di chiusura, più `compute_indicators_bundle(closes)` che produce in un'unica chiamata il dict di 12 chiavi (valore corrente + valore precedente) consumato da `MarketDataSnapshot.indicators`
+- `indicators.py`: funzioni pure per RSI, EMA, SMA, MACD e ATR(14) da serie OHLC. `compute_indicators_bundle(closes, *, highs, lows)` produce in un'unica chiamata il dict di 14 chiavi (valore corrente + precedente per ogni indicatore) consumato da `MarketDataSnapshot.indicators`. `highs` e `lows` sono opzionali: se omessi, `atr` e `atr_prev` valgono `None`.
 - `logging_config.py`: logging su console (Rich) e su file con rotazione automatica (5 MB, 5 backup)
 - `event_logger.py`: log JSON strutturato per le decisioni di ogni ciclo operativo
 - `event_log_reader.py`: `load_recent_events` legge i file JSONL degli ultimi N giorni filtrati per simbolo (usato dal Performance Reviewer)

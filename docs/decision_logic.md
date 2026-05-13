@@ -41,6 +41,8 @@ Analizza i dati di mercato e produce un segnale. Non decide operazioni.
 
 - **Output**: `market_bias` (BULLISH / BEARISH / NEUTRAL), `signal_strength`, `confidence`, `suggested_action` (LONG_BIAS / SHORT_BIAS / NO_TRADE_BIAS)
 - Se i dati sono insufficienti o contraddittori → segnale NEUTRAL
+- Riceve indicatori tecnici (RSI, EMA 21, SMA 50, MACD, **ATR 14**) sia al valore corrente sia al precedente. L'ATR misura la volatilità media delle ultime 14 candele orarie in USDC: ATR in aumento → volatilità crescente (allargare stop, ridurre size); ATR in calo → compressione di mercato (possibile breakout imminente).
+- Riceve candele multi-timeframe: 2h (12), 4h (50, ~8 giorni), 1d (30, ~1 mese), 1w (8), 1M (6).
 
 ---
 
@@ -62,6 +64,7 @@ Riceve il segnale del Market Analyst e formula una proposta operativa usando com
 - Se il DM vede rischio ribassista concreto senza voler usare OCO, deve fare `MARKET SELL` (totale o parziale) — non `LIMIT SELL` sotto mercato, che verrebbe eseguito immediatamente.
 - Non propone ordini sotto `min_order_usdc`.
 - Non propone ordini duplicati se ci sono già ordini aperti sulla stessa coppia.
+- Ogni ordine in `open_orders` espone `age_hours`: ore trascorse dalla creazione. Il DM lo usa per valutare se un `LIMIT` fermo da troppo tempo vada aggiornato via `CANCEL_AND_REPLACE_ORDER` o cancellato.
 
 ---
 

@@ -56,7 +56,7 @@ AI Decision Maker di MDK Crypto Trading
 - `portfolio_qty_free`: quantità libera della coin posseduta.
 - `portfolio_qty_total`: quantità totale (libera + bloccata) della coin posseduta.
 - `portfolio_snapshot`: riassunto testuale del portafoglio.
-- `open_orders`: ordini aperti sulla coppia.
+- `open_orders`: ordini aperti sulla coppia. Ogni ordine include il campo `age_hours`: ore trascorse dalla creazione dell'ordine.
 - `last_trades`: ultimi trade eseguiti sulla coppia.
 - `avg_entry_price`: prezzo medio di carico della posizione aperta, calcolato in FIFO sui lotti BUY ancora non venduti. `null` se non c'è posizione aperta.
 - `unrealized_pnl_pct`: P&L non realizzato percentuale al prezzo corrente rispetto a `avg_entry_price`. `null` se non c'è posizione aperta.

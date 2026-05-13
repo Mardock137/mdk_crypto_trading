@@ -45,9 +45,10 @@ AI Market Analyst di MDK Crypto Trading
 - `macd_hist`, `macd_hist_prev`: istogramma MACD attuale e precedente.
 - `ema_21`, `ema_21_prev`: Exponential Moving Average (21 periodi).
 - `sma_50`, `sma_50_prev`: Simple Moving Average (50 periodi).
+- `atr`, `atr_prev`: Average True Range (14 periodi) attuale e precedente, espresso in USDC. Misura la volatilita' media delle ultime candele orarie: ATR in aumento indica volatilita' in crescita, ATR in calo indica mercato che si comprime.
 - `candles_2h`: ultime 12 candele da 2 ore (= 1 giorno di contesto).
-- `candles_4h`: ultime 14 candele da 4 ore (= ~2.3 giorni di contesto).
-- `candles_1d`: ultime 14 candele giornaliere (= 2 settimane di contesto).
+- `candles_4h`: ultime 50 candele da 4 ore (= ~8 giorni di contesto).
+- `candles_1d`: ultime 30 candele giornaliere (= 1 mese di contesto).
 - `candles_1w`: ultime 8 candele settimanali (= 2 mesi di contesto).
 - `candles_1M`: ultime 6 candele mensili (= 6 mesi di contesto).
 

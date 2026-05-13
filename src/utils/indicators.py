@@ -60,13 +60,53 @@ def macd(
     )
 
 
-def compute_indicators_bundle(closes: list[float]) -> dict[str, float | None]:
+def atr(
+    highs: list[float],
+    lows: list[float],
+    closes: list[float],
+    period: int = 14,
+) -> float | None:
+    """Average True Range (Wilder's smoothing).
+
+    True Range = max(high - low, |high - prev_close|, |low - prev_close|).
+    L'ATR e' una media esponenziale del TR con alpha = 1/period (smoothing
+    classico di Wilder). Restituisce ``None`` se le tre serie non hanno la
+    stessa lunghezza o se i dati sono insufficienti.
+    """
+    if not (len(highs) == len(lows) == len(closes)):
+        return None
+    if len(closes) < period + 1:
+        return None
+
+    h = pd.Series(highs)
+    low = pd.Series(lows)
+    c = pd.Series(closes)
+    prev_c = c.shift(1)
+    tr = pd.concat(
+        [(h - low).abs(), (h - prev_c).abs(), (low - prev_c).abs()],
+        axis=1,
+    ).max(axis=1)
+    tr = tr.iloc[1:]
+    result = tr.ewm(alpha=1 / period, min_periods=period, adjust=False).mean().iloc[-1]
+    if pd.isna(result):
+        return None
+    return float(result)
+
+
+def compute_indicators_bundle(
+    closes: list[float],
+    *,
+    highs: list[float] | None = None,
+    lows: list[float] | None = None,
+) -> dict[str, float | None]:
     """Calcola un bundle di indicatori tecnici e i valori precedenti.
 
-    Calcola RSI(14), EMA(21), SMA(50) e MACD sia sulla serie intera (`closes`)
-    sia sulla serie precedente (`closes[:-1]`). Il dict ritornato contiene
-    sempre le 12 chiavi attese da `MarketDataSnapshot.indicators`; i valori
-    sono `None` quando i dati sono insufficienti per l'indicatore.
+    Calcola RSI(14), EMA(21), SMA(50), MACD e (se forniti `highs` e `lows`)
+    ATR(14), sia sulla serie intera (`closes`) sia sulla serie precedente
+    (`closes[:-1]`). Il dict ritornato contiene sempre le 14 chiavi attese
+    da `MarketDataSnapshot.indicators`; i valori sono `None` quando i dati
+    sono insufficienti per l'indicatore o quando `highs`/`lows` non sono
+    disponibili (ATR).
 
     Quando `closes` ha 0 o 1 elementi la serie precedente coincide con
     `closes` (fallback): in pratica i due valori "current" e "prev" diventano
@@ -86,6 +126,16 @@ def compute_indicators_bundle(closes: list[float]) -> dict[str, float | None]:
     macd_val = macd(closes)
     macd_prev = macd(closes_prev)
 
+    if highs is not None and lows is not None:
+        atr_val = atr(highs, lows, closes, period=14)
+        if len(closes) > 1:
+            atr_prev = atr(highs[:-1], lows[:-1], closes_prev, period=14)
+        else:
+            atr_prev = atr_val
+    else:
+        atr_val = None
+        atr_prev = None
+
     return {
         "rsi": rsi_val,
         "rsi_prev": rsi_prev,
@@ -99,4 +149,6 @@ def compute_indicators_bundle(closes: list[float]) -> dict[str, float | None]:
         "macd_signal_prev": macd_prev[1] if macd_prev else None,
         "macd_hist": macd_val[2] if macd_val else None,
         "macd_hist_prev": macd_prev[2] if macd_prev else None,
+        "atr": atr_val,
+        "atr_prev": atr_prev,
     }
