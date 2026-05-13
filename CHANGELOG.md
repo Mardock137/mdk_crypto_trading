@@ -1,6 +1,19 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.17.0 — 2026-05-13
+
+### Aggiunto
+
+- `src/core/notifications.py`: aggiunto ramo dedicato a `SELL_OCO` in `build_order_notification`. In precedenza gli ordini OCO cadevano nel ramo `LIMIT` mostrando solo il TP e ignorando lo stop loss. Ora la notifica Telegram per `SELL_OCO` include `TP Price` (prezzo take profit), `SL Stop` (prezzo trigger stop loss) e `Est. Value` (controvalore stimato), oltre ai campi comuni già presenti.
+- `tests/core/test_notifications.py`: aggiunti `test_build_order_notification_sell_oco_shows_tp_and_sl` (verifica che TP, SL e controvalore compaiano correttamente) e `test_build_order_notification_sell_oco_handles_missing_fields` (verifica che la notifica non crashi se `price` o `sl_stop_price` sono `None`).
+
+### Modificato
+
+- `config/prompts/decision_maker.md`: rimossi i valori percentuali esemplificativi dalla guida alle quantità frazionali (`2-3 tranche da 30-50%` per scaling in, `tipicamente 30-50% della posizione` e `+10/+15% dal prezzo di ingresso` per take profit parziali) e dalla guida all'uso di `unrealized_pnl_pct` (soglia `≥ +10/15%`). Il DM decide autonomamente le proporzioni in base al contesto, senza ancore numeriche rigide.
+
+---
+
 ## 1.16.0 — 2026-05-13
 
 ### Aggiunto

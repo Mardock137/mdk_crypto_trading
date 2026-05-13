@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.core.contracts import OrderType, TradingCycleResult
+from src.core.contracts import OrderType, TradeAction, TradingCycleResult
 
 
 def build_startup_message(symbol: str, mode: str, interval_seconds: int) -> str:
@@ -58,7 +58,15 @@ def build_order_notification(
     if details.quantity is not None:
         lines.append(f"Quantity: {details.quantity}")
 
-    if report.order_type is OrderType.MARKET:
+    if report.executed_action is TradeAction.SELL_OCO:
+        if details.price is not None:
+            lines.append(f"TP Price: {details.price:.2f}")
+        if details.sl_stop_price is not None:
+            lines.append(f"SL Stop: {details.sl_stop_price:.2f}")
+        notional = details.estimated_notional()
+        if notional is not None:
+            lines.append(f"Est. Value: {notional:.2f} USDC")
+    elif report.order_type is OrderType.MARKET:
         exec_d = report.execution_details
         cum_quote = exec_d.get("cummulativeQuoteQty")
         exec_qty = exec_d.get("executedQty")

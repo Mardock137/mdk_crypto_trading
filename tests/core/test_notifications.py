@@ -147,6 +147,59 @@ def test_build_order_notification_market_handles_invalid_details() -> None:
     assert "Value:" not in msg
 
 
+def test_build_order_notification_sell_oco_shows_tp_and_sl() -> None:
+    report = ExecutionReport(
+        execution_status=ExecutionStatus.EXECUTED,
+        executed_action=TradeAction.SELL_OCO,
+        order_type=OrderType.LIMIT,
+        reason="ok",
+        execution_details={},
+    )
+    proposal = TradeProposal(
+        action=TradeAction.SELL_OCO,
+        order_type=OrderType.LIMIT,
+        confidence=0.79,
+        reason="test",
+        details=TradeProposalDetails(quantity=0.003, price=85000.0, sl_stop_price=79000.0),
+    )
+
+    msg = notifications.build_order_notification(
+        symbol="BTCUSDC", mode="DEMO", result=_result(report, proposal),
+    )
+
+    assert "SELL_OCO" in msg
+    assert "TP Price: 85000.00" in msg
+    assert "SL Stop: 79000.00" in msg
+    assert "Est. Value: 255.00 USDC" in msg
+    assert "DM Confidence: 0.79" in msg
+
+
+def test_build_order_notification_sell_oco_handles_missing_fields() -> None:
+    """Se TP o SL sono None la notifica non crasha."""
+    report = ExecutionReport(
+        execution_status=ExecutionStatus.EXECUTED,
+        executed_action=TradeAction.SELL_OCO,
+        order_type=OrderType.LIMIT,
+        reason="ok",
+        execution_details={},
+    )
+    proposal = TradeProposal(
+        action=TradeAction.SELL_OCO,
+        order_type=OrderType.LIMIT,
+        confidence=0.5,
+        reason="test",
+        details=TradeProposalDetails(quantity=0.003),
+    )
+
+    msg = notifications.build_order_notification(
+        symbol="BTCUSDC", mode="DEMO", result=_result(report, proposal),
+    )
+
+    assert "SELL_OCO" in msg
+    assert "TP Price:" not in msg
+    assert "SL Stop:" not in msg
+
+
 def test_build_order_notification_limit_uses_proposal_price() -> None:
     report = ExecutionReport(
         execution_status=ExecutionStatus.EXECUTED,

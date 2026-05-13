@@ -179,7 +179,7 @@ Il sistema invia notifiche opzionali via Telegram Bot API. Se `TELEGRAM_BOT_TOKE
 | ⚠️ **Cycle ERROR**    | Se un ciclo operativo fallisce con un'eccezione |
 | 🛑 **Bot STOPPED**    | Allo stop del sistema (Ctrl+C o `docker stop`)  |
 
-**Esempio notifica ordine eseguito:**
+**Esempio notifica ordine eseguito (MARKET):**
 
 ```text
 ✅ Order EXECUTED
@@ -190,6 +190,22 @@ Quantity: 0.00123
 Price: 84521.30
 Value: 103.96 USDC
 DM Confidence: 0.82
+Symbol: BTCUSDC
+Mode: DEMO
+```
+
+**Esempio notifica ordine eseguito (SELL_OCO):**
+
+```text
+✅ Order EXECUTED
+
+Action: SELL_OCO
+Type: LIMIT
+Quantity: 0.003
+TP Price: 87000.00
+SL Stop: 79000.00
+Est. Value: 261.00 USDC
+DM Confidence: 0.79
 Symbol: BTCUSDC
 Mode: DEMO
 ```
