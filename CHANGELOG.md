@@ -1,6 +1,22 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.15.0 — 2026-05-13
+
+### Aggiunto
+
+- `src/utils/memory_manager.py`: aggiunto metodo pubblico `compute_open_position(symbol)` che sfrutta la coda FIFO interna per calcolare la posizione ancora aperta (lotti BUY non ancora consumati da SELL). Ritorna `{"open_qty": float, "avg_entry_price": float}` con il prezzo medio ponderato FIFO, oppure `None` se non c'è posizione aperta. Per supportarlo, `_walk_fifo` ora restituisce una tupla `(results, lot_queue)` invece della sola lista — tutti i chiamanti interni (`compute_fifo_trades`, `_build_fifo_index`) aggiornati di conseguenza.
+- `src/core/contracts.py`: aggiunti due campi opzionali a `PortfolioState`: `avg_entry_price: float | None = None` (prezzo medio di carico FIFO della posizione aperta) e `unrealized_pnl_pct: float | None = None` (P&L non realizzato percentuale rispetto al prezzo corrente). Aggiunti due campi a `PerformanceStats` (entrambi con default `0`): `sells_in_profit: int` e `sells_in_loss: int` (contatori delle ultime 10 SELL FIFO chiuse rispettivamente in profitto e in perdita).
+- `src/core/runner.py`: aggiunto helper privato `_augment_portfolio_with_open_position(market_data, portfolio)`, invocato in `_run_single_cycle` subito dopo il fetch del portafoglio e prima di `CycleSkipHandler.try_skip`. Calcola e popola `avg_entry_price` e `unrealized_pnl_pct` sul `PortfolioState` usando `MemoryManager.compute_open_position`. Attivo solo se `portfolio_qty_total > 0` e prezzo corrente disponibile. Completamente difensivo: le conversioni di tipo sono in `try/except (TypeError, ValueError)`, quindi non può mai interrompere il ciclo per dati malformati.
+- `src/utils/performance_stats.py`: `build_performance_stats` calcola ora `sells_in_profit` e `sells_in_loss` dalle ultime 10 trade FIFO (`pnl_pct >= 0` → profitto, `< 0` → perdita). `_format_markdown_report` include i due nuovi contatori nella sezione Statistiche del report markdown.
+- `config/prompts/decision_maker.md`: documentati `avg_entry_price` e `unrealized_pnl_pct` nella sezione "Portafoglio e posizione". Aggiunto paragrafo operativo che invita il DM a usare `unrealized_pnl_pct` nelle decisioni di take profit parziale (soglia orientativa ≥ +10/15%) e a non mediare al ribasso senza un setup chiaro.
+- `config/prompts/performance_reviewer.md`: documentati `sells_in_profit` e `sells_in_loss` nella sezione dati disponibili. Riscritta la definizione di `DRIFTING` per bilanciare la valutazione su entry e uscite: è `DRIFTING` se `sells_in_loss > sells_in_profit` con attività significativa, se ci sono BUY accumulate senza SELL realizzate per più giorni, o se ci sono sequenze di HOLD su segnali forti e il sistema non ha già una posizione in profitto (ignorare nuovi BULLISH per consolidare un guadagno esistente non è più classificato automaticamente come `DRIFTING`). `MISALIGNED` aggiornato per includere il caso di `sells_in_loss` molto superiore a `sells_in_profit` con `realized_pnl_usdc` negativo significativo. Guida ai `suggestions` aggiornata per richiedere consigli anche sulla gestione delle uscite (take profit, stop loss, uso di `SELL_OCO`), non solo sugli ingressi.
+- `tests/utils/test_memory_manager.py`: 5 nuovi test per `compute_open_position` — none senza BUY, none dopo SELL totale, single buy, SELL parziale con residuo, media ponderata multi-lot.
+- `tests/utils/test_performance_stats.py`: 2 nuovi test per i contatori `sells_in_profit`/`sells_in_loss` (incluso il caso breakeven contato come profitto, simmetrico a `get_performance_summary`). Asserzioni sulla presenza dei due campi nel report markdown aggiunto al test `test_write_performance_report_creates_file`.
+- `tests/core/test_runner.py`: 2 nuovi test per `_augment_portfolio_with_open_position` — con posizione aperta e prezzo disponibile i campi vengono popolati correttamente; senza posizione (`portfolio_qty_total == 0`) i campi restano `None` e `compute_open_position` non viene mai chiamato.
+
+---
+
 ## 1.14.4 — 2026-05-09
 
 ### Aggiunto

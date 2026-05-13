@@ -154,7 +154,7 @@ class MemoryManager:
                 continue
         return records
 
-    def _walk_fifo(self, symbol: str) -> list[dict]:
+    def _walk_fifo(self, symbol: str) -> tuple[list[dict], deque[list[float]]]:
         """Logica FIFO condivisa: itera i record e calcola P&L per ogni SELL EXECUTED.
 
         Ogni BUY EXECUTED aggiunge un lotto (quantity, price) in coda.
@@ -162,8 +162,11 @@ class MemoryManager:
         Vendite parziali attraverso piu lotti vengono aggregate con costo medio ponderato.
         Ignora record con quantity o price mancanti/invalidi.
 
-        Ritorna lista di dict con le chiavi:
+        Ritorna una tupla (results, lot_queue):
+        - results: lista di dict con le chiavi
             record_idx, sell_price, avg_cost_basis, qty_consumed, realized_pnl, pnl_pct
+        - lot_queue: deque dei lotti BUY ancora aperti (non consumati da SELL),
+          ognuno come [qty_residua, price]
         """
         records = self._read_all(symbol)
         lot_queue: deque[list[float]] = deque()
@@ -221,7 +224,7 @@ class MemoryManager:
                     "pnl_pct": pnl_pct,
                 })
 
-        return results
+        return results, lot_queue
 
     def compute_fifo_trades(self, symbol: str) -> list[dict]:
         """Calcola le vendite realizzate usando il metodo FIFO.
@@ -229,6 +232,7 @@ class MemoryManager:
         Ritorna lista di dict con: sell_price, avg_cost_basis, quantity,
         realized_pnl (USDC), pnl_pct (%).
         """
+        results, _ = self._walk_fifo(symbol)
         return [
             {
                 "sell_price": entry["sell_price"],
@@ -237,15 +241,45 @@ class MemoryManager:
                 "realized_pnl": round(entry["realized_pnl"], 4),
                 "pnl_pct": round(entry["pnl_pct"], 4),
             }
-            for entry in self._walk_fifo(symbol)
+            for entry in results
         ]
 
     def _build_fifo_index(self, symbol: str) -> dict[int, dict]:
         """Mappa indice del record SELL -> dati FIFO, per arricchire get_recent_performance."""
+        results, _ = self._walk_fifo(symbol)
         return {
             entry["record_idx"]: {
                 "realized_pnl": round(entry["realized_pnl"], 4),
                 "pnl_pct": round(entry["pnl_pct"], 4),
             }
-            for entry in self._walk_fifo(symbol)
+            for entry in results
+        }
+
+    def compute_open_position(self, symbol: str) -> dict | None:
+        """Calcola la posizione aperta (FIFO) per il simbolo.
+
+        Aggrega i lotti BUY non ancora consumati dalle SELL e ritorna un dict con:
+        - open_qty: quantita totale ancora aperta
+        - avg_entry_price: prezzo medio ponderato di carico
+
+        Ritorna None se non c'e nessuna posizione aperta.
+        """
+        _, lot_queue = self._walk_fifo(symbol)
+        if not lot_queue:
+            return None
+
+        total_qty = 0.0
+        total_cost = 0.0
+        for qty, price in lot_queue:
+            if qty <= 0:
+                continue
+            total_qty += qty
+            total_cost += qty * price
+
+        if total_qty <= 0:
+            return None
+
+        return {
+            "open_qty": round(total_qty, 8),
+            "avg_entry_price": round(total_cost / total_qty, 8),
         }

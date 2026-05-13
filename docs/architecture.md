@@ -136,7 +136,7 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 - `event_logger.py`: log JSON strutturato per le decisioni di ogni ciclo operativo
 - `event_log_reader.py`: `load_recent_events` legge i file JSONL degli ultimi N giorni filtrati per simbolo (usato dal Performance Reviewer)
 - `memory_manager.py`: persistenza e recupero della memoria operativa del sistema (vedi sotto)
-- `performance_stats.py`: `build_performance_stats` calcola in modo deterministico (zero LLM) le statistiche operative degli ultimi N giorni; `write_performance_report` serializza il giudizio del Reviewer in markdown
+- `performance_stats.py`: `build_performance_stats` calcola in modo deterministico (zero LLM) le statistiche operative degli ultimi N giorni, inclusi `sells_in_profit` e `sells_in_loss` (dalle ultime 10 trade FIFO); `write_performance_report` serializza il giudizio del Reviewer in markdown
 - `telegram_notifier.py`: notifiche Telegram opzionali via Bot API — avvio/stop del bot, ordini eseguiti, errori nei cicli
 
 Per i dettagli completi sul sistema di logging, vedi `docs/observability.md`.
@@ -151,12 +151,12 @@ Questo evita JSON incoerenti sparsi nel codice e rende più facili test, logging
 I contratti principali sono:
 
 - `MarketDataSnapshot`: dati di mercato (prezzo, volume, order book, candele, indicatori)
-- `PortfolioState`: saldi, ordini aperti, ultimi trade
+- `PortfolioState`: saldi, ordini aperti, ultimi trade. Contiene anche due campi opzionali calcolati a runtime dal runner: `avg_entry_price` (prezzo medio di carico FIFO della posizione aperta) e `unrealized_pnl_pct` (P&L non realizzato % al prezzo corrente). Entrambi sono `None` se non c'è posizione aperta.
 - `MarketAnalysis`: output del `Market Analyst`
 - `TradeProposal`: output del `Decision Maker`
 - `RiskAssessment`: output del `Risk Manager`
 - `ExecutionReport`: output del `Execution Trader`
-- `PerformanceStats` / `PerformanceReview`: input/output del `Performance Reviewer`
+- `PerformanceStats` / `PerformanceReview`: input/output del `Performance Reviewer`. `PerformanceStats` include ora `sells_in_profit` e `sells_in_loss`: contatori delle ultime 10 SELL FIFO chiuse in profitto/perdita, usati dal Reviewer per valutare la qualità delle uscite.
 - `InvestmentMandate`: mandato operativo (caricato da `trading.yaml`)
 - `TradingCycleInput` / `TradingCycleResult`: input e output del ciclo completo
 
@@ -172,7 +172,7 @@ Il ciclo operativo è gestito da due componenti complementari:
 Il runner:
 
 1. Logga l'avvio e lo stato del kill switch
-2. Ad ogni iterazione: eventualmente genera il report giornaliero (`PerformanceReviewRunner.maybe_run_today`) → raccoglie dati da Binance → eventualmente salta il ciclo via `CycleSkipHandler.try_skip` → legge la memoria storica e l'ultimo report → costruisce `TradingCycleInput` → esegue il workflow → logga il risultato → salva il ciclo in memoria → registra lo snapshot via `CycleSkipHandler.record_completed_cycle`
+2. Ad ogni iterazione: eventualmente genera il report giornaliero (`PerformanceReviewRunner.maybe_run_today`) → raccoglie dati da Binance → **arricchisce il portafoglio** con `avg_entry_price` e `unrealized_pnl_pct` via `_augment_portfolio_with_open_position` → eventualmente salta il ciclo via `CycleSkipHandler.try_skip` → legge la memoria storica e l'ultimo report → costruisce `TradingCycleInput` → esegue il workflow → logga il risultato → salva il ciclo in memoria → registra lo snapshot via `CycleSkipHandler.record_completed_cycle`
 3. In caso di errore: il runner distingue due categorie. Errori operativi attesi (`MdkTradingError`, `OSError` — es. exchange offline, LLM sovraccarico): logga, notifica Telegram e **continua il loop**. Bug imprevisti (qualsiasi altra eccezione — es. `AttributeError`, `NameError`): logga, notifica Telegram e **propaga l'eccezione**. `run()` intercetta il bug critico, logga come `CRITICAL`, notifica e termina il processo pulitamente (Docker lo riavvierà).
 4. Su `Ctrl+C`: termina in modo pulito
 
@@ -191,6 +191,7 @@ Il punto di ingresso è `src/main.py`, che fa il bootstrap di tutti i componenti
   - `decision_memory`: ultime 10 decisioni complete
   - `performance_summary`: riassunto testuale delle ultime 10 vendite calcolate con metodo FIFO (profitti/perdite, P&L medio % e P&L totale in USDC)
   - `recent_performance`: ultime 10 decisioni con, per le SELL eseguite, `realized_pnl` (USDC) e `pnl_pct` (%) calcolati con metodo FIFO
+- `compute_open_position(symbol)`: calcola la posizione aperta (lotti BUY non ancora venduti) come `{"open_qty": float, "avg_entry_price": float}` usando la coda FIFO residua. Usato dal runner per popolare `PortfolioState.avg_entry_price` e `PortfolioState.unrealized_pnl_pct` prima di ogni ciclo.
 
 ### Persistenza
 

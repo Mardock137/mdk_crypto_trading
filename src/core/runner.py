@@ -214,6 +214,7 @@ class TradingRunner:
         try:
             market_data = self._exchange_client.get_market_snapshot(self._symbol)
             portfolio = self._exchange_client.get_portfolio_state(self._symbol)
+            self._augment_portfolio_with_open_position(market_data, portfolio)
             if self._cycle_skip_handler.try_skip(market_data, portfolio):
                 return
             cycle_input = self._build_cycle_input(market_data, portfolio)
@@ -306,6 +307,42 @@ class TradingRunner:
                     )
                 )
             raise
+
+    def _augment_portfolio_with_open_position(
+        self,
+        market_data: MarketDataSnapshot,
+        portfolio: PortfolioState,
+    ) -> None:
+        """Calcola e popola avg_entry_price e unrealized_pnl_pct sul portafoglio.
+
+        Usa la coda FIFO dei lotti BUY non ancora consumati gestita da MemoryManager.
+        Se non c'e posizione aperta, mancano dati validi o un calcolo fallisce,
+        lascia i campi a None senza interrompere il ciclo: si tratta di metadati
+        opzionali che arricchiscono il prompt del Decision Maker.
+        """
+        try:
+            qty_total = float(portfolio.portfolio_qty_total)
+            price = float(market_data.price) if market_data.price is not None else None
+        except (TypeError, ValueError):
+            return
+        if qty_total <= 0 or price is None or price <= 0:
+            return
+        try:
+            open_pos = self._memory_manager.compute_open_position(self._symbol)
+        except Exception:  # pragma: no cover — fallback difensivo
+            return
+        if not open_pos:
+            return
+        try:
+            avg_entry = float(open_pos["avg_entry_price"])
+        except (TypeError, ValueError, KeyError):
+            return
+        if avg_entry <= 0:
+            return
+        portfolio.avg_entry_price = avg_entry
+        portfolio.unrealized_pnl_pct = round(
+            (price - avg_entry) / avg_entry * 100, 4
+        )
 
     def _build_cycle_input(
         self,

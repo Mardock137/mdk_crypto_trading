@@ -76,6 +76,8 @@ class PortfolioState:
     portfolio_snapshot: str = ""
     open_orders: list[dict[str, Any]] = field(default_factory=list)
     last_trades: list[dict[str, Any]] = field(default_factory=list)
+    avg_entry_price: float | None = None
+    unrealized_pnl_pct: float | None = None
 
 
 @dataclass(slots=True)
@@ -180,6 +182,8 @@ class PerformanceStats:
     realized_pnl_usdc: float
     avg_pnl_pct: float
     days_without_executed_trade: int
+    sells_in_profit: int = 0
+    sells_in_loss: int = 0
 
 
 @dataclass(slots=True)

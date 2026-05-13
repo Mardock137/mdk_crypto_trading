@@ -480,3 +480,86 @@ def test_fifo_multiple_sell_cycles_accumulate(tmp_path: Path) -> None:
     summary = mm.get_performance_summary("BTCUSDC")
     assert "1 in profitto" in summary
     assert "1 in perdita" in summary
+
+
+# ------------------------------------------------------------------
+# compute_open_position
+# ------------------------------------------------------------------
+
+
+def test_compute_open_position_returns_none_when_no_buys(tmp_path: Path) -> None:
+    """Senza BUY eseguiti, non c'e posizione aperta."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    assert mm.compute_open_position("BTCUSDC") is None
+
+
+def test_compute_open_position_returns_none_after_full_sell(tmp_path: Path) -> None:
+    """Dopo che tutti i lotti BUY sono stati venduti, la posizione e chiusa."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    mm.save_cycle(
+        symbol="BTCUSDC",
+        result=_make_result(action=TradeAction.BUY, quantity=0.001),
+        current_price=80000.0,
+    )
+    mm.save_cycle(
+        symbol="BTCUSDC",
+        result=_make_result(action=TradeAction.SELL, quantity=0.001),
+        current_price=82000.0,
+    )
+
+    assert mm.compute_open_position("BTCUSDC") is None
+
+
+def test_compute_open_position_single_buy(tmp_path: Path) -> None:
+    """Con un solo BUY, la posizione aperta corrisponde a quel lotto."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    mm.save_cycle(
+        symbol="BTCUSDC",
+        result=_make_result(action=TradeAction.BUY, quantity=0.002),
+        current_price=80000.0,
+    )
+
+    pos = mm.compute_open_position("BTCUSDC")
+    assert pos is not None
+    assert pos["open_qty"] == pytest.approx(0.002, rel=1e-6)
+    assert pos["avg_entry_price"] == pytest.approx(80000.0, rel=1e-6)
+
+
+def test_compute_open_position_after_partial_sell(tmp_path: Path) -> None:
+    """Dopo SELL parziale, resta la quantita residua del lotto al prezzo originale."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    mm.save_cycle(
+        symbol="BTCUSDC",
+        result=_make_result(action=TradeAction.BUY, quantity=0.003),
+        current_price=80000.0,
+    )
+    mm.save_cycle(
+        symbol="BTCUSDC",
+        result=_make_result(action=TradeAction.SELL, quantity=0.001),
+        current_price=84000.0,
+    )
+
+    pos = mm.compute_open_position("BTCUSDC")
+    assert pos is not None
+    assert pos["open_qty"] == pytest.approx(0.002, rel=1e-6)
+    assert pos["avg_entry_price"] == pytest.approx(80000.0, rel=1e-6)
+
+
+def test_compute_open_position_weighted_avg_multiple_lots(tmp_path: Path) -> None:
+    """Con piu lotti BUY aperti, il prezzo medio e la media ponderata."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    mm.save_cycle(
+        symbol="BTCUSDC",
+        result=_make_result(action=TradeAction.BUY, quantity=0.001),
+        current_price=80000.0,
+    )
+    mm.save_cycle(
+        symbol="BTCUSDC",
+        result=_make_result(action=TradeAction.BUY, quantity=0.001),
+        current_price=90000.0,
+    )
+
+    pos = mm.compute_open_position("BTCUSDC")
+    assert pos is not None
+    assert pos["open_qty"] == pytest.approx(0.002, rel=1e-6)
+    assert pos["avg_entry_price"] == pytest.approx(85000.0, rel=1e-6)

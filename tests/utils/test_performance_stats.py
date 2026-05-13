@@ -137,6 +137,34 @@ def test_build_stats_uses_fifo_trades_for_pnl() -> None:
 
     assert stats.realized_pnl_usdc == pytest.approx(2.0)
     assert stats.avg_pnl_pct == pytest.approx(0.25)
+    assert stats.sells_in_profit == 1
+    assert stats.sells_in_loss == 1
+
+
+def test_build_stats_sells_in_profit_and_loss_zero_without_trades() -> None:
+    stats = build_performance_stats(
+        "BTCUSDC", _mock_mm_without_trades(), [], days=7,
+        today=date(2026, 4, 20),
+    )
+
+    assert stats.sells_in_profit == 0
+    assert stats.sells_in_loss == 0
+
+
+def test_build_stats_sells_in_profit_counts_breakeven_as_profit() -> None:
+    """pnl_pct == 0 viene contato come profitto (>= 0), simmetrico a get_performance_summary."""
+    mm = MagicMock()
+    mm.compute_fifo_trades.return_value = [
+        {"realized_pnl": 5.0, "pnl_pct": 1.0},
+        {"realized_pnl": 0.0, "pnl_pct": 0.0},
+        {"realized_pnl": -2.0, "pnl_pct": -1.0},
+    ]
+    stats = build_performance_stats(
+        "BTCUSDC", mm, [], days=7, today=date(2026, 4, 20),
+    )
+
+    assert stats.sells_in_profit == 2
+    assert stats.sells_in_loss == 1
 
 
 def test_build_stats_period_dates() -> None:
@@ -179,3 +207,5 @@ def test_write_performance_report_creates_file(tmp_path: Path) -> None:
     assert "Performance Report — 2026-04-20" in content
     assert "DRIFTING" in content
     assert "Agire sui segnali forti" in content
+    assert "SELL in profitto" in content
+    assert "SELL in perdita" in content

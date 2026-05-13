@@ -93,9 +93,13 @@ def build_performance_stats(
         last_trades = fifo_trades[-10:]
         realized_pnl_usdc = sum(t["realized_pnl"] for t in last_trades)
         avg_pnl_pct = sum(t["pnl_pct"] for t in last_trades) / len(last_trades)
+        sells_in_profit = sum(1 for t in last_trades if t["pnl_pct"] >= 0)
+        sells_in_loss = sum(1 for t in last_trades if t["pnl_pct"] < 0)
     else:
         realized_pnl_usdc = 0.0
         avg_pnl_pct = 0.0
+        sells_in_profit = 0
+        sells_in_loss = 0
 
     return PerformanceStats(
         period_start=period_start,
@@ -111,6 +115,8 @@ def build_performance_stats(
         realized_pnl_usdc=round(realized_pnl_usdc, 2),
         avg_pnl_pct=round(avg_pnl_pct, 2),
         days_without_executed_trade=days_without_executed_trade,
+        sells_in_profit=sells_in_profit,
+        sells_in_loss=sells_in_loss,
     )
 
 
@@ -185,6 +191,8 @@ def _format_markdown_report(
         f"- Giorni senza trade eseguito: {stats.days_without_executed_trade}\n"
         f"- P&L realizzato: {pnl_sign}{stats.realized_pnl_usdc:.2f} USDC\n"
         f"- P&L medio: {avg_pct_sign}{stats.avg_pnl_pct:.2f}%\n"
+        f"- SELL in profitto: {stats.sells_in_profit}\n"
+        f"- SELL in perdita: {stats.sells_in_loss}\n"
         "\n"
         "## Suggerimenti\n"
         "\n"

@@ -658,6 +658,75 @@ def test_unexpected_exception_stops_run_loop_after_notifying() -> None:
     assert any("ERROR" in t for t in texts)
 
 
+# ---------- Augment portfolio con posizione aperta ----------
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_augment_portfolio_populates_avg_entry_and_unrealized_pnl(
+    mock_wait: MagicMock,
+) -> None:
+    """Se c'e posizione aperta e prezzo corrente, runner popola i due nuovi campi."""
+    mock_exchange = MagicMock()
+    portfolio = PortfolioState(
+        usdc_balance=500.0,
+        usdc_balance_total=500.0,
+        usdc_value=500.0,
+        portfolio_qty_free=0.005,
+        portfolio_qty_total=0.005,
+    )
+    market_data = MarketDataSnapshot(symbol="BTCUSDC", price=88000.0)
+    mock_exchange.get_market_snapshot.return_value = market_data
+    mock_exchange.get_portfolio_state.return_value = portfolio
+
+    mock_memory = MagicMock(spec=MemoryManager)
+    mock_memory.compute_open_position.return_value = {
+        "open_qty": 0.005,
+        "avg_entry_price": 80000.0,
+    }
+
+    runner = _make_runner(
+        exchange_client=mock_exchange,
+        memory_manager=mock_memory,
+    )
+
+    runner.run()
+
+    assert portfolio.avg_entry_price == pytest.approx(80000.0)
+    # (88000 - 80000) / 80000 * 100 = 10%
+    assert portfolio.unrealized_pnl_pct == pytest.approx(10.0)
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_augment_portfolio_leaves_fields_none_without_open_position(
+    mock_wait: MagicMock,
+) -> None:
+    """Se non c'e posizione aperta (qty totale 0), i nuovi campi restano a None."""
+    mock_exchange = MagicMock()
+    portfolio = PortfolioState(
+        usdc_balance=1000.0,
+        usdc_balance_total=1000.0,
+        usdc_value=1000.0,
+        portfolio_qty_free=0.0,
+        portfolio_qty_total=0.0,
+    )
+    mock_exchange.get_market_snapshot.return_value = MarketDataSnapshot(
+        symbol="BTCUSDC", price=80000.0,
+    )
+    mock_exchange.get_portfolio_state.return_value = portfolio
+
+    mock_memory = MagicMock(spec=MemoryManager)
+    runner = _make_runner(
+        exchange_client=mock_exchange,
+        memory_manager=mock_memory,
+    )
+
+    runner.run()
+
+    assert portfolio.avg_entry_price is None
+    assert portfolio.unrealized_pnl_pct is None
+    mock_memory.compute_open_position.assert_not_called()
+
+
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
 def test_first_cycle_is_not_skipped_even_with_skip_enabled(
     mock_wait: MagicMock,
