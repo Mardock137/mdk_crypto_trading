@@ -3,7 +3,7 @@
 [![CI](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml/badge.svg)](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml)
 
 - **Versione Python**: `3.14.5`
-- **Versione MDK Crypto Trading**: `1.18.0`
+- **Versione MDK Crypto Trading**: `1.19.0`
 
 ## 📋 Indice
 

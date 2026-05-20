@@ -174,12 +174,13 @@ La cartella `logs/` è già presente nel `.gitignore` e non viene tracciata.
 
 Il sistema invia notifiche opzionali via Telegram Bot API. Se `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` non sono configurati nel `.env`, le notifiche sono silenziosamente disabilitate.
 
-| Notifica              | Quando scatta                                   |
-|-----------------------|-------------------------------------------------|
-| 🚀 **Bot STARTED**    | All'avvio del runner                            |
-| ✅ **Order EXECUTED** | Quando un ordine viene eseguito su Binance      |
-| ⚠️ **Cycle ERROR**    | Se un ciclo operativo fallisce con un'eccezione |
-| 🛑 **Bot STOPPED**    | Allo stop del sistema (Ctrl+C o `docker stop`)  |
+| Notifica                          | Quando scatta                                                       |
+|-----------------------------------|---------------------------------------------------------------------|
+| 🚀 **Bot STARTED**                | All'avvio del runner                                                |
+| ✅ **Order EXECUTED**             | Quando un ordine viene eseguito su Binance                          |
+| ⚠️ **Cycle ERROR**                | Se un ciclo operativo fallisce con un'eccezione                     |
+| 🚨 **CIRCUIT BREAKER TRIPPED**    | Dopo 3 errori identici consecutivi (vedi sezione "Circuit breaker") |
+| 🛑 **Bot STOPPED**                | Allo stop del sistema (Ctrl+C o `docker stop`)                      |
 
 **Esempio notifica ordine eseguito (MARKET):**
 
@@ -256,6 +257,38 @@ Per analisi più avanzate, i file `.jsonl` possono essere caricati con `pandas`:
 ```python
 import pandas as pd
 df = pd.read_json("logs/events/2026-03-24.jsonl", lines=True)
+```
+
+---
+
+## 🚨 Circuit breaker
+
+Il `CircuitBreaker` (`src/core/circuit_breaker.py`) protegge il bot da loop di errori sistematici. Quando lo stesso errore (stesso tipo di eccezione + stesso messaggio) si verifica **3 volte di seguito**, il breaker scatta e il `TradingRunner`:
+
+- smette di eseguire `_run_single_cycle` (nessuna chiamata LLM, nessun ordine Binance)
+- continua ad aggiornare il file `data/heartbeat` (il container resta "healthy")
+- invia una notifica Telegram **una sola volta**, nel momento in cui scatta
+- logga un reminder nel log testuale **ogni ora** finché resta in pausa
+
+Il breaker si resetta automaticamente dopo un ciclo riuscito (purché non sia ancora scattato): un errore transitorio non lo fa partire. Una volta scattato però NON si ripristina da solo: è una scelta voluta per forzare l'intervento umano.
+
+**Come ripristinare:** riavvia il container.
+
+```bash
+docker compose restart trading-bot
+```
+
+**Signature degli errori:** la signature usata per il confronto è `f"{type(exc).__name__}:{str(exc)}"`. Per le `CycleExecutionError` (errori sollevati da `TradingWorkflow`) la signature usa l'eccezione originale (`exc.original`), non il wrapper.
+
+**Esempio notifica Telegram:**
+
+```text
+[ALARM] CIRCUIT BREAKER TRIPPED
+
+Symbol: BTCUSDC
+Errori consecutivi: 3
+Ultimo errore: LlmError:Risposta vuota dal provider OpenAI
+Bot in pausa: richiede riavvio manuale (docker compose restart trading-bot)
 ```
 
 ---

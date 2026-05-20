@@ -36,6 +36,7 @@ from src.core.exceptions import (
     LlmError,
     MdkTradingError,
 )
+from src.core.circuit_breaker import CircuitBreaker
 from src.core.runner import TradingRunner, _classify_error
 from src.utils.config import AppSettings, TradingMode
 from src.utils.memory_manager import MemoryManager
@@ -93,6 +94,7 @@ def _make_runner(
     telegram_notifier: TelegramNotifier | None = None,
     performance_reports_dir: Path | None = None,
     cycle_skip_config: CycleSkipConfig | None = None,
+    circuit_breaker: CircuitBreaker | None = None,
 ) -> TradingRunner:
     with patch(
         "src.core.runner.load_trading_config", return_value=_MOCK_TRADING_CONFIG,
@@ -115,6 +117,7 @@ def _make_runner(
                 if performance_reports_dir is not None
                 else Path("data/performance_reports")
             ),
+            circuit_breaker=circuit_breaker,
         )
 
 
@@ -680,9 +683,9 @@ def test_classify_error_exchange_error_is_external_api() -> None:
     assert _classify_error(exc) == "API esterna non disponibile"
 
 
-def test_unexpected_exception_propagates_from_run_single_cycle() -> None:
-    """Un bug imprevisto (AttributeError) deve propagarsi fuori da _run_single_cycle
-    dopo aver loggato l'errore e inviato la notifica."""
+def test_unexpected_exception_does_not_propagate_from_run_single_cycle() -> None:
+    """Un bug imprevisto (AttributeError) NON deve propagarsi: il circuit breaker
+    intercetta anche i bug imprevisti per evitare crash loop del processo."""
     mock_event_logger = MagicMock()
     mock_notifier = MagicMock(spec=TelegramNotifier)
     mock_workflow = MagicMock()
@@ -693,26 +696,37 @@ def test_unexpected_exception_propagates_from_run_single_cycle() -> None:
         telegram_notifier=mock_notifier,
     )
 
-    with pytest.raises(AttributeError, match="bug imprevisto"):
-        runner._run_single_cycle()
+    runner._run_single_cycle()  # non deve sollevare
 
     mock_event_logger.log_error.assert_called_once()
     texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
     assert any("ERROR" in t for t in texts)
+    assert runner._circuit_breaker.consecutive_count == 1
 
 
-def test_unexpected_exception_stops_run_loop_after_notifying() -> None:
-    """run() deve intercettare il bug imprevisto, notificare e terminare senza
-    propagare l'eccezione verso il chiamante."""
+def test_unexpected_exception_repeated_trips_circuit_breaker_and_pauses_loop() -> None:
+    """run() non termina al primo bug imprevisto: continua il loop e dopo 3 errori
+    identici scatta il circuit breaker, che sospende i cicli successivi."""
     mock_notifier = MagicMock(spec=TelegramNotifier)
     mock_workflow = MagicMock()
     mock_workflow.run_cycle.side_effect = AttributeError("bug nel workflow")
     runner = _make_runner(workflow=mock_workflow, telegram_notifier=mock_notifier)
 
-    runner.run()
+    # 3 cicli con errore (counter 1, 2, 3 → trip), poi 2 cicli skippati, poi stop.
+    with patch.object(
+        runner._shutdown_event, "wait",
+        side_effect=[True, True, True, True, KeyboardInterrupt],
+    ):
+        runner.run()
+
+    # Workflow chiamato esattamente 3 volte (4° e 5° giro: bot in pausa).
+    assert mock_workflow.run_cycle.call_count == 3
+    assert runner._circuit_breaker.is_tripped()
 
     texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
-    assert any("ERROR" in t for t in texts)
+    # 3 notifiche di errore + 1 di circuit breaker scattato.
+    assert sum("ERROR" in t for t in texts) == 3
+    assert sum("CIRCUIT BREAKER" in t for t in texts) == 1
 
 
 # ---------- Augment portfolio con posizione aperta ----------
@@ -803,3 +817,112 @@ def test_first_cycle_is_not_skipped_even_with_skip_enabled(
     runner.run()
 
     mock_workflow.run_cycle.assert_called_once()
+
+
+# ---------- Circuit breaker ----------
+
+
+def _stop_after_n_waits_side_effect(n: int):
+    call_count = {"n": 0}
+
+    def _side_effect(*_args: object, **_kwargs: object) -> None:
+        call_count["n"] += 1
+        if call_count["n"] >= n:
+            raise KeyboardInterrupt
+
+    return _side_effect
+
+
+def test_circuit_breaker_trips_after_three_identical_errors() -> None:
+    """Tre errori identici consecutivi fanno scattare il breaker."""
+    mock_notifier = MagicMock(spec=TelegramNotifier)
+    mock_workflow = MagicMock()
+    mock_workflow.run_cycle.side_effect = LlmError("same error")
+
+    breaker = CircuitBreaker(logging.getLogger("test_cb_trip"), threshold=3)
+    runner = _make_runner(
+        workflow=mock_workflow,
+        telegram_notifier=mock_notifier,
+        circuit_breaker=breaker,
+    )
+
+    with patch(
+        "src.core.runner.threading.Event.wait",
+        side_effect=_stop_after_n_waits_side_effect(4),
+    ):
+        runner.run()
+
+    assert breaker.is_tripped() is True
+    assert mock_workflow.run_cycle.call_count == 3
+    texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
+    cb_texts = [t for t in texts if "CIRCUIT BREAKER" in t]
+    assert len(cb_texts) == 1
+
+
+def test_circuit_breaker_does_not_trip_on_different_errors() -> None:
+    """Errori con signature diversa non fanno scattare il breaker."""
+    mock_workflow = MagicMock()
+    mock_workflow.run_cycle.side_effect = [
+        LlmError("error A"),
+        LlmError("error B"),
+        LlmError("error C"),
+    ]
+
+    breaker = CircuitBreaker(logging.getLogger("test_cb_diff"), threshold=3)
+    runner = _make_runner(workflow=mock_workflow, circuit_breaker=breaker)
+
+    with patch(
+        "src.core.runner.threading.Event.wait",
+        side_effect=_stop_after_n_waits_side_effect(3),
+    ):
+        runner.run()
+
+    assert breaker.is_tripped() is False
+    assert mock_workflow.run_cycle.call_count == 3
+
+
+def test_circuit_breaker_resets_on_success() -> None:
+    """Un ciclo riuscito tra due errori identici azzera il contatore."""
+    mock_workflow = MagicMock()
+    success_result = MagicMock()
+    success_result.execution_report.was_executed = False
+    mock_workflow.run_cycle.side_effect = [
+        LlmError("same error"),
+        LlmError("same error"),
+        success_result,
+        LlmError("same error"),
+    ]
+
+    breaker = CircuitBreaker(logging.getLogger("test_cb_reset"), threshold=3)
+    runner = _make_runner(workflow=mock_workflow, circuit_breaker=breaker)
+
+    with patch(
+        "src.core.runner.threading.Event.wait",
+        side_effect=_stop_after_n_waits_side_effect(4),
+    ):
+        runner.run()
+
+    assert breaker.is_tripped() is False
+    assert mock_workflow.run_cycle.call_count == 4
+    assert breaker.consecutive_count == 1
+
+
+def test_main_loop_skips_cycles_when_breaker_tripped() -> None:
+    """Se il breaker e' gia trippato, _run_single_cycle non viene chiamato."""
+    mock_workflow = MagicMock()
+    breaker = CircuitBreaker(logging.getLogger("test_cb_skip"), threshold=3)
+    breaker.record_error("sig")
+    breaker.record_error("sig")
+    breaker.record_error("sig")
+    assert breaker.is_tripped() is True
+
+    runner = _make_runner(workflow=mock_workflow, circuit_breaker=breaker)
+
+    with patch(
+        "src.core.runner.threading.Event.wait",
+        side_effect=_stop_after_n_waits_side_effect(3),
+    ), patch.object(runner, "_touch_heartbeat") as mock_heartbeat:
+        runner.run()
+
+    mock_workflow.run_cycle.assert_not_called()
+    assert mock_heartbeat.call_count >= 2

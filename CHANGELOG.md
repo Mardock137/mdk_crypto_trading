@@ -1,6 +1,30 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.19.0 — 2026-05-20
+
+### Aggiunto
+
+- `src/core/circuit_breaker.py`: nuovo modulo con la classe `CircuitBreaker` e l'helper `build_error_signature`. Il breaker conta errori consecutivi identici (stesso `type(exc).__name__ + str(exc)`) e si trippa al raggiungimento della soglia (default 3). `build_error_signature` riconosce le `CycleExecutionError` e usa l'eccezione originale per la signature, così errori di workflow con stesso `exc.original` vengono confrontati correttamente.
+- `src/core/notifications.py`: nuova funzione `build_circuit_breaker_message(symbol, error_signature, threshold)` per la notifica Telegram di trip del circuit breaker. Tronca la signature a 200 caratteri di default per non sforare i limiti Telegram.
+- `src/core/runner.py`: integrato `CircuitBreaker` nel `TradingRunner`. Nuovo parametro opzionale `circuit_breaker` nel costruttore (di default ne istanzia uno proprio). Il main loop controlla `is_tripped()` prima di ogni ciclo: se trippato, salta `_run_single_cycle`, aggiorna heartbeat, chiama `maybe_log_paused_status` (log reminder ogni ora) e dorme per `cycle_interval_seconds`. `_run_single_cycle` chiama `record_success()` dopo un ciclo riuscito e `_handle_circuit_breaker(exc)` in tutti e tre i rami `except`, che invia la notifica Telegram `[ALARM] CIRCUIT BREAKER TRIPPED` UNA SOLA volta nell'istante in cui scatta.
+
+### Modificato
+
+- `src/core/runner.py`: rimosso il `raise` finale dal ramo `except Exception` di `_run_single_cycle`. Anche i bug imprevisti (es. `AttributeError`, `TypeError` fuori dal workflow) sono ora gestiti dal circuit breaker invece di propagarsi e far crashare il processo. Chiude definitivamente lo scenario di crash loop Docker: qualunque sia il tipo di errore, dopo 3 ripetizioni identiche il bot va in pausa e attende riavvio manuale. I bug imprevisti vengono comunque notificati su Telegram come `Cycle ERROR` con `correlation_id`.
+- `tests/core/test_runner.py`: rinominato e riscritto `test_unexpected_exception_propagates_from_run_single_cycle` in `test_unexpected_exception_does_not_propagate_from_run_single_cycle` (l'AttributeError ora viene catturato e incrementa il counter del breaker). Riscritto `test_unexpected_exception_stops_run_loop_after_notifying` in `test_unexpected_exception_repeated_trips_circuit_breaker_and_pauses_loop` (verifica che 3 errori identici scattino il breaker e che i cicli successivi vengano saltati).
+- `docs/observability.md`: nuova sezione "Circuit breaker" con descrizione di trigger, comportamento, signature degli errori e comando di ripristino manuale. Aggiunta riga `[ALARM] CIRCUIT BREAKER TRIPPED` nella tabella delle notifiche Telegram.
+- `docs/deploy.md`: nota sul `docker compose restart` come comando di ripristino dopo trip del circuit breaker.
+- `docs/repo_structure.md`: aggiunto `circuit_breaker.py` sotto `src/core/` e aggiornata la descrizione di `exceptions.py` per includere `CycleExecutionError`.
+
+### Test
+
+- `tests/core/test_circuit_breaker.py` (nuovo): 11 test che coprono incremento del counter, reset su signature diversa, reset su `record_success`, `record_error` ritorna True solo all'istante dello scatto, `record_success` no-op dopo trip, `maybe_log_paused_status` logga immediatamente la prima volta e poi rispetta l'intervallo, no-op quando non trippato, `build_error_signature` su `Exception` base e su `CycleExecutionError` (unwrap a `exc.original`).
+- `tests/core/test_runner.py`: 4 nuovi test sul circuit breaker integrato — 3 errori identici scatenano il breaker con 1 sola notifica Telegram dedicata, 3 errori diversi non scattano, un ciclo riuscito resetta il counter, quando il breaker è trippato il main loop salta i cicli ma continua ad aggiornare l'heartbeat.
+- `tests/core/test_notifications.py`: 2 nuovi test su `build_circuit_breaker_message` (campi chiave e troncamento della signature lunga).
+
+---
+
 ## 1.18.0 — 2026-05-20
 
 ### Aggiunto

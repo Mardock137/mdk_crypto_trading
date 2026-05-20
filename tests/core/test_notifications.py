@@ -89,6 +89,33 @@ def test_build_error_message_shows_external_api_category() -> None:
     assert "Categoria:" in msg
 
 
+def test_build_circuit_breaker_message_contains_key_fields() -> None:
+    msg = notifications.build_circuit_breaker_message(
+        symbol="BTCUSDC",
+        error_signature="RuntimeError:boom",
+        threshold=3,
+    )
+
+    assert "CIRCUIT BREAKER" in msg
+    assert "BTCUSDC" in msg
+    assert "3" in msg
+    assert "RuntimeError:boom" in msg
+    assert "docker compose restart" in msg
+
+
+def test_build_circuit_breaker_message_truncates_long_signature() -> None:
+    long_sig = "RuntimeError:" + ("x" * 500)
+    msg = notifications.build_circuit_breaker_message(
+        symbol="BTCUSDC",
+        error_signature=long_sig,
+        threshold=3,
+        max_signature_chars=50,
+    )
+
+    assert long_sig not in msg
+    assert "..." in msg
+
+
 def test_build_order_notification_market_computes_avg_price() -> None:
     report = ExecutionReport(
         execution_status=ExecutionStatus.EXECUTED,

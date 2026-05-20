@@ -34,6 +34,32 @@ def build_error_message(symbol: str, correlation_id: str, error_category: str) -
     )
 
 
+def build_circuit_breaker_message(
+    symbol: str,
+    error_signature: str,
+    threshold: int,
+    *,
+    max_signature_chars: int = 200,
+) -> str:
+    """Messaggio Telegram di attivazione del circuit breaker.
+
+    Inviato una sola volta quando il circuit breaker scatta. La signature
+    viene troncata a ``max_signature_chars`` caratteri per evitare di superare
+    il limite di lunghezza dei messaggi Telegram.
+    """
+    truncated = error_signature
+    if len(truncated) > max_signature_chars:
+        truncated = truncated[: max_signature_chars - 3] + "..."
+    return (
+        f"<b>[ALARM] CIRCUIT BREAKER TRIPPED</b>\n\n"
+        f"Symbol: {symbol}\n"
+        f"Errori consecutivi: {threshold}\n"
+        f"Ultimo errore: {truncated}\n"
+        f"Bot in pausa: richiede riavvio manuale "
+        f"(<code>docker compose restart trading-bot</code>)"
+    )
+
+
 def build_order_notification(
     symbol: str,
     mode: str,

@@ -64,9 +64,10 @@
  │    │    ├── 📄 performance_reviewer.py                    # Agente consultivo: giudizio giornaliero sulle performance recenti.
  │    │    └── 📄 risk_manager.py                            # Agente di controllo rischio.
  │    ├── 📁 core/                                           # Contratti condivisi e orchestrazione del workflow.
+ │    │    ├── 📄 circuit_breaker.py                         # CircuitBreaker: blocca i cicli dopo N errori identici consecutivi (richiede riavvio manuale).
  │    │    ├── 📄 contracts.py                               # Schemi condivisi per input/output degli agenti.
  │    │    ├── 📄 cycle_skip_handler.py                      # CycleSkipHandler: stato cross-cycle e decisione di skip deterministico.
- │    │    ├── 📄 exceptions.py                              # Gerarchia di eccezioni operative: MdkTradingError (base), ExchangeError, LlmError.
+ │    │    ├── 📄 exceptions.py                              # Gerarchia di eccezioni operative: MdkTradingError (base), ExchangeError, LlmError, CycleExecutionError.
  │    │    ├── 📄 notifications.py                           # Funzioni pure che costruiscono i messaggi Telegram (start/stop/error/order).
  │    │    ├── 📄 performance_review_runner.py               # PerformanceReviewRunner: review giornaliero e lettura ultimo report.
  │    │    ├── 📄 runner.py                                  # Loop operativo ciclico (TradingRunner), direttore d'orchestra.

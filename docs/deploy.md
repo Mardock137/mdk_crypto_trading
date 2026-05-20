@@ -253,6 +253,8 @@ Docker manda `SIGTERM` al container e attende fino a `stop_grace_period` (config
 docker compose restart
 ```
 
+Questo è anche il comando da usare per **ripristinare un circuit breaker scattato**: dopo 3 errori identici consecutivi il `TradingRunner` sospende i cicli e invia la notifica Telegram `[ALARM] CIRCUIT BREAKER TRIPPED`. Il container resta vivo e healthy, ma non opera più finché non viene riavviato manualmente. Vedi `docs/observability.md` per i dettagli.
+
 ### Controllare le risorse della VM
 
 ```bash

@@ -16,6 +16,7 @@ from src.core.contracts import (
     PortfolioState,
     TradingCycleInput,
 )
+from src.core.circuit_breaker import CircuitBreaker, build_error_signature
 from src.core.exceptions import CycleExecutionError, MdkTradingError
 from src.core.cycle_skip_handler import CycleSkipHandler
 from src.core.performance_review_runner import PerformanceReviewRunner
@@ -94,6 +95,7 @@ class TradingRunner:
         performance_reviewer: PerformanceReviewerAgent,
         telegram_notifier: TelegramNotifier | None = None,
         performance_reports_dir: Path = _PERFORMANCE_REPORTS_DIR,
+        circuit_breaker: CircuitBreaker | None = None,
     ) -> None:
         self._workflow = workflow
         self._event_logger = event_logger
@@ -107,6 +109,7 @@ class TradingRunner:
         self._mandate = load_mandate(self._trading_config)
         self._shutdown_requested = False
         self._shutdown_event = threading.Event()
+        self._circuit_breaker = circuit_breaker or CircuitBreaker(logger)
 
         self._cycle_skip_handler = CycleSkipHandler(
             symbol=symbol,
@@ -157,6 +160,11 @@ class TradingRunner:
 
         try:
             while not self._shutdown_requested:
+                if self._circuit_breaker.is_tripped():
+                    self._touch_heartbeat()
+                    self._circuit_breaker.maybe_log_paused_status()
+                    self._shutdown_event.wait(self._settings.cycle_interval_seconds)
+                    continue
                 self._run_single_cycle()
                 if self._shutdown_requested:
                     break
@@ -268,6 +276,7 @@ class TradingRunner:
                     )
                 )
             self._logger.info("Ciclo completato con successo")
+            self._circuit_breaker.record_success()
         except CycleExecutionError as exc:
             cid = uuid.uuid4().hex[:8]
             self._logger.error(
@@ -293,6 +302,7 @@ class TradingRunner:
                         error_category=_classify_error(exc.original),
                     )
                 )
+            self._handle_circuit_breaker(exc)
         except (MdkTradingError, OSError) as exc:
             cid = uuid.uuid4().hex[:8]
             self._logger.error(
@@ -312,7 +322,13 @@ class TradingRunner:
                         error_category=_classify_error(exc),
                     )
                 )
+            self._handle_circuit_breaker(exc)
         except Exception as exc:
+            # I bug imprevisti (es. AttributeError per refactoring sbagliato) vengono
+            # gestiti come gli altri errori operativi: notifica + circuit breaker.
+            # Se si ripetono identici raggiungono la soglia e il bot va in pausa,
+            # evitando il crash loop del processo (e i conseguenti restart Docker
+            # senza backoff).
             cid = uuid.uuid4().hex[:8]
             self._logger.error(
                 "Bug imprevisto durante il ciclo [cid=%s]: %s", cid, exc, exc_info=True,
@@ -331,7 +347,34 @@ class TradingRunner:
                         error_category=_classify_error(exc),
                     )
                 )
-            raise
+            self._handle_circuit_breaker(exc)
+
+    def _handle_circuit_breaker(self, exc: BaseException) -> None:
+        """Registra l'errore nel circuit breaker e notifica se scatta.
+
+        La notifica Telegram viene inviata UNA SOLA volta, nel momento in cui
+        il breaker passa da chiuso a trippato (``record_error`` ritorna True).
+        Da quel ciclo in poi il main loop salta `_run_single_cycle` e il
+        processo resta vivo per heartbeat e Telegram, in attesa di riavvio
+        manuale.
+        """
+        signature = build_error_signature(exc)
+        tripped_now = self._circuit_breaker.record_error(signature)
+        if not tripped_now:
+            return
+        self._logger.error(
+            "Circuit breaker scattato dopo %d errori identici consecutivi: %s",
+            self._circuit_breaker.threshold,
+            signature,
+        )
+        if self._telegram_notifier:
+            self._telegram_notifier.send_message(
+                notifications.build_circuit_breaker_message(
+                    symbol=self._symbol,
+                    error_signature=signature,
+                    threshold=self._circuit_breaker.threshold,
+                )
+            )
 
     def _augment_portfolio_with_open_position(
         self,
