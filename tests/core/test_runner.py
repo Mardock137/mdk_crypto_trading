@@ -16,16 +16,26 @@ from src.core.contracts import (
     ExecutionReport,
     ExecutionStatus,
     MandateAdherence,
+    MarketAnalysis,
+    MarketBias,
     MarketDataSnapshot,
     OrderType,
     PerformanceReview,
     PerformanceStats,
     PortfolioState,
+    RiskAssessment,
+    RiskDecision,
+    SuggestedAction,
     TradeAction,
     TradeProposal,
     TradeProposalDetails,
 )
-from src.core.exceptions import ExchangeError, LlmError, MdkTradingError
+from src.core.exceptions import (
+    CycleExecutionError,
+    ExchangeError,
+    LlmError,
+    MdkTradingError,
+)
 from src.core.runner import TradingRunner, _classify_error
 from src.utils.config import AppSettings, TradingMode
 from src.utils.memory_manager import MemoryManager
@@ -168,6 +178,53 @@ def test_run_logs_error_on_operational_exception(mock_wait: MagicMock) -> None:
     assert call_kwargs["symbol"] == "BTCUSDC"
     assert call_kwargs["trading_mode"] == "DEMO"
     assert "errore di test" in call_kwargs["error"]
+    assert len(call_kwargs["correlation_id"]) == 8
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_run_passes_partial_results_to_log_error_on_cycle_execution_error(
+    mock_wait: MagicMock,
+) -> None:
+    """Su CycleExecutionError, il runner passa i parziali e str(original) a log_error."""
+    partial_market_analysis = MarketAnalysis(
+        market_bias=MarketBias.BULLISH,
+        signal_strength=0.7,
+        confidence=0.7,
+        summary="Trend rialzista",
+        suggested_action=SuggestedAction.LONG_BIAS,
+    )
+    partial_trade_proposal = TradeProposal(
+        action=TradeAction.BUY,
+        order_type=OrderType.MARKET,
+        confidence=0.8,
+        reason="Segnale forte",
+    )
+    partial_risk_assessment = RiskAssessment(
+        risk_decision=RiskDecision.APPROVE,
+        confidence=0.9,
+        reason="Ok",
+    )
+    original_exc = LlmError("Risposta vuota dal provider")
+    cycle_exc = CycleExecutionError(
+        "Execution Trader failed",
+        original=original_exc,
+        market_analysis=partial_market_analysis,
+        trade_proposal=partial_trade_proposal,
+        risk_assessment=partial_risk_assessment,
+    )
+    mock_event_logger = MagicMock()
+    mock_workflow = MagicMock()
+    mock_workflow.run_cycle.side_effect = cycle_exc
+    runner = _make_runner(event_logger=mock_event_logger, workflow=mock_workflow)
+
+    runner.run()
+
+    mock_event_logger.log_error.assert_called_once()
+    call_kwargs = mock_event_logger.log_error.call_args.kwargs
+    assert call_kwargs["error"] == "Risposta vuota dal provider"
+    assert call_kwargs["market_analysis"] is partial_market_analysis
+    assert call_kwargs["trade_proposal"] is partial_trade_proposal
+    assert call_kwargs["risk_assessment"] is partial_risk_assessment
     assert len(call_kwargs["correlation_id"]) == 8
 
 

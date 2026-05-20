@@ -245,6 +245,8 @@ docker compose logs --tail=100
 docker compose down
 ```
 
+Docker manda `SIGTERM` al container e attende fino a `stop_grace_period` (configurato a `60s` in `docker-compose.yaml`) prima di forzare `SIGKILL`. Il runner intercetta il segnale, completa il ciclo in corso, scrive il log "Shutdown" e invia la notifica Telegram di stop. I cicli LLM+Binance possono durare 30-40s: i 60s di grace period coprono tranquillamente il caso peggiore.
+
 ### Riavviare il bot (senza rebuild)
 
 ```bash

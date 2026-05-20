@@ -1,6 +1,33 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.18.0 — 2026-05-20
+
+### Aggiunto
+
+- `docker-compose.yaml`: aggiunto `stop_grace_period: 60s` al servizio `trading-bot`. Il default Docker di 10s era troppo breve: un ciclo LLM+Binance può durare 30-40s, quindi il signal handler in `src/core/runner.py` (SIGTERM) non riusciva a completare il ciclo in corso e `SIGKILL` interrompeva tutto senza log "Shutdown" né notifica Telegram di stop.
+- `src/core/exceptions.py`: nuova classe `CycleExecutionError(MdkTradingError)` che trasporta `original`, `market_analysis`, `trade_proposal` e `risk_assessment` opzionali per portare con sé i risultati parziali quando un ciclo fallisce a metà del workflow.
+- `src/utils/event_logger.py`: `log_error` esteso con tre nuovi parametri opzionali `market_analysis`, `trade_proposal`, `risk_assessment`. Quando passati, vengono serializzati nel record JSONL con `dataclasses.asdict` invece di restare a `null`. Permette il debug post-mortem dei cicli falliti senza perdere ciò che gli agenti avevano già prodotto.
+- `docs/observability.md`: aggiornato l'esempio di record di errore per mostrare i campi parziali popolati e documentato il nuovo comportamento del `log_error`.
+- `docs/deploy.md`: nota sul nuovo `stop_grace_period: 60s` nella sezione "Fermare il bot".
+
+### Modificato
+
+- `src/core/workflow.py`: ogni step di `TradingWorkflow.run_cycle` (Market Analyst, Decision Maker, Risk Manager, Execution Trader) è ora avvolto in un `try/except` che cattura `Exception` e ri-solleva `CycleExecutionError` con i parziali già prodotti dagli step precedenti.
+- `src/core/runner.py`: aggiunto un branch `except CycleExecutionError` dedicato in `_run_single_cycle` (prima del branch generico `MdkTradingError`/`OSError`). Estrae i parziali dall'eccezione e li passa a `event_logger.log_error`. Gli altri due rami `except` (errore operativo fuori workflow e bug imprevisto) restano invariati.
+
+### Corretto
+
+- `tests/test_main.py`: aggiunto `@patch("src.main.configure_logging")` a tutti gli 8 test che chiamano `main()`. Senza il patch, `main()` eseguiva davvero `configure_logging` e attaccava al logger `mdk_crypto_trading` un `RotatingFileHandler` puntato a `logs/mdk_crypto_trading.log` (path di default), che restava vivo per l'intera sessione pytest e raccoglieva tutti i warning dei test successivi (es. righe `MagicMock` nel log di produzione). Ora i test sono isolati dal file di log reale.
+
+### Test
+
+- `tests/core/test_workflow.py`: 4 nuovi test che verificano che `TradingWorkflow.run_cycle` sollevi `CycleExecutionError` con i parziali corretti quando rispettivamente Market Analyst, Decision Maker, Risk Manager o Execution Trader falliscono.
+- `tests/utils/test_event_logger.py`: nuovo test `test_log_error_serializes_partial_results` che verifica la serializzazione corretta di `market_analysis`/`trade_proposal` nel JSONL quando vengono passati a `log_error`.
+- `tests/core/test_runner.py`: nuovo test `test_run_passes_partial_results_to_log_error_on_cycle_execution_error` che simula una `CycleExecutionError` e verifica che il runner passi `str(exc.original)` come `error` e i tre parziali agli omonimi kwargs di `log_error`.
+
+---
+
 ## 1.17.1 — 2026-05-20
 
 ### Corretto

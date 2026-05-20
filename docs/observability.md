@@ -76,16 +76,18 @@ Log strutturato che registra le decisioni di ogni ciclo operativo in formato mac
   "timestamp": "2026-03-24T14:30:00+00:00",
   "symbol": "BTCUSDC",
   "trading_mode": "DEMO",
-  "market_analysis": null,
-  "trade_proposal": null,
+  "market_analysis": { "market_bias": "BULLISH", "..." : "..." },
+  "trade_proposal": { "action": "BUY", "..." : "..." },
   "risk_assessment": null,
   "execution_report": null,
-  "error": "Connessione a Binance fallita: timeout",
+  "error": "Risk Manager failed: Risposta vuota dal provider",
   "correlation_id": "a1b2c3d4"
 }
 ```
 
 Il campo `correlation_id` è un token esadecimale di 8 caratteri generato dal runner al momento dell'eccezione. Permette di collegare il record JSONL, la riga `ERROR` nel log testuale (che include il traceback completo) e la notifica Telegram di errore, senza esporre il dettaglio dell'eccezione fuori dai log interni.
+
+Se l'errore avviene a metà del workflow (es. Risk Manager fallisce dopo che Market Analyst e Decision Maker hanno già prodotto i loro output), i campi `market_analysis`, `trade_proposal` e/o `risk_assessment` contengono i risultati parziali già ottenuti per consentire il debug post-mortem. Gli step non ancora raggiunti restano a `null`. Per gli errori avvenuti fuori dal workflow (es. fetch market data) tutti e quattro i campi restano a `null`.
 
 ### Ciclo skippato dal pre-check deterministico
 

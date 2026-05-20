@@ -84,20 +84,34 @@ class EventLogger:
         trading_mode: str,
         error: str,
         correlation_id: str = "",
+        market_analysis: MarketAnalysis | None = None,
+        trade_proposal: TradeProposal | None = None,
+        risk_assessment: RiskAssessment | None = None,
     ) -> None:
         """Registra un ciclo fallito con errore.
 
         ``correlation_id`` è un token corto (es. 8 hex) che collega questo
         record al messaggio Telegram di errore e al log locale, senza esporre
         il dettaglio dell'eccezione fuori dai log interni.
+
+        I parametri ``market_analysis``, ``trade_proposal`` e ``risk_assessment``
+        permettono di salvare gli output parziali prodotti prima del fallimento,
+        per debug post-mortem. Sono ``None`` se lo step corrispondente non è
+        stato raggiunto.
         """
         record: dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "symbol": symbol,
             "trading_mode": trading_mode,
-            "market_analysis": None,
-            "trade_proposal": None,
-            "risk_assessment": None,
+            "market_analysis": (
+                dataclasses.asdict(market_analysis) if market_analysis is not None else None
+            ),
+            "trade_proposal": (
+                dataclasses.asdict(trade_proposal) if trade_proposal is not None else None
+            ),
+            "risk_assessment": (
+                dataclasses.asdict(risk_assessment) if risk_assessment is not None else None
+            ),
             "execution_report": None,
             "error": error,
             "correlation_id": correlation_id or None,

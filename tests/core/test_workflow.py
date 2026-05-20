@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock
 
+import pytest
+
 from src.agents.execution_trader import ExecutionTraderAgent
 from src.core.contracts import (
     DecisionMakerInput,
@@ -23,7 +25,33 @@ from src.core.contracts import (
     TradeProposalDetails,
     TradingCycleInput,
 )
+from src.core.exceptions import CycleExecutionError
 from src.core.workflow import TradingWorkflow
+
+
+def _make_cycle_input() -> TradingCycleInput:
+    return TradingCycleInput(
+        symbol="BTCUSDC",
+        market_data=MarketDataSnapshot(symbol="BTCUSDC", price=100000.0),
+        portfolio=PortfolioState(
+            usdc_balance=1000.0,
+            usdc_balance_total=1000.0,
+            usdc_value=0.0,
+            portfolio_qty_free=0.0,
+            portfolio_qty_total=0.0,
+        ),
+        constraints=OperationConstraints(
+            cycle_interval_seconds=7200,
+            min_order_usdc=10.0,
+            max_order_notional_usdc=100.0,
+        ),
+        mandate=InvestmentMandate(
+            max_drawdown_pct=15.0,
+            horizon="Intraday to swing",
+            max_position_pct=70.0,
+        ),
+        latest_performance_review="fake review content",
+    )
 
 
 class DummyMarketAnalyst:
@@ -196,6 +224,89 @@ def test_workflow_does_not_execute_when_risk_blocks() -> None:
     exchange_client.place_market_order.assert_not_called()
     exchange_client.place_limit_order.assert_not_called()
     exchange_client.cancel_order.assert_not_called()
+
+
+def test_workflow_raises_cycle_execution_error_when_market_analyst_fails() -> None:
+    market_analyst = MagicMock()
+    market_analyst.run.side_effect = RuntimeError("MA boom")
+
+    workflow = TradingWorkflow(
+        market_analyst=market_analyst,
+        decision_maker=MagicMock(),
+        risk_manager=MagicMock(),
+        execution_trader=MagicMock(),
+    )
+
+    with pytest.raises(CycleExecutionError) as exc_info:
+        workflow.run_cycle(_make_cycle_input())
+
+    assert isinstance(exc_info.value.original, RuntimeError)
+    assert exc_info.value.market_analysis is None
+    assert exc_info.value.trade_proposal is None
+    assert exc_info.value.risk_assessment is None
+
+
+def test_workflow_raises_cycle_execution_error_when_decision_maker_fails() -> None:
+    decision_maker = MagicMock()
+    decision_maker.run.side_effect = RuntimeError("DM boom")
+
+    workflow = TradingWorkflow(
+        market_analyst=DummyMarketAnalyst([]),
+        decision_maker=decision_maker,
+        risk_manager=MagicMock(),
+        execution_trader=MagicMock(),
+    )
+
+    with pytest.raises(CycleExecutionError) as exc_info:
+        workflow.run_cycle(_make_cycle_input())
+
+    assert isinstance(exc_info.value.original, RuntimeError)
+    assert exc_info.value.market_analysis is not None
+    assert exc_info.value.market_analysis.market_bias is MarketBias.BULLISH
+    assert exc_info.value.trade_proposal is None
+    assert exc_info.value.risk_assessment is None
+
+
+def test_workflow_raises_cycle_execution_error_when_risk_manager_fails() -> None:
+    risk_manager = MagicMock()
+    risk_manager.run.side_effect = RuntimeError("RM boom")
+
+    workflow = TradingWorkflow(
+        market_analyst=DummyMarketAnalyst([]),
+        decision_maker=DummyDecisionMaker([]),
+        risk_manager=risk_manager,
+        execution_trader=MagicMock(),
+    )
+
+    with pytest.raises(CycleExecutionError) as exc_info:
+        workflow.run_cycle(_make_cycle_input())
+
+    assert isinstance(exc_info.value.original, RuntimeError)
+    assert exc_info.value.market_analysis is not None
+    assert exc_info.value.trade_proposal is not None
+    assert exc_info.value.trade_proposal.action is TradeAction.BUY
+    assert exc_info.value.risk_assessment is None
+
+
+def test_workflow_raises_cycle_execution_error_when_execution_trader_fails() -> None:
+    execution_trader = MagicMock()
+    execution_trader.run.side_effect = RuntimeError("ET boom")
+
+    workflow = TradingWorkflow(
+        market_analyst=DummyMarketAnalyst([]),
+        decision_maker=DummyDecisionMaker([]),
+        risk_manager=DummyRiskManager([]),
+        execution_trader=execution_trader,
+    )
+
+    with pytest.raises(CycleExecutionError) as exc_info:
+        workflow.run_cycle(_make_cycle_input())
+
+    assert isinstance(exc_info.value.original, RuntimeError)
+    assert exc_info.value.market_analysis is not None
+    assert exc_info.value.trade_proposal is not None
+    assert exc_info.value.risk_assessment is not None
+    assert exc_info.value.risk_assessment.risk_decision is RiskDecision.APPROVE
 
 
 def test_workflow_does_not_execute_when_risk_requests_adjustment() -> None:

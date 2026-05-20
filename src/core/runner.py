@@ -16,7 +16,7 @@ from src.core.contracts import (
     PortfolioState,
     TradingCycleInput,
 )
-from src.core.exceptions import MdkTradingError
+from src.core.exceptions import CycleExecutionError, MdkTradingError
 from src.core.cycle_skip_handler import CycleSkipHandler
 from src.core.performance_review_runner import PerformanceReviewRunner
 from src.core.workflow import TradingWorkflow
@@ -268,6 +268,31 @@ class TradingRunner:
                     )
                 )
             self._logger.info("Ciclo completato con successo")
+        except CycleExecutionError as exc:
+            cid = uuid.uuid4().hex[:8]
+            self._logger.error(
+                "Errore operativo durante il ciclo [cid=%s]: %s",
+                cid,
+                exc.original,
+                exc_info=exc.original,
+            )
+            self._event_logger.log_error(
+                symbol=self._symbol,
+                trading_mode=self._settings.trading_mode.value,
+                error=str(exc.original),
+                correlation_id=cid,
+                market_analysis=exc.market_analysis,
+                trade_proposal=exc.trade_proposal,
+                risk_assessment=exc.risk_assessment,
+            )
+            if self._telegram_notifier:
+                self._telegram_notifier.send_message(
+                    notifications.build_error_message(
+                        symbol=self._symbol,
+                        correlation_id=cid,
+                        error_category=_classify_error(exc.original),
+                    )
+                )
         except (MdkTradingError, OSError) as exc:
             cid = uuid.uuid4().hex[:8]
             self._logger.error(

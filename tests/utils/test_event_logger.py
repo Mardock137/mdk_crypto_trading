@@ -120,6 +120,31 @@ def test_log_error_writes_error_field(tmp_path: Path) -> None:
     assert record["execution_report"] is None
 
 
+def test_log_error_serializes_partial_results(tmp_path: Path) -> None:
+    """log_error serializza correttamente i parziali quando vengono passati."""
+    logger = EventLogger(events_dir=tmp_path)
+
+    logger.log_error(
+        symbol="BTCUSDC",
+        trading_mode="DEMO",
+        error="Decision Maker boom",
+        correlation_id="abc12345",
+        market_analysis=_sample_market_analysis(),
+        trade_proposal=_sample_trade_proposal(),
+        risk_assessment=None,
+    )
+
+    jsonl_file = tmp_path / f"{date.today().isoformat()}.jsonl"
+    record = json.loads(jsonl_file.read_text(encoding="utf-8").strip())
+
+    assert record["error"] == "Decision Maker boom"
+    assert record["correlation_id"] == "abc12345"
+    assert record["market_analysis"]["market_bias"] == "BULLISH"
+    assert record["trade_proposal"]["action"] == "BUY"
+    assert record["risk_assessment"] is None
+    assert record["execution_report"] is None
+
+
 def test_log_skipped_cycle_writes_expected_fields(tmp_path: Path) -> None:
     """log_skipped_cycle deve scrivere un record con cycle_type=skipped."""
     logger = EventLogger(events_dir=tmp_path)

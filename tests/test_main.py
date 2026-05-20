@@ -31,6 +31,7 @@ _FAKE_SETTINGS = AppSettings(
 _FAKE_LLM_CONFIG = {"model": "gpt-test", "temperature": 0.2, "max_tokens": 512}
 
 
+@patch("src.main.configure_logging")
 @patch("src.main.TelegramNotifier")
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
@@ -50,6 +51,7 @@ def test_main_calls_runner_run(
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
     mock_telegram_cls: MagicMock,
+    mock_configure_logging: MagicMock,
 ) -> None:
     """main() deve costruire il runner e chiamare run()."""
     main()
@@ -57,6 +59,7 @@ def test_main_calls_runner_run(
     mock_runner_cls.return_value.run.assert_called_once()
 
 
+@patch("src.main.configure_logging")
 @patch("src.main.TelegramNotifier")
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
@@ -76,6 +79,7 @@ def test_main_creates_openai_interface_once(
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
     mock_telegram_cls: MagicMock,
+    mock_configure_logging: MagicMock,
 ) -> None:
     """OpenAiInterface deve essere istanziata 1 volta (solo Market Analyst)."""
     main()
@@ -83,6 +87,7 @@ def test_main_creates_openai_interface_once(
     mock_openai_cls.assert_called_once()
 
 
+@patch("src.main.configure_logging")
 @patch("src.main.TelegramNotifier")
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
@@ -102,6 +107,7 @@ def test_main_creates_anthropic_interface_once(
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
     mock_telegram_cls: MagicMock,
+    mock_configure_logging: MagicMock,
 ) -> None:
     """AnthropicInterface deve essere istanziata 2 volte (Decision Maker + Performance Reviewer)."""
     main()
@@ -109,6 +115,7 @@ def test_main_creates_anthropic_interface_once(
     assert mock_anthropic_cls.call_count == 2
 
 
+@patch("src.main.configure_logging")
 @patch("src.main.TelegramNotifier")
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
@@ -128,6 +135,7 @@ def test_main_creates_gemini_interface_once(
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
     mock_telegram_cls: MagicMock,
+    mock_configure_logging: MagicMock,
 ) -> None:
     """GeminiInterface deve essere istanziata 1 volta (Risk Manager)."""
     main()
@@ -135,6 +143,7 @@ def test_main_creates_gemini_interface_once(
     mock_gemini_cls.assert_called_once()
 
 
+@patch("src.main.configure_logging")
 @patch("src.main.TelegramNotifier")
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
@@ -154,6 +163,7 @@ def test_main_loads_three_llm_configs(
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
     mock_telegram_cls: MagicMock,
+    mock_configure_logging: MagicMock,
 ) -> None:
     """load_llm_model_config deve essere chiamata 4 volte (MA, DM, RM, PR)."""
     main()
@@ -166,6 +176,7 @@ def test_main_loads_three_llm_configs(
     assert any("performance_reviewer" in p for p in paths_called)
 
 
+@patch("src.main.configure_logging")
 @patch("src.main.TelegramNotifier")
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
@@ -185,6 +196,7 @@ def test_main_creates_binance_client_with_settings(
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
     mock_telegram_cls: MagicMock,
+    mock_configure_logging: MagicMock,
 ) -> None:
     """BinanceClient deve essere istanziato con le settings caricate."""
     main()
@@ -192,6 +204,7 @@ def test_main_creates_binance_client_with_settings(
     mock_binance_cls.assert_called_once_with(_FAKE_SETTINGS, quote_currency="USDC")
 
 
+@patch("src.main.configure_logging")
 @patch("src.main.TelegramNotifier")
 @patch("src.main.TradingRunner")
 @patch("src.main.BinanceClient")
@@ -211,6 +224,7 @@ def test_main_creates_telegram_notifier(
     mock_binance_cls: MagicMock,
     mock_runner_cls: MagicMock,
     mock_telegram_cls: MagicMock,
+    mock_configure_logging: MagicMock,
 ) -> None:
     """TelegramNotifier deve essere istanziato con token e chat_id dalle settings."""
     main()
@@ -221,6 +235,7 @@ def test_main_creates_telegram_notifier(
     )
 
 
+@patch("src.main.configure_logging")
 @patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
 @patch("src.main.load_symbol_config", return_value={"symbol": "BTCUSDC", "quote_currency": "USDC"})
 @patch("src.main.load_settings", return_value=replace(_FAKE_SETTINGS, openai_api_key=None))
@@ -228,6 +243,7 @@ def test_main_raises_if_required_api_key_is_missing(
     mock_load_settings: MagicMock,
     mock_load_symbol: MagicMock,
     mock_load_llm: MagicMock,
+    mock_configure_logging: MagicMock,
 ) -> None:
     """main() deve fallire subito se manca una API key LLM obbligatoria."""
     with pytest.raises(ValueError, match="OPENAI_API_KEY"):
