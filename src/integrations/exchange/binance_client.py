@@ -344,10 +344,12 @@ class BinanceClient(BaseExchangeClient):
             symbol=symbol,
             side="SELL",
             quantity=quantity,
-            price=str(tp_price),
-            stopPrice=str(sl_stop_price),
-            stopLimitPrice=str(sl_limit_price),
-            stopLimitTimeInForce="GTC",
+            aboveType="LIMIT_MAKER",
+            abovePrice=str(tp_price),
+            belowType="STOP_LOSS_LIMIT",
+            belowPrice=str(sl_limit_price),
+            belowStopPrice=str(sl_stop_price),
+            belowTimeInForce="GTC",
             listClientOrderId=client_order_id,
         )
         return result

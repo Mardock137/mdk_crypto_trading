@@ -1,6 +1,16 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.17.1 — 2026-05-20
+
+### Corretto
+
+- `src/integrations/exchange/binance_client.py`: aggiornato `_place_oco_sell_with_retry` ai nuovi parametri OCO di Binance (endpoint `/orderList/oco`). Sostituiti `price`/`stopPrice`/`stopLimitPrice`/`stopLimitTimeInForce` con `aboveType="LIMIT_MAKER"` + `abovePrice` (take profit) e `belowType="STOP_LOSS_LIMIT"` + `belowPrice` + `belowStopPrice` + `belowTimeInForce="GTC"` (stop loss). La firma pubblica di `place_oco_sell` e il calcolo di `sl_limit_price = sl_stop_price * 0.995` restano invariati. Fix dell'errore `APIError(code=-1102): Mandatory parameter 'aboveType' was not sent`.
+- `tests/integrations/exchange/test_binance_client.py`: aggiornati i 4 test OCO (`test_place_oco_sell_calls_create_oco_order_with_correct_params`, `test_place_oco_sell_quantizes_prices`, `test_place_oco_sell_passes_list_client_order_id`, `test_place_oco_sell_retry_uses_same_list_client_order_id`) ai nuovi nomi dei parametri e aggiunte assertion su `aboveType`/`belowType`.
+- `docs/api_endpoints.md`: aggiornato endpoint OCO da `/api/v3/order/oco` a `/api/v3/orderList/oco`.
+
+---
+
 ## 1.17.0 — 2026-05-13
 
 ### Aggiunto

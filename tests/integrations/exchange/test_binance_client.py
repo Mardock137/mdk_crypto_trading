@@ -741,11 +741,13 @@ def test_place_oco_sell_calls_create_oco_order_with_correct_params(
     assert call_kwargs["symbol"] == "BTCUSDC"
     assert call_kwargs["side"] == "SELL"
     assert call_kwargs["quantity"] == Decimal("0.00300")
-    assert call_kwargs["price"] == "115000.00"
-    assert call_kwargs["stopPrice"] == "92000.00"
+    assert call_kwargs["aboveType"] == "LIMIT_MAKER"
+    assert call_kwargs["abovePrice"] == "115000.00"
+    assert call_kwargs["belowType"] == "STOP_LOSS_LIMIT"
+    assert call_kwargs["belowStopPrice"] == "92000.00"
     # sl_limit_price = 92000 * 0.995 = 91540 → troncato a tickSize 0.01
-    assert call_kwargs["stopLimitPrice"] == "91540.00"
-    assert call_kwargs["stopLimitTimeInForce"] == "GTC"
+    assert call_kwargs["belowPrice"] == "91540.00"
+    assert call_kwargs["belowTimeInForce"] == "GTC"
     _assert_valid_uuid4(call_kwargs["listClientOrderId"])
 
 
@@ -765,8 +767,8 @@ def test_place_oco_sell_quantizes_prices(mock_client_cls: MagicMock) -> None:
     )
 
     call_kwargs = mock_instance.create_oco_order.call_args.kwargs
-    assert call_kwargs["price"] == "115000.0"
-    assert call_kwargs["stopPrice"] == "92000.0"
+    assert call_kwargs["abovePrice"] == "115000.0"
+    assert call_kwargs["belowStopPrice"] == "92000.0"
 
 
 @patch("src.integrations.exchange.binance_client.BinanceApiClient")
