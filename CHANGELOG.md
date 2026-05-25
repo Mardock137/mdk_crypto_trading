@@ -1,6 +1,28 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.21.0 — 2026-05-25
+
+### Aggiunto
+
+- `src/core/runner.py`: nuovo metodo `_maybe_apply_breakeven`. A ogni ciclo, dopo `_augment_portfolio_with_open_position` e prima del pre-check, verifica se `unrealized_pnl_pct >= breakeven_trigger_pct`, se è presente un OCO attivo (LIMIT_MAKER + STOP_LOSS_LIMIT con stesso `orderListId`) e se lo SL è ancora sotto `avg_entry_price`. Se tutte le condizioni sono soddisfatte: cancella l'OCO esistente, piazza un nuovo OCO con lo stesso TP e lo SL trigger = `avg_entry_price`, ricarica `portfolio.open_orders` con dati freschi. Gli errori vengono loggati come WARNING senza bloccare il ciclo.
+- `config/trading.yaml`: nuovo parametro `breakeven_trigger_pct: 2.0` — soglia percentuale di profitto non realizzato oltre cui si attiva il breakeven automatico.
+- `src/integrations/exchange/base_exchange_client.py`: nuovo metodo astratto `cancel_oco(symbol, order_list_id)` per cancellare un intero gruppo OCO tramite `orderListId`.
+- `src/integrations/exchange/binance_client.py`: implementazione di `cancel_oco` tramite `client.cancel_order_list(symbol, orderListId)`, decorata con `@_binance_retry`.
+
+### Modificato
+
+- `src/core/runner.py`: `__init__` ora legge `breakeven_trigger_pct` dal config e lo salva in `self._breakeven_trigger_pct` (fallback `2.0`). `_run_single_cycle` chiama `_maybe_apply_breakeven` dopo `_augment_portfolio_with_open_position`.
+- `docs/config.md`: aggiornato il blocco YAML di `config/trading.yaml` con il nuovo campo; aggiornata la descrizione di `max_order_notional_usdc` con il fallback corretto (`500.0`); aggiunta la descrizione di `breakeven_trigger_pct`.
+- `docs/decision_logic.md`: aggiunta sezione "Breakeven automatico" prima del pre-check, con descrizione del flusso e delle condizioni di attivazione.
+
+### Test
+
+- `tests/core/test_runner.py`: 7 nuovi test su `_maybe_apply_breakeven` — attivazione quando tutte le condizioni sono soddisfatte (verifica `cancel_oco` + `place_oco_sell`), non attivazione se `pnl_pct` è None, sotto soglia, senza OCO, con SL già sopra entry o uguale a entry, eccezione non bloccante con warning.
+- `tests/integrations/exchange/test_binance_client.py`: 2 nuovi test su `cancel_oco` — chiamata corretta a `cancel_order_list` con i parametri attesi, retry su `BinanceRequestException`.
+
+---
+
 ## 1.20.0 — 2026-05-25
 
 ### Aggiunto

@@ -818,3 +818,43 @@ def test_place_oco_sell_retry_uses_same_list_client_order_id(
     second_kwargs = mock_instance.create_oco_order.call_args_list[1].kwargs
     assert first_kwargs["listClientOrderId"] == second_kwargs["listClientOrderId"]
     _assert_valid_uuid4(first_kwargs["listClientOrderId"])
+
+
+# ---------- Verifica cancel_oco ----------
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_cancel_oco_calls_cancel_order_list_with_correct_params(
+    mock_client_cls: MagicMock,
+) -> None:
+    """cancel_oco deve chiamare cancel_order_list con symbol e orderListId corretti."""
+    mock_instance = mock_client_cls.return_value
+    mock_instance.cancel_order_list.return_value = {
+        "orderListId": 99,
+        "contingencyType": "OCO",
+        "listStatusType": "ALL_DONE",
+    }
+
+    client = BinanceClient(_make_settings())
+    result = client.cancel_oco("BTCUSDC", 99)
+
+    mock_instance.cancel_order_list.assert_called_once_with(
+        symbol="BTCUSDC", orderListId=99,
+    )
+    assert result["orderListId"] == 99
+
+
+@patch("src.integrations.exchange.binance_client.BinanceApiClient")
+def test_cancel_oco_retries_on_transient_error(mock_client_cls: MagicMock) -> None:
+    """cancel_oco deve riprovare su BinanceRequestException (errore transitorio)."""
+    mock_instance = mock_client_cls.return_value
+    mock_instance.cancel_order_list.side_effect = [
+        BinanceRequestException("connection error"),
+        {"orderListId": 99, "listStatusType": "ALL_DONE"},
+    ]
+
+    client = BinanceClient(_make_settings())
+    result = client.cancel_oco("BTCUSDC", 99)
+
+    assert result["orderListId"] == 99
+    assert mock_instance.cancel_order_list.call_count == 2

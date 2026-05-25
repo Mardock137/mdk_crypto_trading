@@ -303,6 +303,13 @@ class BinanceClient(BaseExchangeClient):
         )
         return result
 
+    @_binance_retry
+    def cancel_oco(self, symbol: str, order_list_id: int) -> dict[str, Any]:
+        result: dict[str, Any] = self._client.cancel_order_list(
+            symbol=symbol, orderListId=order_list_id,
+        )
+        return result
+
     def place_oco_sell(
         self,
         symbol: str,

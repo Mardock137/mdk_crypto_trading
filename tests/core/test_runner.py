@@ -965,3 +965,163 @@ def test_main_loop_skips_cycles_when_breaker_tripped() -> None:
 
     mock_workflow.run_cycle.assert_not_called()
     assert mock_heartbeat.call_count >= 2
+
+
+# ---------- Breakeven automatico ----------
+
+
+def _make_oco_portfolio(
+    *,
+    pnl_pct: float,
+    avg_entry: float,
+    sl_stop_price: float,
+    order_list_id: int = 99,
+    tp_price: float = 100000.0,
+    qty: float = 0.005,
+) -> PortfolioState:
+    """Portfolio con OCO attivo e unrealized_pnl_pct valorizzato."""
+    portfolio = PortfolioState(
+        usdc_balance=500.0,
+        usdc_balance_total=500.0,
+        usdc_value=500.0,
+        portfolio_qty_free=qty,
+        portfolio_qty_total=qty,
+    )
+    portfolio.unrealized_pnl_pct = pnl_pct
+    portfolio.avg_entry_price = avg_entry
+    portfolio.open_orders = [
+        {
+            "type": "LIMIT_MAKER",
+            "orderListId": order_list_id,
+            "price": str(tp_price),
+            "origQty": str(qty),
+            "stopPrice": "0",
+        },
+        {
+            "type": "STOP_LOSS_LIMIT",
+            "orderListId": order_list_id,
+            "price": str(sl_stop_price * 0.995),
+            "origQty": str(qty),
+            "stopPrice": str(sl_stop_price),
+        },
+    ]
+    return portfolio
+
+
+def test_breakeven_triggers_when_all_conditions_met() -> None:
+    """Con tutte le condizioni soddisfatte, cancella l'OCO e ne piazza uno nuovo con SL a breakeven."""
+    mock_exchange = MagicMock()
+    portfolio = _make_oco_portfolio(
+        pnl_pct=2.5,
+        avg_entry=90000.0,
+        sl_stop_price=85000.0,
+    )
+    mock_exchange.get_portfolio_state.return_value = PortfolioState(
+        usdc_balance=500.0,
+        usdc_balance_total=500.0,
+        usdc_value=500.0,
+        portfolio_qty_free=0.005,
+        portfolio_qty_total=0.005,
+        open_orders=[],
+    )
+
+    runner = _make_runner(exchange_client=mock_exchange)
+    runner._maybe_apply_breakeven(portfolio)
+
+    mock_exchange.cancel_oco.assert_called_once_with("BTCUSDC", 99)
+    mock_exchange.place_oco_sell.assert_called_once_with(
+        symbol="BTCUSDC",
+        quantity=0.005,
+        tp_price=100000.0,
+        sl_stop_price=90000.0,  # avg_entry
+    )
+
+
+def test_breakeven_not_triggered_when_pnl_is_none() -> None:
+    """Se unrealized_pnl_pct è None il breakeven non si attiva."""
+    mock_exchange = MagicMock()
+    portfolio = _make_oco_portfolio(pnl_pct=3.0, avg_entry=90000.0, sl_stop_price=85000.0)
+    portfolio.unrealized_pnl_pct = None
+
+    runner = _make_runner(exchange_client=mock_exchange)
+    runner._maybe_apply_breakeven(portfolio)
+
+    mock_exchange.cancel_oco.assert_not_called()
+
+
+def test_breakeven_not_triggered_below_threshold() -> None:
+    """Se unrealized_pnl_pct < breakeven_trigger_pct il breakeven non si attiva."""
+    mock_exchange = MagicMock()
+    portfolio = _make_oco_portfolio(pnl_pct=1.5, avg_entry=90000.0, sl_stop_price=85000.0)
+
+    runner = _make_runner(exchange_client=mock_exchange)
+    runner._maybe_apply_breakeven(portfolio)
+
+    mock_exchange.cancel_oco.assert_not_called()
+
+
+def test_breakeven_not_triggered_without_oco() -> None:
+    """Se non c'è OCO attivo (nessun LIMIT_MAKER/STOP_LOSS_LIMIT) il breakeven non si attiva."""
+    mock_exchange = MagicMock()
+    portfolio = PortfolioState(
+        usdc_balance=500.0,
+        usdc_balance_total=500.0,
+        usdc_value=500.0,
+        portfolio_qty_free=0.005,
+        portfolio_qty_total=0.005,
+        open_orders=[],
+    )
+    portfolio.unrealized_pnl_pct = 3.0
+    portfolio.avg_entry_price = 90000.0
+
+    runner = _make_runner(exchange_client=mock_exchange)
+    runner._maybe_apply_breakeven(portfolio)
+
+    mock_exchange.cancel_oco.assert_not_called()
+
+
+def test_breakeven_not_triggered_when_sl_already_above_entry() -> None:
+    """Se lo SL è già >= avg_entry_price il breakeven è già attivo, non fa nulla."""
+    mock_exchange = MagicMock()
+    portfolio = _make_oco_portfolio(
+        pnl_pct=3.0,
+        avg_entry=90000.0,
+        sl_stop_price=90500.0,  # già sopra avg_entry
+    )
+
+    runner = _make_runner(exchange_client=mock_exchange)
+    runner._maybe_apply_breakeven(portfolio)
+
+    mock_exchange.cancel_oco.assert_not_called()
+
+
+def test_breakeven_not_triggered_when_sl_equals_entry() -> None:
+    """Se lo SL è esattamente uguale ad avg_entry_price il breakeven è già attivo."""
+    mock_exchange = MagicMock()
+    portfolio = _make_oco_portfolio(
+        pnl_pct=3.0,
+        avg_entry=90000.0,
+        sl_stop_price=90000.0,  # uguale ad avg_entry
+    )
+
+    runner = _make_runner(exchange_client=mock_exchange)
+    runner._maybe_apply_breakeven(portfolio)
+
+    mock_exchange.cancel_oco.assert_not_called()
+
+
+def test_breakeven_exception_does_not_block_cycle() -> None:
+    """Se cancel_oco lancia un'eccezione, il breakeven logga un warning e il ciclo prosegue."""
+    mock_exchange = MagicMock()
+    mock_exchange.cancel_oco.side_effect = RuntimeError("Binance down")
+    portfolio = _make_oco_portfolio(
+        pnl_pct=2.5,
+        avg_entry=90000.0,
+        sl_stop_price=85000.0,
+    )
+
+    runner = _make_runner(exchange_client=mock_exchange)
+    runner._maybe_apply_breakeven(portfolio)  # non deve sollevare
+
+    mock_exchange.cancel_oco.assert_called_once()
+    mock_exchange.place_oco_sell.assert_not_called()

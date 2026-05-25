@@ -107,6 +107,9 @@ class TradingRunner:
         self._telegram_notifier = telegram_notifier
         self._trading_config = load_trading_config()
         self._mandate = load_mandate(self._trading_config)
+        self._breakeven_trigger_pct: float = float(
+            self._trading_config.get("breakeven_trigger_pct", 2.0)
+        )
         self._shutdown_requested = False
         self._shutdown_event = threading.Event()
         self._circuit_breaker = circuit_breaker or CircuitBreaker(logger)
@@ -223,6 +226,7 @@ class TradingRunner:
             market_data = self._exchange_client.get_market_snapshot(self._symbol)
             portfolio = self._exchange_client.get_portfolio_state(self._symbol)
             self._augment_portfolio_with_open_position(market_data, portfolio)
+            self._maybe_apply_breakeven(portfolio)
             if self._cycle_skip_handler.try_skip(market_data, portfolio):
                 return
             cycle_input = self._build_cycle_input(market_data, portfolio)
@@ -412,6 +416,79 @@ class TradingRunner:
             (price - avg_entry) / avg_entry * 100, 4
         )
         portfolio.unrealized_pnl_usdc = round((price - avg_entry) * qty_total, 4)
+
+    def _maybe_apply_breakeven(self, portfolio: PortfolioState) -> None:
+        """Sposta lo SL dell'OCO attivo al breakeven se il profitto supera la soglia.
+
+        Condizioni necessarie (tutte e quattro):
+        1. unrealized_pnl_pct valorizzato e >= breakeven_trigger_pct
+        2. avg_entry_price valorizzato
+        3. open_orders contiene un LIMIT_MAKER (TP) e un STOP_LOSS_LIMIT (SL)
+           con lo stesso orderListId (OCO attivo)
+        4. Il stopPrice dell'SL è sotto avg_entry_price (breakeven non ancora attivo)
+
+        Se le condizioni sono soddisfatte: cancella l'OCO e piazza un nuovo OCO
+        con lo stesso TP e lo SL trigger = avg_entry_price.
+        Gli errori vengono loggati come WARNING senza interrompere il ciclo.
+        """
+        pnl_pct = portfolio.unrealized_pnl_pct
+        avg_entry = portfolio.avg_entry_price
+        if pnl_pct is None or avg_entry is None:
+            return
+        if pnl_pct < self._breakeven_trigger_pct:
+            return
+
+        orders = portfolio.open_orders
+        tp_order = next(
+            (o for o in orders if o.get("type") == "LIMIT_MAKER"), None
+        )
+        sl_order = next(
+            (o for o in orders if o.get("type") == "STOP_LOSS_LIMIT"), None
+        )
+        if tp_order is None or sl_order is None:
+            return
+
+        tp_list_id = tp_order.get("orderListId")
+        sl_list_id = sl_order.get("orderListId")
+        if tp_list_id is None or tp_list_id != sl_list_id:
+            return
+
+        try:
+            sl_stop_price = float(sl_order["stopPrice"])
+        except (KeyError, TypeError, ValueError):
+            return
+        if sl_stop_price >= avg_entry:
+            return
+
+        try:
+            qty = float(tp_order["origQty"])
+            tp_price = float(tp_order["price"])
+            order_list_id = int(tp_list_id)
+        except (KeyError, TypeError, ValueError) as exc:
+            self._logger.warning("Breakeven: impossibile leggere i dati OCO: %s", exc)
+            return
+
+        try:
+            self._exchange_client.cancel_oco(self._symbol, order_list_id)
+            self._exchange_client.place_oco_sell(
+                symbol=self._symbol,
+                quantity=qty,
+                tp_price=tp_price,
+                sl_stop_price=avg_entry,
+            )
+            self._logger.info(
+                "Breakeven applicato — SL spostato da %.2f a %.2f (avg_entry), "
+                "unrealized_pnl_pct=%.2f%%",
+                sl_stop_price,
+                avg_entry,
+                pnl_pct,
+            )
+            fresh = self._exchange_client.get_portfolio_state(self._symbol)
+            portfolio.open_orders = fresh.open_orders
+        except Exception as exc:
+            self._logger.warning(
+                "Breakeven: operazione fallita, ciclo prosegue: %s", exc,
+            )
 
     def _build_cycle_input(
         self,

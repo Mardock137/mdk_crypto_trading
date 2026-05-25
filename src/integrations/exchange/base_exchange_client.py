@@ -42,6 +42,10 @@ class BaseExchangeClient(ABC):
         """Cancella un ordine aperto tramite il suo ID."""
 
     @abstractmethod
+    def cancel_oco(self, symbol: str, order_list_id: int) -> dict[str, Any]:
+        """Cancella un intero gruppo OCO tramite il suo orderListId."""
+
+    @abstractmethod
     def place_oco_sell(
         self,
         symbol: str,

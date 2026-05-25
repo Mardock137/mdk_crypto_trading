@@ -29,6 +29,16 @@ flowchart TD
     ET -->|ExecutionReport| LOG["Log ciclo"]
 ```
 
+### Breakeven automatico (deterministico)
+
+Prima del pre-check e della catena LLM, il runner esegue `_maybe_apply_breakeven`. Se `unrealized_pnl_pct >= breakeven_trigger_pct` (configurabile in `config/trading.yaml`, default `2.0%`) e c'è un OCO attivo con lo SL ancora sotto il prezzo di ingresso, il runner:
+
+1. Cancella l'OCO esistente via `cancel_oco(symbol, orderListId)`
+2. Piazza un nuovo OCO con lo stesso TP e lo SL trigger = `avg_entry_price`
+3. Ricarica `portfolio.open_orders` con dati freschi da Binance
+
+Il meccanismo è silenzioso: se una condizione non è soddisfatta o se si verifica un errore, viene loggato un WARNING e il ciclo prosegue normalmente senza coinvolgere il Decision Maker.
+
 ### Pre-check deterministico (opzionale)
 
 Prima della catena di agenti, il runner puo' applicare un pre-check deterministico (zero LLM) che confronta il contesto attuale con lo snapshot del ciclo precedente: se prezzo, RSI, segno MACD e set di ordini aperti sono rimasti entro soglie di tolleranza e l'ultima azione era `HOLD`, il ciclo viene saltato senza chiamare alcun agente. Lo skip e' configurabile via `config/cycle_skip.yaml` (vedi `docs/config.md`) e si disattiva dopo `max_consecutive_skips` consecutivi per garantire che il Decision Maker rivaluti comunque il setup periodicamente. I cicli saltati vengono registrati in `logs/events/` con `cycle_type: "skipped"`.

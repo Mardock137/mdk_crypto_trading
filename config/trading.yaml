@@ -1,5 +1,6 @@
 min_order_usdc: 10.0
 max_order_notional_usdc: 500.0
+breakeven_trigger_pct: 2.0
 
 mandate:
   max_drawdown_pct: 15.0
