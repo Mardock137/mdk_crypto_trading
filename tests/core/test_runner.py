@@ -1125,3 +1125,98 @@ def test_breakeven_exception_does_not_block_cycle() -> None:
 
     mock_exchange.cancel_oco.assert_called_once()
     mock_exchange.place_oco_sell.assert_not_called()
+
+
+# ---------- OCO review periodica ----------
+
+
+def _make_portfolio_with_orders(orders: list[dict]) -> PortfolioState:
+    p = PortfolioState(
+        usdc_balance=500.0,
+        usdc_balance_total=500.0,
+        usdc_value=500.0,
+        portfolio_qty_free=0.005,
+        portfolio_qty_total=0.005,
+        open_orders=orders,
+    )
+    return p
+
+
+def test_is_oco_review_required_true_when_oco_old_enough() -> None:
+    """Restituisce True se un ordine OCO ha age_hours >= soglia."""
+    runner = _make_runner()
+    runner._oco_review_interval_hours = 24.0
+    portfolio = _make_portfolio_with_orders([
+        {"type": "LIMIT_MAKER", "orderListId": 42, "age_hours": 25.0},
+        {"type": "STOP_LOSS_LIMIT", "orderListId": 42, "age_hours": 25.0},
+    ])
+    assert runner._is_oco_review_required(portfolio) is True
+
+
+def test_is_oco_review_required_false_when_oco_below_threshold() -> None:
+    """Restituisce False se l'OCO è sotto soglia."""
+    runner = _make_runner()
+    runner._oco_review_interval_hours = 24.0
+    portfolio = _make_portfolio_with_orders([
+        {"type": "LIMIT_MAKER", "orderListId": 42, "age_hours": 10.0},
+    ])
+    assert runner._is_oco_review_required(portfolio) is False
+
+
+def test_is_oco_review_required_false_when_no_oco_order() -> None:
+    """Restituisce False se non ci sono ordini OCO (orderListId == -1)."""
+    runner = _make_runner()
+    runner._oco_review_interval_hours = 24.0
+    portfolio = _make_portfolio_with_orders([
+        {"type": "LIMIT", "orderListId": -1, "age_hours": 30.0},
+    ])
+    assert runner._is_oco_review_required(portfolio) is False
+
+
+def test_is_oco_review_required_false_when_no_orders() -> None:
+    """Restituisce False se open_orders è vuoto."""
+    runner = _make_runner()
+    portfolio = _make_portfolio_with_orders([])
+    assert runner._is_oco_review_required(portfolio) is False
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_build_cycle_input_sets_oco_review_required_true(mock_wait: MagicMock) -> None:
+    """Se un OCO è vecchio abbastanza, il flag oco_review_required arriva nel TradingCycleInput."""
+    mock_exchange = MagicMock()
+    portfolio = PortfolioState(
+        usdc_balance=500.0,
+        usdc_balance_total=500.0,
+        usdc_value=500.0,
+        portfolio_qty_free=0.005,
+        portfolio_qty_total=0.005,
+        open_orders=[
+            {"type": "LIMIT_MAKER", "orderListId": 5, "age_hours": 30.0},
+        ],
+    )
+    mock_exchange.get_market_snapshot.return_value = MarketDataSnapshot(
+        symbol="BTCUSDC", price=90000.0,
+    )
+    mock_exchange.get_portfolio_state.return_value = portfolio
+
+    captured_input: dict[str, object] = {}
+
+    mock_workflow = MagicMock()
+    mock_workflow.run_cycle.side_effect = lambda ci: (_ for _ in ()).throw(
+        KeyboardInterrupt
+    )
+
+    class _CapturingWorkflow:
+        def run_cycle(self, cycle_input: Any) -> None:  # type: ignore[return]
+            captured_input["oco_review_required"] = cycle_input.oco_review_required
+            raise KeyboardInterrupt
+
+    runner = _make_runner(
+        exchange_client=mock_exchange,
+        workflow=_CapturingWorkflow(),
+    )
+    runner._oco_review_interval_hours = 24.0
+
+    runner.run()
+
+    assert captured_input.get("oco_review_required") is True

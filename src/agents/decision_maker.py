@@ -35,6 +35,7 @@ class DecisionMakerAgent(BaseLlmAgent[DecisionMakerInput, TradeProposal]):
             "recent_performance": agent_input.recent_performance,
             "latest_performance_review": agent_input.latest_performance_review,
             "current_price": agent_input.current_price,
+            "oco_review_required": agent_input.oco_review_required,
         }
 
     def _parse_response(self, data: Any) -> TradeProposal:

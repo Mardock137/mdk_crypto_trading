@@ -354,6 +354,35 @@ def test_workflow_does_not_execute_when_risk_requests_adjustment() -> None:
     exchange_client.cancel_order.assert_not_called()
 
 
+def test_workflow_passes_oco_review_required_to_decision_maker() -> None:
+    """Il workflow deve passare cycle_input.oco_review_required a DecisionMakerInput."""
+    captured: dict[str, object] = {}
+
+    class CapturingDM:
+        def run(self, agent_input: DecisionMakerInput) -> TradeProposal:
+            captured["oco_review_required"] = agent_input.oco_review_required
+            return TradeProposal(
+                action=TradeAction.BUY,
+                order_type=OrderType.MARKET,
+                confidence=0.8,
+                reason="buy",
+                details=TradeProposalDetails(quantity=0.001),
+            )
+
+    cycle_input = _make_cycle_input()
+    cycle_input.oco_review_required = True
+
+    workflow = TradingWorkflow(
+        market_analyst=DummyMarketAnalyst([]),
+        decision_maker=CapturingDM(),
+        risk_manager=DummyRiskManager([]),
+        execution_trader=DummyExecutionTrader([]),
+    )
+    workflow.run_cycle(cycle_input)
+
+    assert captured["oco_review_required"] is True
+
+
 def test_workflow_passes_current_price_to_decision_maker() -> None:
     """Il workflow deve passare market_data.price come current_price al DecisionMakerInput."""
     captured: dict[str, object] = {}

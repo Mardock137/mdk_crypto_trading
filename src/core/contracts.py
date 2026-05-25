@@ -222,6 +222,7 @@ class DecisionMakerInput:
     recent_performance: list[dict[str, Any]] = field(default_factory=list)
     latest_performance_review: str = ""
     current_price: float | None = None
+    oco_review_required: bool = False
 
 
 @dataclass(slots=True)
@@ -256,6 +257,7 @@ class TradingCycleInput:
     performance_summary: str = ""
     recent_performance: list[dict[str, Any]] = field(default_factory=list)
     latest_performance_review: str = ""
+    oco_review_required: bool = False
 
 
 @dataclass(slots=True)

@@ -50,6 +50,7 @@ Regole operative statiche del sistema e mandato di investimento.
 min_order_usdc: 10.0
 max_order_notional_usdc: 500.0
 breakeven_trigger_pct: 2.0
+oco_review_interval_hours: 24.0
 
 mandate:
   max_drawdown_pct: 15.0
@@ -62,6 +63,7 @@ Campi:
 - `min_order_usdc`: valore minimo interno consentito per un ordine, in USDC.
 - `max_order_notional_usdc`: valore massimo del notional (quantità × prezzo) consentito per un singolo ordine, in USDC. Il guardrail nell'`ExecutionTraderAgent` blocca qualsiasi ordine il cui notional superi questo limite, restituendo `NOT_EXECUTED` con reason tracciata negli event log. Il fallback software (se il campo manca dal file) è `500.0`.
 - `breakeven_trigger_pct`: soglia di profitto non realizzato (in percentuale) oltre la quale il runner sposta automaticamente lo Stop Loss dell'OCO attivo al prezzo di ingresso (breakeven). Il meccanismo è deterministico, viene eseguito prima della catena LLM e non coinvolge il Decision Maker. Il fallback software è `2.0`.
+- `oco_review_interval_hours`: ore trascorse dall'apertura di un OCO oltre le quali il runner imposta `oco_review_required = True` nel ciclo corrente. Quando il flag è `True`, il prompt del Decision Maker rende obbligatoria la valutazione esplicita dei livelli TP/SL. Il fallback software è `24.0`.
 - `mandate.max_drawdown_pct`: drawdown massimo tollerato in percentuale.
 - `mandate.horizon`: orizzonte temporale tipico delle operazioni (es. intraday, swing).
 - `mandate.max_position_pct`: percentuale massima del capitale allocabile sulla singola posizione. Il campo esiste già in vista del multi-simbolo.

@@ -110,6 +110,9 @@ class TradingRunner:
         self._breakeven_trigger_pct: float = float(
             self._trading_config.get("breakeven_trigger_pct", 2.0)
         )
+        self._oco_review_interval_hours: float = float(
+            self._trading_config.get("oco_review_interval_hours", 24.0)
+        )
         self._shutdown_requested = False
         self._shutdown_event = threading.Event()
         self._circuit_breaker = circuit_breaker or CircuitBreaker(logger)
@@ -490,6 +493,15 @@ class TradingRunner:
                 "Breakeven: operazione fallita, ciclo prosegue: %s", exc,
             )
 
+    def _is_oco_review_required(self, portfolio: PortfolioState) -> bool:
+        """Restituisce True se almeno un ordine OCO è aperto da >= oco_review_interval_hours."""
+        for order in portfolio.open_orders:
+            list_id = order.get("orderListId", -1)
+            age = order.get("age_hours", 0.0)
+            if list_id != -1 and float(age) >= self._oco_review_interval_hours:
+                return True
+        return False
+
     def _build_cycle_input(
         self,
         market_data: MarketDataSnapshot,
@@ -513,4 +525,5 @@ class TradingRunner:
             performance_summary=self._memory_manager.get_performance_summary(self._symbol),
             recent_performance=self._memory_manager.get_recent_performance(self._symbol),
             latest_performance_review=self._review_runner.load_latest_review(),
+            oco_review_required=self._is_oco_review_required(portfolio),
         )

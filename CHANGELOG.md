@@ -1,6 +1,32 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.23.0 — 2026-05-25
+
+### Aggiunto
+
+- `config/trading.yaml`: nuovo parametro `oco_review_interval_hours: 24.0` — ore trascorse dall'apertura di un OCO oltre le quali si attiva la revisione obbligatoria.
+- `src/core/contracts.py`: nuovo campo `oco_review_required: bool = False` in `TradingCycleInput` e `DecisionMakerInput`.
+- `src/core/runner.py`: nuovo metodo `_is_oco_review_required(portfolio)` — restituisce `True` se almeno un ordine con `orderListId != -1` ha `age_hours >= oco_review_interval_hours`. Il flag viene calcolato in `_build_cycle_input` e inserito nel `TradingCycleInput`.
+- `config/prompts/decision_maker.md` (REGOLE OPERATIVE): nuova regola — quando `oco_review_required` è `true`, il DM deve valutare esplicitamente i livelli TP/SL nella `reason`; un HOLD silenzioso non è ammesso.
+- `config/prompts/decision_maker.md` (DATI DISPONIBILI — Timing operativo): descrizione del campo `oco_review_required`.
+
+### Modificato
+
+- `src/core/runner.py`: `__init__` legge `oco_review_interval_hours` dal config e lo salva in `self._oco_review_interval_hours` (fallback `24.0`).
+- `src/core/workflow.py`: `DecisionMakerInput` ora riceve `oco_review_required=cycle_input.oco_review_required`.
+- `src/agents/decision_maker.py`: `_build_user_payload` include `oco_review_required` nel dict JSON inviato al modello.
+- `docs/config.md`: aggiornato il blocco YAML con `oco_review_interval_hours`; aggiunta descrizione del parametro.
+- `docs/decision_logic.md`: aggiunta riga nella sezione Decision Maker che descrive `oco_review_required` e il suo effetto sul prompt.
+
+### Test
+
+- `tests/core/test_runner.py`: 5 nuovi test su `_is_oco_review_required` (True sopra soglia, False sotto soglia, False senza OCO, False senza ordini) + 1 test end-to-end su `_build_cycle_input` che verifica il flag nel `TradingCycleInput`.
+- `tests/core/test_workflow.py`: nuovo test `test_workflow_passes_oco_review_required_to_decision_maker` con capturing class.
+- `tests/agents/test_decision_maker.py`: 2 nuovi test su `_build_user_payload` — `oco_review_required=True` nel payload, e default `False`.
+
+---
+
 ## 1.22.0 — 2026-05-25
 
 ### Aggiunto

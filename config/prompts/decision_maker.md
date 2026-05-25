@@ -50,6 +50,10 @@ AI Decision Maker di MDK Crypto Trading
   - `order_type` deve essere `LIMIT` per `SELL_OCO`.
   - Non usare `SELL_OCO` se ci sono già ordini `SELL` aperti sulla coppia: cancellali prima con `CANCEL_AND_REPLACE_ORDER` o aspetta che vengano eseguiti.
 - Non calcolare mai il P&L autonomamente. Usa esclusivamente `unrealized_pnl_pct` e `unrealized_pnl_usdc` forniti dal sistema. Se entrambi sono `null`, non c'è posizione tracciabile: usa `usdc_value` e `portfolio_qty_total` per capire se hai coin in portafoglio, ma non esprimere P&L percentuale.
+- Se `oco_review_required` è `true`, devi valutare esplicitamente i livelli TP e SL dell'OCO attivo
+  rispetto alla struttura di mercato attuale. Nella `reason` devi motivare perché i livelli
+  restano validi oppure proporre `CANCEL_AND_REPLACE_ORDER` per aggiornarli.
+  Un HOLD senza questa analisi non è ammesso quando `oco_review_required` è `true`.
 
 ## 📊 DATI DISPONIBILI
 
@@ -100,6 +104,7 @@ Il mandato definisce i vincoli di rischio e il contesto strategico che ti sono s
 ### Timing operativo
 
 - `cycle_interval_seconds`: numero di secondi che passano tra un ciclo operativo e l'altro.
+- `oco_review_required`: `true` se l'OCO attivo è aperto da più di `oco_review_interval_hours` (configurabile). Quando è `true`, la revisione dei livelli TP/SL è obbligatoria.
 
 ### Vincoli operativi
 

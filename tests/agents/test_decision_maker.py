@@ -499,3 +499,27 @@ def test_build_user_payload_current_price_none_when_not_set() -> None:
 
     assert "current_price" in payload
     assert payload["current_price"] is None
+
+
+def test_build_user_payload_includes_oco_review_required_true() -> None:
+    """_build_user_payload deve includere oco_review_required=True quando impostato."""
+    mock_llm = MagicMock()
+    agent = DecisionMakerAgent(llm=mock_llm)
+    agent_input = _make_dm_input(oco_review_required=True)
+
+    payload = agent._build_user_payload(agent_input)
+
+    assert "oco_review_required" in payload
+    assert payload["oco_review_required"] is True
+
+
+def test_build_user_payload_oco_review_required_defaults_false() -> None:
+    """_build_user_payload deve avere oco_review_required=False di default."""
+    mock_llm = MagicMock()
+    agent = DecisionMakerAgent(llm=mock_llm)
+    agent_input = _make_dm_input()  # default: oco_review_required=False
+
+    payload = agent._build_user_payload(agent_input)
+
+    assert "oco_review_required" in payload
+    assert payload["oco_review_required"] is False

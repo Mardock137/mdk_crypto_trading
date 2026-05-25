@@ -58,6 +58,7 @@ class TradingWorkflow:
                     recent_performance=cycle_input.recent_performance,
                     latest_performance_review=cycle_input.latest_performance_review,
                     current_price=cycle_input.market_data.price,
+                    oco_review_required=cycle_input.oco_review_required,
                 )
             )
         except Exception as exc:
