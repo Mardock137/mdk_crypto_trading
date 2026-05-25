@@ -79,6 +79,7 @@ class DummyDecisionMaker:
         assert agent_input.market_analysis.market_bias is MarketBias.BULLISH
         assert agent_input.mandate.max_drawdown_pct == 15.0
         assert agent_input.latest_performance_review == "fake review content"
+        assert agent_input.current_price == pytest.approx(100000.0)
         return TradeProposal(
             action=TradeAction.BUY,
             order_type=OrderType.MARKET,
@@ -352,3 +353,30 @@ def test_workflow_does_not_execute_when_risk_requests_adjustment() -> None:
     exchange_client.place_limit_order.assert_not_called()
     exchange_client.cancel_order.assert_not_called()
 
+
+def test_workflow_passes_current_price_to_decision_maker() -> None:
+    """Il workflow deve passare market_data.price come current_price al DecisionMakerInput."""
+    captured: dict[str, object] = {}
+
+    class CapturingDecisionMaker:
+        def run(self, agent_input: DecisionMakerInput) -> TradeProposal:
+            captured["current_price"] = agent_input.current_price
+            return TradeProposal(
+                action=TradeAction.BUY,
+                order_type=OrderType.MARKET,
+                confidence=0.8,
+                reason="buy signal",
+                details=TradeProposalDetails(quantity=0.001),
+            )
+
+    workflow = TradingWorkflow(
+        market_analyst=DummyMarketAnalyst([]),
+        decision_maker=CapturingDecisionMaker(),
+        risk_manager=DummyRiskManager([]),
+        execution_trader=DummyExecutionTrader([]),
+    )
+
+    cycle_input = _make_cycle_input()  # price=100000.0
+    workflow.run_cycle(cycle_input)
+
+    assert captured["current_price"] == pytest.approx(100000.0)

@@ -1,6 +1,27 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.22.0 — 2026-05-25
+
+### Aggiunto
+
+- `src/core/contracts.py`: nuovo campo `current_price: float | None = None` in `DecisionMakerInput`. Consente al DM di stimare il valore notional degli ordini senza dover inferire il prezzo dall'analisi testuale del Market Analyst.
+- `config/prompts/decision_maker.md` (REGOLE OPERATIVE): nuova regola speculare al limite minimo — il DM deve verificare che `quantity × current_price ≤ max_order_notional_usdc` prima di proporre, con formula esplicita per la quantità massima. L'obiettivo è eliminare i cicli sprecati per correzioni del Risk Manager.
+- `config/prompts/decision_maker.md` (DATI DISPONIBILI — Vincoli operativi): descrizione del nuovo campo `current_price`.
+
+### Modificato
+
+- `src/core/workflow.py`: `DecisionMakerInput` ora riceve `current_price=cycle_input.market_data.price`.
+- `src/agents/decision_maker.py`: `_build_user_payload` include `current_price` nel dict JSON inviato al modello.
+- `docs/decision_logic.md`: aggiunta riga nella sezione Decision Maker che descrive `current_price` e il suo scopo.
+
+### Test
+
+- `tests/core/test_workflow.py`: aggiunto assert su `current_price` nel `DummyDecisionMaker` e nuovo test `test_workflow_passes_current_price_to_decision_maker` con capturing class.
+- `tests/agents/test_decision_maker.py`: due nuovi test su `_build_user_payload` — `current_price` presente nel payload con valore corretto, e `None` quando non impostato.
+
+---
+
 ## 1.21.0 — 2026-05-25
 
 ### Aggiunto

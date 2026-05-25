@@ -221,6 +221,7 @@ class DecisionMakerInput:
     performance_summary: str = ""
     recent_performance: list[dict[str, Any]] = field(default_factory=list)
     latest_performance_review: str = ""
+    current_price: float | None = None
 
 
 @dataclass(slots=True)

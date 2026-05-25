@@ -430,3 +430,72 @@ def test_parse_sell_oco_invalid_sl_stop_price_raises() -> None:
     }
     with pytest.raises(ValueError, match="sl_stop_price"):
         _parse_trade_proposal(data)
+
+
+# --- _build_user_payload ---
+
+
+def _make_dm_input(**overrides: object) -> DecisionMakerInput:
+    """Helper: crea un DecisionMakerInput minimale per i test sul payload."""
+    from src.core.contracts import (
+        InvestmentMandate,
+        MarketBias,
+        OperationConstraints,
+        PortfolioState,
+        SuggestedAction,
+    )
+
+    defaults: dict[str, object] = {
+        "symbol": "BTCUSDC",
+        "portfolio": PortfolioState(
+            usdc_balance=1000.0,
+            usdc_balance_total=1000.0,
+            usdc_value=0.0,
+            portfolio_qty_free=0.0,
+            portfolio_qty_total=0.0,
+        ),
+        "market_analysis": MarketAnalysis(
+            market_bias=MarketBias.BULLISH,
+            signal_strength=0.8,
+            confidence=0.7,
+            summary="test",
+            suggested_action=SuggestedAction.LONG_BIAS,
+        ),
+        "constraints": OperationConstraints(
+            cycle_interval_seconds=60,
+            min_order_usdc=10.0,
+            max_order_notional_usdc=500.0,
+        ),
+        "mandate": InvestmentMandate(
+            max_drawdown_pct=15.0,
+            horizon="Intraday",
+            max_position_pct=70.0,
+        ),
+        "current_price": 95000.0,
+    }
+    defaults.update(overrides)
+    return DecisionMakerInput(**defaults)  # type: ignore[arg-type]
+
+
+def test_build_user_payload_includes_current_price() -> None:
+    """_build_user_payload deve includere current_price nel dict inviato al modello."""
+    mock_llm = MagicMock()
+    agent = DecisionMakerAgent(llm=mock_llm)
+    agent_input = _make_dm_input(current_price=95000.0)
+
+    payload = agent._build_user_payload(agent_input)
+
+    assert "current_price" in payload
+    assert payload["current_price"] == pytest.approx(95000.0)
+
+
+def test_build_user_payload_current_price_none_when_not_set() -> None:
+    """Se current_price non è fornito, il campo nel payload deve essere None."""
+    mock_llm = MagicMock()
+    agent = DecisionMakerAgent(llm=mock_llm)
+    agent_input = _make_dm_input(current_price=None)
+
+    payload = agent._build_user_payload(agent_input)
+
+    assert "current_price" in payload
+    assert payload["current_price"] is None

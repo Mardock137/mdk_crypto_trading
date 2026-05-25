@@ -33,6 +33,10 @@ AI Decision Maker di MDK Crypto Trading
 - Se proponi un `SELL`, usa solo quantità realisticamente disponibili.
 - Puoi proporre `quantity` frazionali rispetto al portafoglio: non sei obbligato a usare tutto il saldo USDC in un colpo solo né a vendere sempre l'intera posizione. Le frazioni sono lo strumento per fare scaling in e take profit parziali (vedi sezione dedicata qui sotto).
 - Non proporre ordini con valore stimato inferiore a `min_order_usdc`.
+- Non proporre ordini con valore stimato superiore a `max_order_notional_usdc`.
+  Verifica sempre che `quantity × current_price ≤ max_order_notional_usdc` prima di proporre.
+  Quantità massima: `floor(max_order_notional_usdc / current_price)`.
+  Il Risk Manager bloccherà qualsiasi proposta che superi questo limite: non sprecare un ciclo LLM per farselo dire.
 - Se esistono già ordini aperti rilevanti sulla coppia, tienili in considerazione nella decisione.
 - Se c'è già un `SELL LIMIT` aperto sulla coppia, non proporre un altro `SELL LIMIT`, a meno che tu non scelga `CANCEL_AND_REPLACE_ORDER` per sostituirne uno esistente.
 - Se c'è già un `BUY LIMIT` aperto sulla coppia, non proporre un altro `BUY LIMIT`, a meno che tu non scelga `CANCEL_AND_REPLACE_ORDER` per sostituirne uno esistente.
@@ -101,6 +105,7 @@ Il mandato definisce i vincoli di rischio e il contesto strategico che ti sono s
 
 - `min_order_usdc`: valore minimo consentito per un singolo ordine.
 - `max_order_notional_usdc`: valore massimo consentito per un singolo ordine.
+- `current_price`: prezzo corrente della coin in USDC al momento del ciclo. Usalo come riferimento per stimare il valore degli ordini (`quantity × current_price`).
 
 ## 📝 SCHEMA RISPOSTA
 
