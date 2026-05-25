@@ -765,6 +765,8 @@ def test_augment_portfolio_populates_avg_entry_and_unrealized_pnl(
     assert portfolio.avg_entry_price == pytest.approx(80000.0)
     # (88000 - 80000) / 80000 * 100 = 10%
     assert portfolio.unrealized_pnl_pct == pytest.approx(10.0)
+    # (88000 - 80000) * 0.005 = 40.0 USDC
+    assert portfolio.unrealized_pnl_usdc == pytest.approx(40.0)
 
 
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
@@ -795,7 +797,44 @@ def test_augment_portfolio_leaves_fields_none_without_open_position(
 
     assert portfolio.avg_entry_price is None
     assert portfolio.unrealized_pnl_pct is None
+    assert portfolio.unrealized_pnl_usdc is None
     mock_memory.compute_open_position.assert_not_called()
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_augment_portfolio_unrealized_pnl_usdc_negative_when_in_loss(
+    mock_wait: MagicMock,
+) -> None:
+    """unrealized_pnl_usdc deve essere negativo quando price < avg_entry_price."""
+    mock_exchange = MagicMock()
+    portfolio = PortfolioState(
+        usdc_balance=500.0,
+        usdc_balance_total=500.0,
+        usdc_value=450.0,
+        portfolio_qty_free=0.01,
+        portfolio_qty_total=0.01,
+    )
+    market_data = MarketDataSnapshot(symbol="BTCUSDC", price=90000.0)
+    mock_exchange.get_market_snapshot.return_value = market_data
+    mock_exchange.get_portfolio_state.return_value = portfolio
+
+    mock_memory = MagicMock(spec=MemoryManager)
+    mock_memory.compute_open_position.return_value = {
+        "open_qty": 0.01,
+        "avg_entry_price": 95000.0,
+    }
+
+    runner = _make_runner(
+        exchange_client=mock_exchange,
+        memory_manager=mock_memory,
+    )
+
+    runner.run()
+
+    # (90000 - 95000) / 95000 * 100 ≈ -5.2632%
+    assert portfolio.unrealized_pnl_pct == pytest.approx(-5.2632, rel=1e-3)
+    # (90000 - 95000) * 0.01 = -50.0 USDC
+    assert portfolio.unrealized_pnl_usdc == pytest.approx(-50.0)
 
 
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)

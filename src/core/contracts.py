@@ -78,6 +78,7 @@ class PortfolioState:
     last_trades: list[dict[str, Any]] = field(default_factory=list)
     avg_entry_price: float | None = None
     unrealized_pnl_pct: float | None = None
+    unrealized_pnl_usdc: float | None = None
 
 
 @dataclass(slots=True)

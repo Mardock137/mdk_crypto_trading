@@ -1,6 +1,24 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.20.0 — 2026-05-25
+
+### Aggiunto
+
+- `src/core/contracts.py`: nuovo campo `unrealized_pnl_usdc: float | None = None` in `PortfolioState`. Rappresenta il P&L non realizzato in USDC al prezzo corrente, calcolato come `(price - avg_entry_price) * qty_total`.
+- `config/prompts/decision_maker.md`: descrizione del nuovo campo `unrealized_pnl_usdc` nella sezione `📊 DATI DISPONIBILI`. Aggiunta regola esplicita nella sezione `🛡️ REGOLE OPERATIVE` che vieta al Decision Maker di calcolare il P&L autonomamente: deve usare esclusivamente i valori forniti dal sistema.
+
+### Modificato
+
+- `src/core/runner.py`: `_augment_portfolio_with_open_position` ora popola anche `portfolio.unrealized_pnl_usdc` insieme a `unrealized_pnl_pct`.
+- `src/core/runner.py` (bug fix): corretto il valore di fallback di `max_order_notional_usdc` da `100.0` a `500.0` in `_build_cycle_input`. Il default sbagliato bloccava ordini legittimi quando il file YAML non veniva letto correttamente.
+
+### Test
+
+- `tests/core/test_runner.py`: aggiornati `test_augment_portfolio_populates_avg_entry_and_unrealized_pnl` e `test_augment_portfolio_leaves_fields_none_without_open_position` per includere assert su `unrealized_pnl_usdc`. Aggiunto `test_augment_portfolio_unrealized_pnl_usdc_negative_when_in_loss` per coprire il caso P&L negativo (price < avg_entry_price).
+
+---
+
 ## 1.19.0 — 2026-05-20
 
 ### Aggiunto

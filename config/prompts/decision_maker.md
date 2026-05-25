@@ -45,6 +45,7 @@ AI Decision Maker di MDK Crypto Trading
   - Quando uno dei due scatta, l'altro viene cancellato automaticamente da Binance.
   - `order_type` deve essere `LIMIT` per `SELL_OCO`.
   - Non usare `SELL_OCO` se ci sono già ordini `SELL` aperti sulla coppia: cancellali prima con `CANCEL_AND_REPLACE_ORDER` o aspetta che vengano eseguiti.
+- Non calcolare mai il P&L autonomamente. Usa esclusivamente `unrealized_pnl_pct` e `unrealized_pnl_usdc` forniti dal sistema. Se entrambi sono `null`, non c'è posizione tracciabile: usa `usdc_value` e `portfolio_qty_total` per capire se hai coin in portafoglio, ma non esprimere P&L percentuale.
 
 ## 📊 DATI DISPONIBILI
 
@@ -60,6 +61,7 @@ AI Decision Maker di MDK Crypto Trading
 - `last_trades`: ultimi trade eseguiti sulla coppia.
 - `avg_entry_price`: prezzo medio di carico della posizione aperta, calcolato in FIFO sui lotti BUY ancora non venduti. `null` se non c'è posizione aperta.
 - `unrealized_pnl_pct`: P&L non realizzato percentuale al prezzo corrente rispetto a `avg_entry_price`. `null` se non c'è posizione aperta.
+- `unrealized_pnl_usdc`: P&L non realizzato in USDC al prezzo corrente. `null` se non c'è posizione aperta.
 
 Usa `unrealized_pnl_pct` come riferimento concreto per le decisioni di gestione della posizione: se sei in profitto, valuta se prendere un take profit parziale piuttosto che accumulare ulteriormente. Se sei in perdita, valuta se aprire nuove tranche BUY è giustificato dal setup o stai mediando al ribasso senza ragione.
 

@@ -381,7 +381,7 @@ class TradingRunner:
         market_data: MarketDataSnapshot,
         portfolio: PortfolioState,
     ) -> None:
-        """Calcola e popola avg_entry_price e unrealized_pnl_pct sul portafoglio.
+        """Calcola e popola avg_entry_price, unrealized_pnl_pct e unrealized_pnl_usdc sul portafoglio.
 
         Usa la coda FIFO dei lotti BUY non ancora consumati gestita da MemoryManager.
         Se non c'e posizione aperta, mancano dati validi o un calcolo fallisce,
@@ -411,6 +411,7 @@ class TradingRunner:
         portfolio.unrealized_pnl_pct = round(
             (price - avg_entry) / avg_entry * 100, 4
         )
+        portfolio.unrealized_pnl_usdc = round((price - avg_entry) * qty_total, 4)
 
     def _build_cycle_input(
         self,
@@ -422,7 +423,7 @@ class TradingRunner:
             cycle_interval_seconds=self._settings.cycle_interval_seconds,
             min_order_usdc=float(self._trading_config.get("min_order_usdc", 10.0)),
             max_order_notional_usdc=float(
-                self._trading_config.get("max_order_notional_usdc", 100.0)
+                self._trading_config.get("max_order_notional_usdc", 500.0)
             ),
         )
         return TradingCycleInput(
