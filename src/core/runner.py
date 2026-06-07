@@ -434,6 +434,9 @@ class TradingRunner:
         con lo stesso TP e lo SL trigger = avg_entry_price.
         Gli errori vengono loggati come WARNING senza interrompere il ciclo.
         """
+        if self._settings.kill_switch:
+            self._logger.debug("Kill switch attivo: breakeven non applicato")
+            return
         pnl_pct = portfolio.unrealized_pnl_pct
         avg_entry = portfolio.avg_entry_price
         if pnl_pct is None or avg_entry is None:

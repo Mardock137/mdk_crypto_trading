@@ -1127,6 +1127,25 @@ def test_breakeven_exception_does_not_block_cycle() -> None:
     mock_exchange.place_oco_sell.assert_not_called()
 
 
+def test_breakeven_not_triggered_when_kill_switch_active() -> None:
+    """Con kill switch attivo, cancel_oco e place_oco_sell non vengono chiamati."""
+    mock_exchange = MagicMock()
+    portfolio = _make_oco_portfolio(
+        pnl_pct=2.5,
+        avg_entry=90000.0,
+        sl_stop_price=85000.0,
+    )
+
+    runner = _make_runner(
+        exchange_client=mock_exchange,
+        settings=_make_settings(kill_switch=True),
+    )
+    runner._maybe_apply_breakeven(portfolio)
+
+    mock_exchange.cancel_oco.assert_not_called()
+    mock_exchange.place_oco_sell.assert_not_called()
+
+
 # ---------- OCO review periodica ----------
 
 

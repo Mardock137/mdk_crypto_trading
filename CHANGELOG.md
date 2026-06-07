@@ -1,6 +1,21 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.23.1 — 2026-06-07
+
+### Modificato
+
+- `src/core/runner.py`: `_maybe_apply_breakeven` ora controlla il kill switch come prima istruzione — se `KILL_SWITCH=1`, logga un DEBUG e ritorna senza toccare l'exchange. Rende il freno d'emergenza coerente: con kill switch attivo nessuna scrittura raggiunge l'exchange (né ordini dall'Execution Trader, né modifiche OCO dal breakeven).
+
+### Test
+
+- `tests/core/test_runner.py`: nuovo test `test_breakeven_not_triggered_when_kill_switch_active` — verifica che con `kill_switch=True` e condizioni di breakeven tutte soddisfatte, `cancel_oco` e `place_oco_sell` non vengano chiamati.
+
+### Documentazione
+
+- `docs/decision_logic.md`: sezione "Breakeven automatico" — aggiunta nota che il meccanismo viene saltato con kill switch attivo. Sezione "Kill switch" — aggiornata per precisare che con kill switch attivo nessuna scrittura raggiunge l'exchange, incluso il breakeven automatico.
+- `docs/config.md`: descrizione di `breakeven_trigger_pct` — aggiunta nota che il breakeven non viene eseguito se il kill switch è attivo.
+
 ## 1.23.0 — 2026-05-25
 
 ### Aggiunto

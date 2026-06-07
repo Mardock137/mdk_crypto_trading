@@ -37,7 +37,7 @@ Prima del pre-check e della catena LLM, il runner esegue `_maybe_apply_breakeven
 2. Piazza un nuovo OCO con lo stesso TP e lo SL trigger = `avg_entry_price`
 3. Ricarica `portfolio.open_orders` con dati freschi da Binance
 
-Il meccanismo è silenzioso: se una condizione non è soddisfatta o se si verifica un errore, viene loggato un WARNING e il ciclo prosegue normalmente senza coinvolgere il Decision Maker.
+Il meccanismo è silenzioso: se una condizione non è soddisfatta o se si verifica un errore, viene loggato un WARNING e il ciclo prosegue normalmente senza coinvolgere il Decision Maker. Il meccanismo viene saltato completamente quando il kill switch è attivo (`KILL_SWITCH=1`).
 
 ### Pre-check deterministico (opzionale)
 
@@ -121,7 +121,7 @@ Agente consultivo fuori dalla catena decisionale. Gira **una volta al giorno**, 
 
 ## Kill switch
 
-Se `KILL_SWITCH=1` nel `.env`, l'Execution Trader blocca qualsiasi operazione e ritorna `NOT_EXECUTED` indipendentemente dalla decisione degli altri agenti. Il resto della catena gira normalmente (analisi, decisione, risk check) ma nessun ordine viene piazzato.
+Se `KILL_SWITCH=1` nel `.env`, nessuna scrittura raggiunge l'exchange: l'Execution Trader blocca qualsiasi ordine e ritorna `NOT_EXECUTED`, e il breakeven automatico (`_maybe_apply_breakeven`) viene saltato senza toccare gli OCO attivi. Il resto della catena gira normalmente (analisi, decisione, risk check) e le letture di mercato e portafoglio restano attive: servono solo a osservare, non modificano nulla.
 
 ---
 
