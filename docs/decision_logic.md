@@ -98,7 +98,7 @@ Esegue la proposta se approvata. Nessuna decisione strategica.
 
 - Se `risk_decision` non è `APPROVE` → non esegue
 - Se l'azione è `HOLD` → non esegue
-- Se `CANCEL_AND_REPLACE_ORDER` → cancella l'ordine vecchio, poi piazza il nuovo
+- Se `CANCEL_AND_REPLACE_ORDER` → cancella l'ordine vecchio, poi piazza il nuovo. Se la cancellazione va a buon fine ma la sostituzione fallisce, il report risulta `FAILED` con flag `unprotected_position=True`: il runner intercetta questo flag e invia un alert Telegram dedicato (`[ALARM] POSIZIONE SCOPERTA`), richiedendo intervento manuale immediato.
 - Se `SELL_OCO` → piazza un OCO SELL su Binance (Take Profit LIMIT + Stop Loss STOP_LOSS_LIMIT abbinati)
 - Se l'esecuzione fallisce → segnala `FAILED` nel report
 

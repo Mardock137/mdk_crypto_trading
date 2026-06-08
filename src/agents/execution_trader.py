@@ -12,7 +12,7 @@ from src.core.contracts import (
     OrderType,
     TradeAction,
 )
-from src.core.exceptions import ExchangeError
+from src.core.exceptions import ExchangeError, OrderReplacementError
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
 
 _logger = logging.getLogger(__name__)
@@ -62,6 +62,18 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
 
         try:
             details = self._execute_order(agent_input)
+        except OrderReplacementError as exc:
+            _logger.error("Esecuzione ordine fallita: %s", exc, exc_info=True)
+            return ExecutionReport(
+                execution_status=ExecutionStatus.FAILED,
+                executed_action=proposal.action,
+                order_type=proposal.order_type,
+                reason=f"Errore durante l'esecuzione: {exc}",
+                execution_details={
+                    "unprotected_position": True,
+                    "cancelled_order_id": exc.cancelled_order_id,
+                },
+            )
         except (ValueError, RuntimeError, ExchangeError) as exc:
             _logger.error("Esecuzione ordine fallita: %s", exc, exc_info=True)
             return ExecutionReport(
@@ -252,9 +264,10 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
                     details.order_id,
                     exc,
                 )
-                raise RuntimeError(
+                raise OrderReplacementError(
                     f"CRITICAL: Order {details.order_id} cancelled but replacement "
-                    f"failed: {exc}. Manual intervention may be required."
+                    f"failed: {exc}. Manual intervention may be required.",
+                    cancelled_order_id=str(details.order_id),
                 ) from exc
 
         if action is TradeAction.SELL_OCO:

@@ -386,6 +386,50 @@ def test_run_does_not_send_order_notification_when_not_executed(
     assert not any("EXECUTED" in t for t in texts)
 
 
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_run_sends_unprotected_position_alert_when_flag_set(
+    mock_wait: MagicMock,
+) -> None:
+    """Con flag unprotected_position=True in execution_details, deve arrivare l'alert dedicato."""
+    mock_notifier = MagicMock(spec=TelegramNotifier)
+    mock_workflow = MagicMock()
+    mock_result = mock_workflow.run_cycle.return_value
+    mock_result.execution_report.was_executed = False
+    mock_result.execution_report.execution_status = ExecutionStatus.FAILED
+    mock_result.execution_report.execution_details = {
+        "unprotected_position": True,
+        "cancelled_order_id": "888",
+    }
+    runner = _make_runner(workflow=mock_workflow, telegram_notifier=mock_notifier)
+
+    runner.run()
+
+    texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
+    assert any("888" in t for t in texts)
+    assert any(
+        "ALARM" in t or "SCOPERTA" in t or "scoperta" in t.lower() for t in texts
+    )
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_run_does_not_send_unprotected_alert_on_normal_failed(
+    mock_wait: MagicMock,
+) -> None:
+    """Un FAILED senza flag unprotected_position NON deve inviare l'alert posizione scoperta."""
+    mock_notifier = MagicMock(spec=TelegramNotifier)
+    mock_workflow = MagicMock()
+    mock_result = mock_workflow.run_cycle.return_value
+    mock_result.execution_report.was_executed = False
+    mock_result.execution_report.execution_status = ExecutionStatus.FAILED
+    mock_result.execution_report.execution_details = {}
+    runner = _make_runner(workflow=mock_workflow, telegram_notifier=mock_notifier)
+
+    runner.run()
+
+    texts = [call.args[0] for call in mock_notifier.send_message.call_args_list]
+    assert not any("SCOPERTA" in t or "ALARM" in t for t in texts)
+
+
 # ---------- Performance Reviewer trigger ----------
 
 

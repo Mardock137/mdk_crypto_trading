@@ -14,6 +14,18 @@ class ExchangeError(MdkTradingError):
     """Errore proveniente dall'exchange (Binance API error, rete, ecc.)."""
 
 
+class OrderReplacementError(ExchangeError):
+    """L'ordine è stato cancellato ma la sostituzione è fallita.
+
+    Indica che la posizione è rimasta scoperta (nessun ordine di protezione
+    attivo). Richiede intervento manuale immediato.
+    """
+
+    def __init__(self, message: str, *, cancelled_order_id: str) -> None:
+        super().__init__(message)
+        self.cancelled_order_id = cancelled_order_id
+
+
 class LlmError(MdkTradingError, RuntimeError):
     """Errore proveniente da un provider LLM.
 

@@ -250,3 +250,20 @@ def test_build_order_notification_limit_uses_proposal_price() -> None:
     assert "Price: 50000.00" in msg
     assert "Est. Value: 50.00 USDC" in msg
     assert "REAL" in msg
+
+
+# ---------- build_unprotected_position_message ----------
+
+
+def test_build_unprotected_position_message_contains_key_fields() -> None:
+    """Il messaggio contiene simbolo, id ordine e parole chiave di allarme."""
+    msg = notifications.build_unprotected_position_message(
+        symbol="BTCUSDC",
+        mode="REAL",
+        cancelled_order_id="999",
+    )
+
+    assert "BTCUSDC" in msg
+    assert "999" in msg
+    assert "ALARM" in msg or "SCOPERTA" in msg or "scoperta" in msg.lower()
+    assert "Intervenire" in msg or "intervenire" in msg.lower()

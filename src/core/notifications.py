@@ -60,6 +60,27 @@ def build_circuit_breaker_message(
     )
 
 
+def build_unprotected_position_message(
+    symbol: str,
+    mode: str,
+    cancelled_order_id: str,
+) -> str:
+    """Messaggio Telegram di allarme posizione scoperta.
+
+    Inviato quando un CANCEL_AND_REPLACE cancella l'ordine ma fallisce
+    la sostituzione: la posizione rimane senza stop loss né take profit.
+    Richiede intervento manuale immediato.
+    """
+    return (
+        f"<b>[ALARM] POSIZIONE SCOPERTA</b>\n\n"
+        f"Symbol: {symbol}\n"
+        f"Mode: {mode}\n"
+        f"Ordine cancellato: <code>{cancelled_order_id}</code>\n\n"
+        f"Stop loss / take profit non più attivo.\n"
+        f"<b>Intervenire manualmente sull'exchange.</b>"
+    )
+
+
 def build_order_notification(
     symbol: str,
     mode: str,

@@ -276,6 +276,8 @@ def test_cancel_and_replace_partial_failure_returns_failed() -> None:
 
     assert report.execution_status is ExecutionStatus.FAILED
     assert "cancelled but replacement failed" in report.reason
+    assert report.execution_details.get("unprotected_position") is True
+    assert report.execution_details.get("cancelled_order_id") == "999"
 
 
 # --- Eccezione dall'exchange ---

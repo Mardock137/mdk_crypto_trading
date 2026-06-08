@@ -1,6 +1,30 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.24.0 — 2026-06-08
+
+### Aggiunto
+
+- `src/core/exceptions.py`: nuova eccezione `OrderReplacementError(ExchangeError)` con attributo `cancelled_order_id: str`. Identifica in modo strutturato il caso "ordine cancellato ma sostituzione fallita", senza dipendere dal text-matching sul messaggio di errore.
+- `src/core/notifications.py`: nuova funzione `build_unprotected_position_message(symbol, mode, cancelled_order_id)` — produce un alert HTML Telegram con titolo `[ALARM] POSIZIONE SCOPERTA` e istruzione di intervento manuale immediato.
+- `src/agents/execution_trader.py`: nuovo ramo `except OrderReplacementError` in `run()` — il report `FAILED` espone `execution_details["unprotected_position"] = True` e `execution_details["cancelled_order_id"]` per permettere al runner di identificare il caso senza string-matching.
+
+### Modificato
+
+- `src/agents/execution_trader.py`: nel ramo `CANCEL_AND_REPLACE_ORDER` di `_execute_order`, `raise RuntimeError(...)` sostituito con `raise OrderReplacementError(...)` per trasportare `cancelled_order_id` in modo tipizzato.
+- `src/core/runner.py`: dopo il blocco `if ... was_executed`, aggiunto controllo su `execution_status is FAILED` + flag `unprotected_position` — se presente, invia l'alert Telegram dedicato. Aggiunto `ExecutionStatus` agli import da `src.core.contracts`.
+
+### Test
+
+- `tests/core/test_notifications.py`: nuovo test `test_build_unprotected_position_message_contains_key_fields` — verifica presenza di simbolo, id ordine e parole chiave di allarme.
+- `tests/agents/test_execution_trader.py`: `test_cancel_and_replace_partial_failure_returns_failed` aggiornato — verifica che `execution_details["unprotected_position"]` sia `True` e `cancelled_order_id` sia `"999"`.
+- `tests/core/test_runner.py`: due nuovi test — `test_run_sends_unprotected_position_alert_when_flag_set` (alert inviato con flag attivo) e `test_run_does_not_send_unprotected_alert_on_normal_failed` (nessun alert su FAILED normale senza flag).
+
+### Documentazione
+
+- `docs/observability.md`: nuova riga `[ALARM] POSIZIONE SCOPERTA` nella tabella notifiche Telegram; aggiunto blocco di esempio del messaggio.
+- `docs/decision_logic.md`: sezione "Execution Trader" — aggiunta nota sul comportamento del `CANCEL_AND_REPLACE_ORDER` parzialmente fallito e sul conseguente alert Telegram.
+
 ## 1.23.1 — 2026-06-07
 
 ### Modificato

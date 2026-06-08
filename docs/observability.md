@@ -174,13 +174,14 @@ La cartella `logs/` è già presente nel `.gitignore` e non viene tracciata.
 
 Il sistema invia notifiche opzionali via Telegram Bot API. Se `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` non sono configurati nel `.env`, le notifiche sono silenziosamente disabilitate.
 
-| Notifica                          | Quando scatta                                                       |
-|-----------------------------------|---------------------------------------------------------------------|
-| 🚀 **Bot STARTED**                | All'avvio del runner                                                |
-| ✅ **Order EXECUTED**             | Quando un ordine viene eseguito su Binance                          |
-| ⚠️ **Cycle ERROR**                | Se un ciclo operativo fallisce con un'eccezione                     |
-| 🚨 **CIRCUIT BREAKER TRIPPED**    | Dopo 3 errori identici consecutivi (vedi sezione "Circuit breaker") |
-| 🛑 **Bot STOPPED**                | Allo stop del sistema (Ctrl+C o `docker stop`)                      |
+| Notifica                          | Quando scatta                                                                                                                                           |
+|-----------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 🚀 **Bot STARTED**                | All'avvio del runner                                                                                                                                    |
+| ✅ **Order EXECUTED**             | Quando un ordine viene eseguito su Binance                                                                                                              |
+| ⚠️ **Cycle ERROR**                | Se un ciclo operativo fallisce con un'eccezione                                                                                                         |
+| 🚨 **CIRCUIT BREAKER TRIPPED**    | Dopo 3 errori identici consecutivi (vedi sezione "Circuit breaker")                                                                                     |
+| 🔴 **[ALARM] POSIZIONE SCOPERTA** | Se un `CANCEL_AND_REPLACE` cancella l'ordine ma la sostituzione fallisce — la posizione rimane senza protezione e richiede intervento manuale immediato |
+| 🛑 **Bot STOPPED**                | Allo stop del sistema (Ctrl+C o `docker stop`)                                                                                                          |
 
 **Esempio notifica ordine eseguito (MARKET):**
 
@@ -211,6 +212,19 @@ Est. Value: 261.00 USDC
 DM Confidence: 0.79
 Symbol: BTCUSDC
 Mode: DEMO
+```
+
+**Esempio notifica posizione scoperta:**
+
+```text
+[ALARM] POSIZIONE SCOPERTA
+
+Symbol: BTCUSDC
+Mode: REAL
+Ordine cancellato: 123456789
+
+Stop loss / take profit non più attivo.
+Intervenire manualmente sull'exchange.
 ```
 
 **Esempio notifica errore ciclo:**

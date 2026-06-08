@@ -11,6 +11,7 @@ from pathlib import Path
 from src.agents.performance_reviewer import PerformanceReviewerAgent
 from src.core import notifications
 from src.core.contracts import (
+    ExecutionStatus,
     MarketDataSnapshot,
     OperationConstraints,
     PortfolioState,
@@ -280,6 +281,22 @@ class TradingRunner:
                         symbol=self._symbol,
                         mode=self._settings.trading_mode.value,
                         result=result,
+                    )
+                )
+            if (
+                self._telegram_notifier
+                and result.execution_report.execution_status is ExecutionStatus.FAILED
+                and result.execution_report.execution_details.get("unprotected_position")
+            ):
+                self._telegram_notifier.send_message(
+                    notifications.build_unprotected_position_message(
+                        symbol=self._symbol,
+                        mode=self._settings.trading_mode.value,
+                        cancelled_order_id=str(
+                            result.execution_report.execution_details.get(
+                                "cancelled_order_id", "N/A"
+                            )
+                        ),
                     )
                 )
             self._logger.info("Ciclo completato con successo")
