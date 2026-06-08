@@ -89,7 +89,7 @@
  │    │    ├── 📄 indicators.py                              # Indicatori tecnici (RSI, EMA, SMA, MACD) + `compute_indicators_bundle` (valori correnti + precedenti).
  │    │    ├── 📄 log_utils.py                               # Helper `truncate_for_log`: tronca blob di risposta LLM nei messaggi di WARNING.
  │    │    ├── 📄 logging_config.py                          # Configurazione centralizzata del logging (console + file).
- │    │    ├── 📄 memory_manager.py                          # Persistenza e recupero delle decisioni passate (JSONL) per la memoria del Decision Maker.
+ │    │    ├── 📄 memory_manager.py                          # Persistenza e recupero delle decisioni passate (JSONL) per la memoria del Decision Maker. Cache per-ciclo su letture e calcoli FIFO, invalidata a ogni save_cycle.
  │    │    ├── 📄 performance_stats.py                       # build_performance_stats deterministica + writer del report markdown.
  │    │    └── 📄 telegram_notifier.py                       # Notifiche Telegram opzionali (avvio/stop, ordini eseguiti, errori).
  │    └── 📄 main.py                                         # Entry point del sistema: bootstrap e avvio del runner.

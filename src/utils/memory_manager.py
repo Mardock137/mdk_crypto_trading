@@ -12,11 +12,24 @@ _SYMBOL_RE = re.compile(r"^[A-Z0-9]{2,20}$")
 
 
 class MemoryManager:
-    """Persiste e recupera le decisioni dei cicli operativi su file JSONL."""
+    """Persiste e recupera le decisioni dei cicli operativi su file JSONL.
+
+    Cache per-ciclo
+    ---------------
+    Dentro un ciclo il file JSONL è statico: l'unico writer è ``save_cycle``,
+    chiamato **dopo** tutte le letture. Le due cache interne (``_records_cache``
+    per i record grezzi, ``_fifo_cache`` per i risultati della camminata FIFO)
+    vengono popolate al primo accesso e invalidate da ``save_cycle`` alla
+    scrittura. I chiamanti di ``_read_all`` e ``_walk_fifo`` NON devono mutare
+    le strutture restituite: la cache condivide gli oggetti tra chiamate dello
+    stesso ciclo.
+    """
 
     def __init__(self, memory_dir: str | Path = "data/memory") -> None:
         self._memory_dir = Path(memory_dir)
         self._memory_dir.mkdir(parents=True, exist_ok=True)
+        self._records_cache: dict[str, list[dict]] = {}
+        self._fifo_cache: dict[str, tuple[list[dict], deque[list[float]]]] = {}
 
     # ------------------------------------------------------------------
     # Public API
@@ -44,6 +57,8 @@ class MemoryManager:
         path = self._symbol_path(symbol)
         with path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(record) + "\n")
+        self._records_cache.pop(symbol, None)
+        self._fifo_cache.pop(symbol, None)
 
     def get_memory(self, symbol: str) -> list[dict]:
         """Ritorna le ultime 10 decisioni per il simbolo indicato."""
@@ -121,6 +136,8 @@ class MemoryManager:
         return self._memory_dir / f"{symbol}.jsonl"
 
     def _read_all(self, symbol: str) -> list[dict]:
+        if symbol in self._records_cache:
+            return self._records_cache[symbol]
         path = self._symbol_path(symbol)
         if not path.exists():
             return []
@@ -133,26 +150,12 @@ class MemoryManager:
                         records.append(json.loads(line))
                     except json.JSONDecodeError:
                         continue
+        self._records_cache[symbol] = records
         return records
 
     def _read_last_n(self, symbol: str, n: int) -> list[dict]:
-        """Legge le ultime n righe dal file JSONL del simbolo."""
-        path = self._symbol_path(symbol)
-        if not path.exists():
-            return []
-        lines: list[str] = []
-        with path.open("r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if line:
-                    lines.append(line)
-        records: list[dict] = []
-        for line in lines[-n:]:
-            try:
-                records.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue
-        return records
+        """Ritorna le ultime n righe passando dalla cache di _read_all."""
+        return self._read_all(symbol)[-n:]
 
     def _walk_fifo(self, symbol: str) -> tuple[list[dict], deque[list[float]]]:
         """Logica FIFO condivisa: itera i record e calcola P&L per ogni SELL EXECUTED.
@@ -168,6 +171,8 @@ class MemoryManager:
         - lot_queue: deque dei lotti BUY ancora aperti (non consumati da SELL),
           ognuno come [qty_residua, price]
         """
+        if symbol in self._fifo_cache:
+            return self._fifo_cache[symbol]
         records = self._read_all(symbol)
         lot_queue: deque[list[float]] = deque()
         results: list[dict] = []
@@ -224,6 +229,7 @@ class MemoryManager:
                     "pnl_pct": pnl_pct,
                 })
 
+        self._fifo_cache[symbol] = (results, lot_queue)
         return results, lot_queue
 
     def compute_fifo_trades(self, symbol: str) -> list[dict]:

@@ -1,6 +1,21 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.24.2 — 2026-06-08
+
+### Modificato
+
+- `src/utils/memory_manager.py`: introdotta cache per-ciclo. `__init__` inizializza `_records_cache: dict[str, list[dict]]` e `_fifo_cache: dict[str, tuple[list[dict], deque]]`. `_read_all` serve dalla cache se presente, altrimenti legge da disco e salva. `_read_last_n` reimplementato come slice su `_read_all` (stessa semantica, zero I/O aggiuntivo). `_walk_fifo` serve dalla cache se presente, altrimenti calcola e salva. `save_cycle` invalida entrambe le cache per il simbolo scritto dopo aver appeso la riga. Riduce le letture da disco e i ricalcoli FIFO da ~5-6 a 1 per ciclo, senza alcun cambio di comportamento osservabile e senza modifiche all'API pubblica.
+
+### Test
+
+- `tests/utils/test_memory_manager.py`: due nuovi test — `test_cache_serves_stale_data_until_save_cycle` (verifica che la cache mantenga i dati vecchi se il file viene modificato bypassando `save_cycle`, e che torni fresca dopo la chiamata a `save_cycle`) e `test_cache_invalidated_separately_per_symbol` (verifica che l'invalidazione sia isolata per simbolo).
+
+### Documentazione
+
+- `docs/architecture.md`: aggiunta sezione "Cache per-ciclo" nella sezione "Memoria operativa" con descrizione del meccanismo e del beneficio.
+- `docs/repo_structure.md`: descrizione di `memory_manager.py` aggiornata con nota sulla cache.
+
 ## 1.24.1 — 2026-06-08
 
 ### Modificato

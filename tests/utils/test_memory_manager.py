@@ -563,3 +563,86 @@ def test_compute_open_position_weighted_avg_multiple_lots(tmp_path: Path) -> Non
     assert pos is not None
     assert pos["open_qty"] == pytest.approx(0.002, rel=1e-6)
     assert pos["avg_entry_price"] == pytest.approx(85000.0, rel=1e-6)
+
+
+# ------------------------------------------------------------------
+# Cache per-ciclo
+# ------------------------------------------------------------------
+
+
+def test_cache_serves_stale_data_until_save_cycle(tmp_path: Path) -> None:
+    """La cache mantiene i dati vecchi finché save_cycle non invalida.
+
+    Sequenza:
+    1. save_cycle (record A) -> invalida cache -> lettura aggiornata (1 record)
+    2. scrittura grezza sul file (record B, bypassando save_cycle)
+       -> la cache NON viene invalidata -> lettura ancora stale (1 record)
+    3. save_cycle (record C) -> invalida cache -> lettura aggiornata (3 record)
+    """
+    mm = MemoryManager(memory_dir=tmp_path)
+    symbol = "BTCUSDC"
+
+    # step 1: save_cycle regolare
+    mm.save_cycle(
+        symbol=symbol,
+        result=_make_result(action=TradeAction.BUY, quantity=0.001),
+        current_price=90000.0,
+    )
+    assert len(mm.get_memory(symbol)) == 1
+
+    # step 2: aggiunta grezza al file, bypassa save_cycle
+    symbol_path = tmp_path / f"{symbol}.jsonl"
+    with symbol_path.open("a", encoding="utf-8") as fh:
+        import json
+        fh.write(json.dumps({"action": "HOLD", "execution_status": "NOT_EXECUTED"}) + "\n")
+
+    # cache ancora valida: vede ancora solo 1 record
+    assert len(mm.get_memory(symbol)) == 1
+
+    # step 3: save_cycle invalida la cache
+    mm.save_cycle(
+        symbol=symbol,
+        result=_make_result(action=TradeAction.HOLD),
+        current_price=91000.0,
+    )
+    # ora la cache è fresca: 3 record totali (A + raw B + C)
+    assert len(mm.get_memory(symbol)) == 3
+
+
+def test_cache_invalidated_separately_per_symbol(tmp_path: Path) -> None:
+    """save_cycle invalida solo la cache del simbolo scritto, non degli altri."""
+    mm = MemoryManager(memory_dir=tmp_path)
+
+    mm.save_cycle(
+        symbol="BTCUSDC",
+        result=_make_result(action=TradeAction.BUY, quantity=0.001),
+        current_price=90000.0,
+    )
+    mm.save_cycle(
+        symbol="ETHUSDC",
+        result=_make_result(action=TradeAction.BUY, quantity=0.01),
+        current_price=3000.0,
+    )
+
+    # popola entrambe le cache
+    assert len(mm.get_memory("BTCUSDC")) == 1
+    assert len(mm.get_memory("ETHUSDC")) == 1
+
+    # aggiunge grezza su BTCUSDC bypassando save_cycle
+    btc_path = tmp_path / "BTCUSDC.jsonl"
+    with btc_path.open("a", encoding="utf-8") as fh:
+        import json
+        fh.write(json.dumps({"action": "HOLD", "execution_status": "NOT_EXECUTED"}) + "\n")
+
+    # BTCUSDC è ancora stale (cache non invalidata), ETHUSDC invariato
+    assert len(mm.get_memory("BTCUSDC")) == 1
+    assert len(mm.get_memory("ETHUSDC")) == 1
+
+    # save_cycle su BTCUSDC invalida solo quella cache
+    mm.save_cycle(
+        symbol="BTCUSDC",
+        result=_make_result(action=TradeAction.HOLD),
+        current_price=91000.0,
+    )
+    assert len(mm.get_memory("BTCUSDC")) == 3
+    assert len(mm.get_memory("ETHUSDC")) == 1

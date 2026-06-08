@@ -193,6 +193,10 @@ Il punto di ingresso è `src/main.py`, che fa il bootstrap di tutti i componenti
   - `recent_performance`: ultime 10 decisioni con, per le SELL eseguite, `realized_pnl` (USDC) e `pnl_pct` (%) calcolati con metodo FIFO
 - `compute_open_position(symbol)`: calcola la posizione aperta (lotti BUY non ancora venduti) come `{"open_qty": float, "avg_entry_price": float}` usando la coda FIFO residua. Usato dal runner per popolare `PortfolioState.avg_entry_price` e `PortfolioState.unrealized_pnl_pct` prima di ogni ciclo.
 
+### Cache per-ciclo
+
+Dentro un ciclo il file JSONL è statico (l'unico writer è `save_cycle`, chiamato dopo tutte le letture). `MemoryManager` mantiene due cache interne indicizzate per simbolo: `_records_cache` per i record grezzi (`_read_all`) e `_fifo_cache` per i risultati della camminata FIFO (`_walk_fifo`). Entrambe vengono popolate al primo accesso del ciclo e invalidate da `save_cycle` alla scrittura. Questo riduce le letture da disco e i ricalcoli FIFO da ~5-6 a 1 per ciclo, senza alcun cambio di comportamento osservabile.
+
 ### Persistenza
 
 I file `data/memory/` sono esclusi da git (vedi `.gitignore`) e vengono creati automaticamente a runtime. Il `Decision Maker` riceve questi dati come contesto aggiuntivo per prendere decisioni più informate.
