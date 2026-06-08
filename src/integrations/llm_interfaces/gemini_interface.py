@@ -26,7 +26,7 @@ class GeminiInterface(BaseLlmInterface):
         self,
         api_key: str,
         model: str,
-        temperature: float = 0.7,
+        temperature: float | None = None,
         max_tokens: int | None = None,
     ) -> None:
         self._model = model
@@ -42,6 +42,16 @@ class GeminiInterface(BaseLlmInterface):
     def _logger(self) -> logging.Logger:
         return _logger
 
+    def _config_kwargs(self, system_prompt: str) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {
+            "system_instruction": system_prompt,
+            "response_mime_type": "application/json",
+            "max_output_tokens": self._max_tokens,
+        }
+        if self._temperature is not None:
+            kwargs["temperature"] = self._temperature
+        return kwargs
+
     def _call_provider(
         self,
         system_prompt: str,
@@ -51,10 +61,7 @@ class GeminiInterface(BaseLlmInterface):
             model=self._model,
             contents=json.dumps(dict(user_payload)),
             config=genai_types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                response_mime_type="application/json",
-                temperature=self._temperature,
-                max_output_tokens=self._max_tokens,
+                **self._config_kwargs(system_prompt)
             ),
         )
 

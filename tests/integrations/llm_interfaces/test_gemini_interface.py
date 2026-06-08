@@ -27,7 +27,7 @@ def test_generate_json_uses_json_mime_type(mock_genai: MagicMock) -> None:
     call_kwargs = mock_client.models.generate_content.call_args.kwargs
     config = call_kwargs["config"]
     assert config.response_mime_type == "application/json"
-    assert config.temperature == 0.7
+    assert not hasattr(config, "temperature") or config.temperature is None
     assert config.max_output_tokens is None
     assert result == {"risultato": "ok"}
 

@@ -1,6 +1,19 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.24.1 — 2026-06-08
+
+### Modificato
+
+- `src/integrations/llm_interfaces/gemini_interface.py`: `temperature` resa opzionale (`float | None = None`). Aggiunto metodo `_config_kwargs` che costruisce i kwargs di `GenerateContentConfig` in modo condizionale: `temperature` viene inclusa solo se valorizzata. Allineamento alla raccomandazione ufficiale Google per Gemini 3.x (default `1.0`, non impostare valori bassi su modelli reasoning).
+- `src/main.py`: lettura di `rm_config.get("temperature")` con conversione condizionale a `float` — se il campo è assente dal YAML, passa `None` a `GeminiInterface`.
+- `config/llm_models/risk_manager.yaml`: rimossa la riga `temperature: 0.2`. Il Risk Manager usa ora il default Gemini (`1.0`).
+
+### Documentazione
+
+- `docs/config.md`: rimosso `temperature` dal blocco YAML di `risk_manager.yaml`; aggiunta nota nella sezione "Note" che spiega perché Gemini 3.x omette il parametro e la retrocompatibilità dell'interfaccia.
+- `dev_support/notes.md`: nota sul `temperature` di Gemini marcata come risolta.
+
 ## 1.24.0 — 2026-06-08
 
 ### Aggiunto

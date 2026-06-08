@@ -69,10 +69,11 @@ def main() -> None:
     )
 
     # Client LLM per il Risk Manager
+    _rm_temp_raw = rm_config.get("temperature")
     rm_llm = GeminiInterface(
         api_key=settings.gemini_api_key,
         model=rm_config["model"],
-        temperature=float(rm_config["temperature"]),
+        temperature=float(_rm_temp_raw) if _rm_temp_raw is not None else None,
         max_tokens=rm_config.get("max_tokens"),
     )
 
