@@ -102,9 +102,10 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 - `contracts.py`: strutture dati condivise tra agenti (input, output, enum)
 - `exceptions.py`: gerarchia di eccezioni operative del sistema. `MdkTradingError` è la base per tutti gli errori attesi; `ExchangeError(MdkTradingError)` per errori provenienti dall'exchange; `LlmError(MdkTradingError, RuntimeError)` per errori provenienti da un provider LLM. L'ereditarietà multipla di `LlmError` garantisce backward-compatibility con il codice che cattura `RuntimeError`.
 - `workflow.py`: catena lineare Market Analyst → Decision Maker → Risk Manager → Execution Trader
-- `runner.py`: `TradingRunner`, direttore d'orchestra del loop operativo (loop, segnali, orchestrazione del singolo ciclo). Delega le decisioni specialistiche a 3 collaboratori dedicati:
+- `runner.py`: `TradingRunner`, direttore d'orchestra del loop operativo (loop, segnali, orchestrazione del singolo ciclo). Delega le decisioni specialistiche a 4 collaboratori dedicati:
   - `cycle_skip_handler.py`: `CycleSkipHandler` — possiede lo snapshot del ciclo precedente e il counter dei salti consecutivi, decide se saltare il ciclo (pre-check deterministico)
   - `performance_review_runner.py`: `PerformanceReviewRunner` — esegue il review giornaliero (al massimo una volta al giorno) e legge l'ultimo report markdown
+  - `position_manager.py`: `PositionManager` — calcola il P&L non realizzato via FIFO (`augment_portfolio_with_open_position`), sposta automaticamente lo SL al breakeven se le condizioni sono soddisfatte (`maybe_apply_breakeven`) e segnala se un OCO attivo richiede revisione (`is_oco_review_required`)
   - `notifications.py`: funzioni pure che costruiscono i messaggi Telegram (start/stop/error/order), inclusi i dettagli Binance-specific (`cummulativeQuoteQty`/`executedQty`) per il prezzo medio dei MARKET order
 
 ### `src/integrations/`
@@ -172,7 +173,7 @@ Il ciclo operativo è gestito da due componenti complementari:
 Il runner:
 
 1. Logga l'avvio e lo stato del kill switch
-2. Ad ogni iterazione: eventualmente genera il report giornaliero (`PerformanceReviewRunner.maybe_run_today`) → raccoglie dati da Binance → **arricchisce il portafoglio** con `avg_entry_price` e `unrealized_pnl_pct` via `_augment_portfolio_with_open_position` → eventualmente salta il ciclo via `CycleSkipHandler.try_skip` → legge la memoria storica e l'ultimo report → costruisce `TradingCycleInput` → esegue il workflow → logga il risultato → salva il ciclo in memoria → registra lo snapshot via `CycleSkipHandler.record_completed_cycle`
+2. Ad ogni iterazione: eventualmente genera il report giornaliero (`PerformanceReviewRunner.maybe_run_today`) → raccoglie dati da Binance → **arricchisce il portafoglio** con `avg_entry_price` e `unrealized_pnl_pct` via `PositionManager.augment_portfolio_with_open_position` → eventualmente applica il breakeven automatico via `PositionManager.maybe_apply_breakeven` → eventualmente salta il ciclo via `CycleSkipHandler.try_skip` → legge la memoria storica e l'ultimo report → costruisce `TradingCycleInput` (con `oco_review_required` da `PositionManager.is_oco_review_required`) → esegue il workflow → logga il risultato → salva il ciclo in memoria → registra lo snapshot via `CycleSkipHandler.record_completed_cycle`
 3. In caso di errore: il runner distingue due categorie. Errori operativi attesi (`MdkTradingError`, `OSError` — es. exchange offline, LLM sovraccarico): logga, notifica Telegram e **continua il loop**. Bug imprevisti (qualsiasi altra eccezione — es. `AttributeError`, `NameError`): logga, notifica Telegram e **propaga l'eccezione**. `run()` intercetta il bug critico, logga come `CRITICAL`, notifica e termina il processo pulitamente (Docker lo riavvierà).
 4. Su `Ctrl+C`: termina in modo pulito
 

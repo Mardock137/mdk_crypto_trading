@@ -70,6 +70,7 @@
  │    │    ├── 📄 exceptions.py                              # Gerarchia di eccezioni operative: MdkTradingError (base), ExchangeError, LlmError, CycleExecutionError.
  │    │    ├── 📄 notifications.py                           # Funzioni pure che costruiscono i messaggi Telegram (start/stop/error/order).
  │    │    ├── 📄 performance_review_runner.py               # PerformanceReviewRunner: review giornaliero e lettura ultimo report.
+ │    │    ├── 📄 position_manager.py                        # PositionManager: calcolo P&L aperto (FIFO), breakeven automatico OCO, flag oco_review_required.
  │    │    ├── 📄 runner.py                                  # Loop operativo ciclico (TradingRunner), direttore d'orchestra.
  │    │    └── 📄 workflow.py                                # Orchestratore della catena di agenti.
  │    ├── 📁 integrations/                                   # Integrazione delle API esterne.
@@ -108,6 +109,7 @@
  │    │    ├── 📄 test_exceptions.py
  │    │    ├── 📄 test_notifications.py
  │    │    ├── 📄 test_performance_review_runner.py
+ │    │    ├── 📄 test_position_manager.py
  │    │    ├── 📄 test_runner.py
  │    │    └── 📄 test_workflow.py
  │    ├── 📁 integrations/                                   # Test delle integrazioni.
