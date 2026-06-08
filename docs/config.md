@@ -66,7 +66,7 @@ Campi:
 - `oco_review_interval_hours`: ore trascorse dall'apertura di un OCO oltre le quali il runner imposta `oco_review_required = True` nel ciclo corrente. Quando il flag è `True`, il prompt del Decision Maker rende obbligatoria la valutazione esplicita dei livelli TP/SL. Il fallback software è `24.0`.
 - `mandate.max_drawdown_pct`: drawdown massimo tollerato in percentuale.
 - `mandate.horizon`: orizzonte temporale tipico delle operazioni (es. intraday, swing).
-- `mandate.max_position_pct`: percentuale massima del capitale allocabile sulla singola posizione. Il campo esiste già in vista del multi-simbolo.
+- `mandate.max_position_pct`: percentuale massima del capitale allocabile sulla singola posizione. Il guardrail nell'`ExecutionTraderAgent` calcola la percentuale rispetto al **valore totale del portafoglio** (USDC totali, liberi + bloccati in ordini aperti, più il controvalore totale delle monete). Il campo esiste già in vista del multi-simbolo.
 
 Il mandate viene caricato all'avvio del runner tramite `load_mandate(trading_config)` in `src/utils/config.py` e propagato a ogni ciclo dentro `TradingCycleInput`. Se la sezione `mandate` manca o ha campi incompleti, il runner fallisce in fase di boot con un `ValueError` esplicito.
 

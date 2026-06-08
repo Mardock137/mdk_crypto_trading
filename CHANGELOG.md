@@ -1,6 +1,20 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.25.1 — 2026-06-08
+
+### Corretto
+
+- `src/agents/execution_trader.py`: il guardrail del cap percentuale (`max_position_pct`) usava `portfolio.usdc_balance` (USDC **liberi**) come parte del denominatore, mescolandolo con `usdc_value` (controvalore **totale** delle monete). Ora usa `portfolio.usdc_balance_total` (USDC liberi + bloccati), così il denominatore è coerentemente il valore totale del portafoglio. Il bug poteva solo bloccare erroneamente ordini legittimi quando c'erano USDC bloccati in ordini aperti (direzione conservativa, mai pericolosa).
+
+### Test
+
+- `tests/agents/test_execution_trader.py`: aggiornata la docstring di `test_guardrail_portfolio_pct_uses_total_portfolio_value`; nuovo test `test_guardrail_portfolio_pct_uses_total_usdc_not_free` — con 50 USDC liberi + 950 bloccati (1000 totali) e 1000 di monete, un SELL da 800 USDC (40% del totale) passa il limite del 70%, mentre col vecchio denominatore (1050) sarebbe stato 76% e bloccato.
+
+### Documentazione
+
+- `docs/config.md`: descrizione di `mandate.max_position_pct` precisata con il denominatore usato dal guardrail (valore totale del portafoglio).
+
 ## 1.25.0 — 2026-06-08
 
 ### Aggiunto

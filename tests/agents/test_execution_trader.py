@@ -379,7 +379,7 @@ def test_guardrail_min_order_passes_order_above_minimum() -> None:
 # --- Guardrail: cap percentuale portafoglio ---
 
 def test_guardrail_portfolio_pct_uses_total_portfolio_value() -> None:
-    """Il guardrail deve usare (usdc_balance + usdc_value) come denominatore.
+    """Il guardrail deve usare (usdc_balance_total + usdc_value) come denominatore.
 
     Scenario di produzione: portafoglio da 5000 USDC totali, di cui ~4848 USDC
     liberi e ~152 USDC investiti in BTC. Un SELL da 152 USDC rappresenta il 3%
@@ -408,6 +408,46 @@ def test_guardrail_portfolio_pct_uses_total_portfolio_value() -> None:
             proposal, APPROVED,
             portfolio=portfolio,
             current_price=80_000.0,
+            max_order_notional_usdc=1_000_000.0,
+        )
+    )
+
+    assert report.execution_status is ExecutionStatus.EXECUTED
+    mock_exchange.place_market_order.assert_called_once()
+
+
+def test_guardrail_portfolio_pct_uses_total_usdc_not_free() -> None:
+    """Il denominatore usa usdc_balance_total (non usdc_balance free).
+
+    Scenario con USDC bloccati in un ordine aperto: 50 liberi + 950 bloccati =
+    1000 totali, piu' 1000 di controvalore monete -> portafoglio totale = 2000.
+    Un SELL da 800 USDC e' il 40% del totale (2000) e deve passare il limite 70%.
+    Con il vecchio denominatore (free 50 + 1000 = 1050) sarebbe stato 76% e
+    quindi erroneamente bloccato.
+    """
+    mock_exchange = MagicMock()
+    mock_exchange.place_market_order.return_value = {"orderId": "locked-usdc-test"}
+
+    portfolio = PortfolioState(
+        usdc_balance=50.0,          # USDC liberi
+        usdc_balance_total=1000.0,  # 50 liberi + 950 bloccati in ordini aperti
+        usdc_value=1000.0,          # controvalore monete
+        portfolio_qty_free=0.01,
+        portfolio_qty_total=0.01,
+    )
+    proposal = TradeProposal(
+        action=TradeAction.SELL,
+        order_type=OrderType.MARKET,
+        confidence=0.8,
+        reason="take profit parziale",
+        details=TradeProposalDetails(quantity=0.008),  # 0.008 * 100000 = 800 USDC
+    )
+    agent = ExecutionTraderAgent(exchange_client=mock_exchange)
+    report = agent.run(
+        _make_input(
+            proposal, APPROVED,
+            portfolio=portfolio,
+            current_price=100_000.0,
             max_order_notional_usdc=1_000_000.0,
         )
     )

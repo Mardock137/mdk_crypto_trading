@@ -159,7 +159,9 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
                 )
 
             # 3. Cap percentuale sul portafoglio
-            total_portfolio_value = portfolio.usdc_balance + portfolio.usdc_value
+            # Denominatore = valore totale del portafoglio: USDC totali (liberi +
+            # bloccati in ordini aperti) + controvalore totale delle monete.
+            total_portfolio_value = portfolio.usdc_balance_total + portfolio.usdc_value
             if total_portfolio_value > 0:
                 pct = (notional / total_portfolio_value) * 100
                 if pct > mandate.max_position_pct:
