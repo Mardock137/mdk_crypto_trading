@@ -37,6 +37,10 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _PERFORMANCE_REPORTS_DIR = _PROJECT_ROOT / "data/performance_reports"
 _HEARTBEAT_PATH = _PROJECT_ROOT / "data/heartbeat"
 
+# Tolleranza relativa oltre la quale open_qty (FIFO) e qty_total (exchange) vengono
+# considerati divergenti e viene emesso un WARNING diagnostico.
+_POSITION_QTY_TOLERANCE = 0.01
+
 
 def _classify_error(exc: Exception) -> str:
     """Classifica un'eccezione in una categoria leggibile per la notifica Telegram.
@@ -427,15 +431,23 @@ class TradingRunner:
             return
         try:
             avg_entry = float(open_pos["avg_entry_price"])
+            open_qty = float(open_pos["open_qty"])
         except (TypeError, ValueError, KeyError):
             return
-        if avg_entry <= 0:
+        if avg_entry <= 0 or open_qty <= 0:
             return
         portfolio.avg_entry_price = avg_entry
         portfolio.unrealized_pnl_pct = round(
             (price - avg_entry) / avg_entry * 100, 4
         )
-        portfolio.unrealized_pnl_usdc = round((price - avg_entry) * qty_total, 4)
+        portfolio.unrealized_pnl_usdc = round((price - avg_entry) * open_qty, 4)
+        if qty_total > 0 and abs(open_qty - qty_total) / qty_total > _POSITION_QTY_TOLERANCE:
+            self._logger.warning(
+                "Divergenza posizione: FIFO open_qty=%s vs saldo exchange qty_total=%s "
+                "(memoria possibilmente disallineata)",
+                open_qty,
+                qty_total,
+            )
 
     def _maybe_apply_breakeven(self, portfolio: PortfolioState) -> None:
         """Sposta lo SL dell'OCO attivo al breakeven se il profitto supera la soglia.

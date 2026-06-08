@@ -1,6 +1,23 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.24.3 — 2026-06-08
+
+### Corretto
+
+- `src/core/runner.py`: `_augment_portfolio_with_open_position` calcolava `unrealized_pnl_usdc` moltiplicando `(price - avg_entry)` per `portfolio_qty_total` (saldo totale exchange). Ora usa `open_qty` (quantità tracciata dai lotti FIFO aperti), che è la quantità a cui `avg_entry_price` fa effettivamente riferimento. Le monete non tracciate dalla memoria del bot hanno costo di carico ignoto e non vengono incluse nel calcolo. `unrealized_pnl_pct` era già corretto (dipende solo da prezzo e `avg_entry`).
+- `src/core/runner.py`: aggiunto WARNING diagnostico quando `open_qty` e `qty_total` divergono di più dell'1% (`_POSITION_QTY_TOLERANCE`), segnale che la memoria FIFO e il saldo dell'exchange sono disallineati.
+
+### Test
+
+- `tests/core/test_runner.py`: nuovo test `test_augment_portfolio_pnl_usdc_uses_open_qty_not_qty_total` — con `open_qty=0.005` e `qty_total=0.010`, verifica che `unrealized_pnl_usdc` sia calcolato su `open_qty` (il test falliva con il codice precedente).
+- `tests/core/test_runner.py`: nuovo test `test_augment_portfolio_logs_warning_on_qty_divergence` — verifica che con divergenza >1% venga emesso un WARNING via `caplog`.
+
+### Documentazione
+
+- `docs/decision_logic.md`: precisato che `unrealized_pnl_usdc` usa la quantità FIFO tracciata (`open_qty`), non il saldo totale dell'exchange.
+- `docs/architecture.md`: aggiornate le descrizioni di `PortfolioState` e `compute_open_position` per riflettere il calcolo corretto e il WARNING di divergenza.
+
 ## 1.24.2 — 2026-06-08
 
 ### Modificato

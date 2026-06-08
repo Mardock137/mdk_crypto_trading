@@ -882,6 +882,80 @@ def test_augment_portfolio_unrealized_pnl_usdc_negative_when_in_loss(
 
 
 @patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_augment_portfolio_pnl_usdc_uses_open_qty_not_qty_total(
+    mock_wait: MagicMock,
+) -> None:
+    """unrealized_pnl_usdc deve usare open_qty FIFO, non portfolio_qty_total."""
+    mock_exchange = MagicMock()
+    portfolio = PortfolioState(
+        usdc_balance=500.0,
+        usdc_balance_total=500.0,
+        usdc_value=500.0,
+        portfolio_qty_free=0.010,
+        portfolio_qty_total=0.010,  # saldo exchange: 0.010
+    )
+    market_data = MarketDataSnapshot(symbol="BTCUSDC", price=90000.0)
+    mock_exchange.get_market_snapshot.return_value = market_data
+    mock_exchange.get_portfolio_state.return_value = portfolio
+
+    mock_memory = MagicMock(spec=MemoryManager)
+    mock_memory.compute_open_position.return_value = {
+        "open_qty": 0.005,          # FIFO traccia solo 0.005 (divergenza)
+        "avg_entry_price": 80000.0,
+    }
+
+    runner = _make_runner(
+        exchange_client=mock_exchange,
+        memory_manager=mock_memory,
+    )
+    runner.run()
+
+    # P&L % non dipende dalla quantità: invariato
+    assert portfolio.unrealized_pnl_pct == pytest.approx(12.5)
+    # P&L USDC deve usare open_qty=0.005, NON qty_total=0.010
+    # (90000 - 80000) * 0.005 = 50.0 USDC
+    assert portfolio.unrealized_pnl_usdc == pytest.approx(50.0)
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_augment_portfolio_logs_warning_on_qty_divergence(
+    mock_wait: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Quando open_qty e qty_total divergono oltre tolleranza viene emesso un WARNING."""
+    import logging
+
+    mock_exchange = MagicMock()
+    portfolio = PortfolioState(
+        usdc_balance=500.0,
+        usdc_balance_total=500.0,
+        usdc_value=500.0,
+        portfolio_qty_free=0.010,
+        portfolio_qty_total=0.010,
+    )
+    mock_exchange.get_market_snapshot.return_value = MarketDataSnapshot(
+        symbol="BTCUSDC", price=90000.0,
+    )
+    mock_exchange.get_portfolio_state.return_value = portfolio
+
+    mock_memory = MagicMock(spec=MemoryManager)
+    mock_memory.compute_open_position.return_value = {
+        "open_qty": 0.005,
+        "avg_entry_price": 80000.0,
+    }
+
+    runner = _make_runner(
+        exchange_client=mock_exchange,
+        memory_manager=mock_memory,
+    )
+
+    with caplog.at_level(logging.WARNING, logger="mdk_crypto_trading"):
+        runner.run()
+
+    assert any("Divergenza" in r.message for r in caplog.records)
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
 def test_first_cycle_is_not_skipped_even_with_skip_enabled(
     mock_wait: MagicMock,
 ) -> None:

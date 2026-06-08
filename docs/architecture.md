@@ -151,7 +151,7 @@ Questo evita JSON incoerenti sparsi nel codice e rende più facili test, logging
 I contratti principali sono:
 
 - `MarketDataSnapshot`: dati di mercato (prezzo, volume, order book, candele, indicatori)
-- `PortfolioState`: saldi, ordini aperti, ultimi trade. Contiene anche due campi opzionali calcolati a runtime dal runner: `avg_entry_price` (prezzo medio di carico FIFO della posizione aperta) e `unrealized_pnl_pct` (P&L non realizzato % al prezzo corrente). Entrambi sono `None` se non c'è posizione aperta.
+- `PortfolioState`: saldi, ordini aperti, ultimi trade. Contiene anche tre campi opzionali calcolati a runtime dal runner: `avg_entry_price` (prezzo medio di carico FIFO della posizione aperta), `unrealized_pnl_pct` (P&L non realizzato % al prezzo corrente) e `unrealized_pnl_usdc` (P&L in valore assoluto USDC, calcolato sulla quantità tracciata dal FIFO `open_qty` — non sul saldo totale dell'exchange). Tutti e tre sono `None` se non c'è posizione aperta.
 - `MarketAnalysis`: output del `Market Analyst`
 - `TradeProposal`: output del `Decision Maker`
 - `RiskAssessment`: output del `Risk Manager`
@@ -191,7 +191,7 @@ Il punto di ingresso è `src/main.py`, che fa il bootstrap di tutti i componenti
   - `decision_memory`: ultime 10 decisioni complete
   - `performance_summary`: riassunto testuale delle ultime 10 vendite calcolate con metodo FIFO (profitti/perdite, P&L medio % e P&L totale in USDC)
   - `recent_performance`: ultime 10 decisioni con, per le SELL eseguite, `realized_pnl` (USDC) e `pnl_pct` (%) calcolati con metodo FIFO
-- `compute_open_position(symbol)`: calcola la posizione aperta (lotti BUY non ancora venduti) come `{"open_qty": float, "avg_entry_price": float}` usando la coda FIFO residua. Usato dal runner per popolare `PortfolioState.avg_entry_price` e `PortfolioState.unrealized_pnl_pct` prima di ogni ciclo.
+- `compute_open_position(symbol)`: calcola la posizione aperta (lotti BUY non ancora venduti) come `{"open_qty": float, "avg_entry_price": float}` usando la coda FIFO residua. Usato dal runner per popolare `PortfolioState.avg_entry_price`, `unrealized_pnl_pct` e `unrealized_pnl_usdc` prima di ogni ciclo. Il P&L in USDC usa `open_qty` (quantità tracciata dal bot) e non il saldo totale dell'exchange, per garantire coerenza: le monete non tracciate dalla memoria FIFO hanno costo di carico ignoto. Se `open_qty` e il saldo exchange divergono oltre l'1%, il runner emette un WARNING diagnostico.
 
 ### Cache per-ciclo
 
