@@ -98,6 +98,7 @@ Esegue la proposta se approvata. Nessuna decisione strategica.
 
 - Se `risk_decision` non è `APPROVE` → non esegue
 - Se l'azione è `HOLD` → non esegue
+- Prima di eseguire qualsiasi ordine, applica guardrail deterministici: blocca ordini con quantity o price non validi, ordini il cui notional è **sotto `min_order_usdc`** (guardrail minimo) o **sopra `max_order_notional_usdc`** (guardrail massimo), ordini che superano `max_position_pct` del portafoglio totale, e `CANCEL_AND_REPLACE_ORDER` con `order_id` non presente negli ordini aperti. In tutti questi casi restituisce `NOT_EXECUTED` con reason tracciata, senza chiamare l'exchange.
 - Se `CANCEL_AND_REPLACE_ORDER` → cancella l'ordine vecchio, poi piazza il nuovo. Se la cancellazione va a buon fine ma la sostituzione fallisce, il report risulta `FAILED` con flag `unprotected_position=True`: il runner intercetta questo flag e invia un alert Telegram dedicato (`[ALARM] POSIZIONE SCOPERTA`), richiedendo intervento manuale immediato.
 - Se `SELL_OCO` → piazza un OCO SELL su Binance (Take Profit LIMIT + Stop Loss STOP_LOSS_LIMIT abbinati)
 - Se l'esecuzione fallisce → segnala `FAILED` nel report

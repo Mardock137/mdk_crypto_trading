@@ -41,6 +41,7 @@ def _make_input(
     mandate: InvestmentMandate = _DEFAULT_MANDATE,
     current_price: float | None = 100_000.0,
     max_order_notional_usdc: float = 100_000.0,
+    min_order_usdc: float = 0.0,
 ) -> ExecutionInput:
     return ExecutionInput(
         symbol="BTCUSDC",
@@ -50,6 +51,7 @@ def _make_input(
         mandate=mandate,
         max_order_notional_usdc=max_order_notional_usdc,
         current_price=current_price,
+        min_order_usdc=min_order_usdc,
     )
 
 
@@ -334,6 +336,44 @@ def test_guardrail_notional_within_cap_passes() -> None:
     report = agent.run(_make_input(proposal, APPROVED, max_order_notional_usdc=1000.0))
 
     assert report.execution_status is ExecutionStatus.EXECUTED
+
+
+# --- Guardrail: minimo notional ---
+
+
+def test_guardrail_min_order_blocks_order_below_minimum() -> None:
+    """Un ordine il cui notional è sotto min_order_usdc viene bloccato con NOT_EXECUTED."""
+    proposal = TradeProposal(
+        action=TradeAction.BUY,
+        order_type=OrderType.LIMIT,
+        confidence=0.85,
+        reason="segnale",
+        details=TradeProposalDetails(quantity=0.0001, price=50_000.0),  # notional = 5 USDC
+    )
+    agent = ExecutionTraderAgent(exchange_client=MagicMock())
+    report = agent.run(_make_input(proposal, APPROVED, min_order_usdc=10.0))
+
+    assert report.execution_status is ExecutionStatus.NOT_EXECUTED
+    assert "Guardrail" in report.reason
+    assert "minimo" in report.reason
+
+
+def test_guardrail_min_order_passes_order_above_minimum() -> None:
+    """Un ordine il cui notional supera min_order_usdc viene eseguito normalmente."""
+    mock_exchange = MagicMock()
+    mock_exchange.place_limit_order.return_value = {"orderId": "Y"}
+    proposal = TradeProposal(
+        action=TradeAction.BUY,
+        order_type=OrderType.LIMIT,
+        confidence=0.85,
+        reason="segnale",
+        details=TradeProposalDetails(quantity=0.001, price=50_000.0),  # notional = 50 USDC
+    )
+    agent = ExecutionTraderAgent(exchange_client=mock_exchange)
+    report = agent.run(_make_input(proposal, APPROVED, min_order_usdc=10.0))
+
+    assert report.execution_status is ExecutionStatus.EXECUTED
+    mock_exchange.place_limit_order.assert_called_once()
 
 
 # --- Guardrail: cap percentuale portafoglio ---

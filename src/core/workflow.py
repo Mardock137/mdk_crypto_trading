@@ -97,6 +97,7 @@ class TradingWorkflow:
                     mandate=cycle_input.mandate,
                     max_order_notional_usdc=cycle_input.constraints.max_order_notional_usdc,
                     current_price=cycle_input.market_data.price,
+                    min_order_usdc=cycle_input.constraints.min_order_usdc,
                 )
             )
         except Exception as exc:

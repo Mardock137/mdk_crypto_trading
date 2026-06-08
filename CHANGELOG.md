@@ -1,6 +1,27 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.25.0 — 2026-06-08
+
+### Aggiunto
+
+- `src/core/contracts.py`: nuovo campo `min_order_usdc: float = 0.0` in `ExecutionInput`. Default `0.0` = guardrail disattivato (retrocompatibile con chi non lo imposta).
+- `src/agents/execution_trader.py`: guardrail deterministico in `_validate_guardrails` — se `min_order_usdc > 0` e `notional < min_order_usdc`, restituisce `NOT_EXECUTED` con reason tracciata. Il controllo avviene prima del cap massimo, a specchio di `max_order_notional_usdc`.
+
+### Modificato
+
+- `src/core/workflow.py`: `ExecutionInput` ora riceve `min_order_usdc=cycle_input.constraints.min_order_usdc`.
+
+### Test
+
+- `tests/agents/test_execution_trader.py`: helper `_make_input` aggiornato con parametro `min_order_usdc: float = 0.0`. Nuovi test: `test_guardrail_min_order_blocks_order_below_minimum` (notional 5 USDC < minimo 10 USDC → `NOT_EXECUTED`) e `test_guardrail_min_order_passes_order_above_minimum` (notional 50 USDC > minimo 10 USDC → `EXECUTED`).
+- `tests/core/test_workflow.py`: nuovo test `test_workflow_passes_min_order_usdc_to_execution_input` — verifica che `constraints.min_order_usdc` arrivi correttamente a `ExecutionInput`.
+
+### Documentazione
+
+- `docs/config.md`: descrizione di `min_order_usdc` aggiornata per indicare il guardrail deterministico nell'`ExecutionTraderAgent` (a specchio di `max_order_notional_usdc`).
+- `docs/decision_logic.md`: sezione "Execution Trader" — aggiunto riepilogo dei guardrail deterministici con menzione esplicita del minimo notional.
+
 ## 1.24.3 — 2026-06-08
 
 ### Corretto

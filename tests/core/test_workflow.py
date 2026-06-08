@@ -409,3 +409,30 @@ def test_workflow_passes_current_price_to_decision_maker() -> None:
     workflow.run_cycle(cycle_input)
 
     assert captured["current_price"] == pytest.approx(100000.0)
+
+
+def test_workflow_passes_min_order_usdc_to_execution_input() -> None:
+    """Il workflow deve passare constraints.min_order_usdc a ExecutionInput."""
+    captured: dict[str, object] = {}
+
+    class CapturingExecutionTrader:
+        def run(self, agent_input: ExecutionInput) -> ExecutionReport:
+            captured["min_order_usdc"] = agent_input.min_order_usdc
+            return ExecutionReport(
+                execution_status=ExecutionStatus.EXECUTED,
+                executed_action=TradeAction.BUY,
+                order_type=OrderType.MARKET,
+                reason="ok",
+            )
+
+    workflow = TradingWorkflow(
+        market_analyst=DummyMarketAnalyst([]),
+        decision_maker=DummyDecisionMaker([]),
+        risk_manager=DummyRiskManager([]),
+        execution_trader=CapturingExecutionTrader(),
+    )
+
+    cycle_input = _make_cycle_input()  # constraints.min_order_usdc=10.0
+    workflow.run_cycle(cycle_input)
+
+    assert captured["min_order_usdc"] == pytest.approx(10.0)

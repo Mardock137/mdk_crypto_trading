@@ -244,6 +244,7 @@ class ExecutionInput:
     mandate: InvestmentMandate
     max_order_notional_usdc: float
     current_price: float | None = None
+    min_order_usdc: float = 0.0
 
 
 @dataclass(slots=True)

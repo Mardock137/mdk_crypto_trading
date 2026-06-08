@@ -136,6 +136,17 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
                 )
 
             notional = qty * reference_price
+            min_order = agent_input.min_order_usdc
+            if min_order > 0 and notional < min_order:
+                return ExecutionReport(
+                    execution_status=ExecutionStatus.NOT_EXECUTED,
+                    executed_action=proposal.action,
+                    order_type=proposal.order_type,
+                    reason=(
+                        f"Guardrail: notional {notional:.2f} USDC sotto il minimo "
+                        f"{min_order:.2f} USDC"
+                    ),
+                )
             if notional > max_notional:
                 return ExecutionReport(
                     execution_status=ExecutionStatus.NOT_EXECUTED,

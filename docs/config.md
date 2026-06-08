@@ -60,7 +60,7 @@ mandate:
 
 Campi:
 
-- `min_order_usdc`: valore minimo interno consentito per un ordine, in USDC.
+- `min_order_usdc`: soglia minima del notional (quantità × prezzo) consentita per un singolo ordine, in USDC. Il guardrail nell'`ExecutionTraderAgent` blocca qualsiasi ordine il cui notional sia inferiore a questo valore, restituendo `NOT_EXECUTED` con reason tracciata negli event log — a specchio del guardrail massimo (`max_order_notional_usdc`). Difesa in profondità: affianca (non sostituisce) il filtro `minNotional` di Binance.
 - `max_order_notional_usdc`: valore massimo del notional (quantità × prezzo) consentito per un singolo ordine, in USDC. Il guardrail nell'`ExecutionTraderAgent` blocca qualsiasi ordine il cui notional superi questo limite, restituendo `NOT_EXECUTED` con reason tracciata negli event log. Il fallback software (se il campo manca dal file) è `500.0`.
 - `breakeven_trigger_pct`: soglia di profitto non realizzato (in percentuale) oltre la quale il runner sposta automaticamente lo Stop Loss dell'OCO attivo al prezzo di ingresso (breakeven). Il meccanismo è deterministico, viene eseguito prima della catena LLM e non coinvolge il Decision Maker. Non viene eseguito se il kill switch è attivo (`KILL_SWITCH=1`). Il fallback software è `2.0`.
 - `oco_review_interval_hours`: ore trascorse dall'apertura di un OCO oltre le quali il runner imposta `oco_review_required = True` nel ciclo corrente. Quando il flag è `True`, il prompt del Decision Maker rende obbligatoria la valutazione esplicita dei livelli TP/SL. Il fallback software è `24.0`.
