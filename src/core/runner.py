@@ -12,10 +12,13 @@ from src.agents.performance_reviewer import PerformanceReviewerAgent
 from src.core import notifications
 from src.core.contracts import (
     ExecutionStatus,
+    MarketAnalysis,
     MarketDataSnapshot,
     OperationConstraints,
     PortfolioState,
+    RiskAssessment,
     TradingCycleInput,
+    TradeProposal,
 )
 from src.core.circuit_breaker import CircuitBreaker, build_error_signature
 from src.core.exceptions import CycleExecutionError, MdkTradingError
@@ -311,76 +314,19 @@ class TradingRunner:
             self._logger.info("Ciclo completato con successo")
             self._circuit_breaker.record_success()
         except CycleExecutionError as exc:
-            cid = uuid.uuid4().hex[:8]
-            self._logger.error(
-                "Errore operativo durante il ciclo [cid=%s]: %s",
-                cid,
-                exc.original,
-                exc_info=exc.original,
-            )
-            self._event_logger.log_error(
-                symbol=self._symbol,
-                trading_mode=self._settings.trading_mode.value,
-                error=str(exc.original),
-                correlation_id=cid,
+            self._handle_cycle_error(
+                exc,
+                reported=exc.original,
                 market_analysis=exc.market_analysis,
                 trade_proposal=exc.trade_proposal,
                 risk_assessment=exc.risk_assessment,
             )
-            if self._telegram_notifier:
-                self._telegram_notifier.send_message(
-                    notifications.build_error_message(
-                        symbol=self._symbol,
-                        correlation_id=cid,
-                        error_category=_classify_error(exc.original),
-                    )
-                )
-            self._handle_circuit_breaker(exc)
         except (MdkTradingError, OSError) as exc:
-            cid = uuid.uuid4().hex[:8]
-            self._logger.error(
-                "Errore operativo durante il ciclo [cid=%s]: %s", cid, exc, exc_info=True,
-            )
-            self._event_logger.log_error(
-                symbol=self._symbol,
-                trading_mode=self._settings.trading_mode.value,
-                error=str(exc),
-                correlation_id=cid,
-            )
-            if self._telegram_notifier:
-                self._telegram_notifier.send_message(
-                    notifications.build_error_message(
-                        symbol=self._symbol,
-                        correlation_id=cid,
-                        error_category=_classify_error(exc),
-                    )
-                )
-            self._handle_circuit_breaker(exc)
+            self._handle_cycle_error(exc)
         except Exception as exc:
-            # I bug imprevisti (es. AttributeError per refactoring sbagliato) vengono
-            # gestiti come gli altri errori operativi: notifica + circuit breaker.
-            # Se si ripetono identici raggiungono la soglia e il bot va in pausa,
-            # evitando il crash loop del processo (e i conseguenti restart Docker
-            # senza backoff).
-            cid = uuid.uuid4().hex[:8]
-            self._logger.error(
-                "Bug imprevisto durante il ciclo [cid=%s]: %s", cid, exc, exc_info=True,
-            )
-            self._event_logger.log_error(
-                symbol=self._symbol,
-                trading_mode=self._settings.trading_mode.value,
-                error=str(exc),
-                correlation_id=cid,
-            )
-            if self._telegram_notifier:
-                self._telegram_notifier.send_message(
-                    notifications.build_error_message(
-                        symbol=self._symbol,
-                        correlation_id=cid,
-                        error_category=_classify_error(exc),
-                    )
-                )
-            self._handle_circuit_breaker(exc)
+            # I bug imprevisti vengono gestiti come gli altri errori operativi:
+            # notifica + circuit breaker evita il crash loop del processo.
+            self._handle_cycle_error(exc, label="Bug imprevisto")
 
     def _handle_circuit_breaker(self, exc: BaseException) -> None:
         """Registra l'errore nel circuit breaker e notifica se scatta.
@@ -408,6 +354,41 @@ class TradingRunner:
                     threshold=self._circuit_breaker.threshold,
                 )
             )
+
+    def _handle_cycle_error(
+        self,
+        exc: BaseException,
+        *,
+        reported: BaseException | None = None,
+        label: str = "Errore operativo",
+        market_analysis: MarketAnalysis | None = None,
+        trade_proposal: TradeProposal | None = None,
+        risk_assessment: RiskAssessment | None = None,
+    ) -> None:
+        """Centralizza la gestione degli errori ricorrenti in _run_single_cycle."""
+        target = reported if reported is not None else exc
+        cid = uuid.uuid4().hex[:8]
+        self._logger.error(
+            "%s durante il ciclo [cid=%s]: %s", label, cid, target, exc_info=target,
+        )
+        self._event_logger.log_error(
+            symbol=self._symbol,
+            trading_mode=self._settings.trading_mode.value,
+            error=str(target),
+            correlation_id=cid,
+            market_analysis=market_analysis,
+            trade_proposal=trade_proposal,
+            risk_assessment=risk_assessment,
+        )
+        if self._telegram_notifier:
+            self._telegram_notifier.send_message(
+                notifications.build_error_message(
+                    symbol=self._symbol,
+                    correlation_id=cid,
+                    error_category=_classify_error(target),
+                )
+            )
+        self._handle_circuit_breaker(exc)
 
     def _build_cycle_input(
         self,

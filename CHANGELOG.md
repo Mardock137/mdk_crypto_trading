@@ -1,6 +1,12 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.25.3 — 2026-06-08
+
+### Refactoring
+
+- `src/core/runner.py`: eliminata la duplicazione nei tre blocchi `except` di `_run_single_cycle`. Il nuovo metodo privato `_handle_cycle_error` centralizza le operazioni comuni (generazione `cid`, log, `log_error`, notifica Telegram, `_handle_circuit_breaker`). I parametri `reported`, `label`, `market_analysis`, `trade_proposal`, `risk_assessment` coprono le differenze tra i tre branch. Nessun comportamento cambiato.
+
 ## 1.25.2 — 2026-06-08
 
 ### Refactoring
