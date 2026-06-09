@@ -112,6 +112,74 @@ class MemoryManager:
             result.append(entry)
         return result
 
+    def compact(self, symbol: str, keep_last_n: int) -> int:
+        """Compatta il file JSONL del simbolo rimuovendo i record piu vecchi.
+
+        Mantiene gli ultimi ``keep_last_n`` record reali e preserva i lotti BUY
+        aperti presenti nella finestra pre-cutoff come record sintetici, in modo
+        che il FIFO riparta da uno stato coerente senza dover rileggere tutto lo
+        storico originale.
+
+        La scrittura e' atomica: prima scrive su ``<symbol>.jsonl.tmp``, poi
+        rinomina via ``replace()`` che e' atomico su tutti i sistemi operativi.
+        Al termine invalida ``_records_cache`` e ``_fifo_cache`` per il simbolo.
+
+        Ritorna il numero di record originali del pre-cutoff rimossi (>= 0).
+        Se ``keep_last_n >= total``, non fa nulla e ritorna 0.
+        """
+        records = self._read_all(symbol)
+        total = len(records)
+        cutoff = total - keep_last_n
+        if cutoff <= 0:
+            return 0
+
+        pre_cutoff = records[:cutoff]
+        post_cutoff = records[cutoff:]
+
+        _, lot_queue = self._fifo_walk(pre_cutoff)
+
+        now_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+        synthetic_records = [
+            {
+                "timestamp": now_ts,
+                "action": "BUY",
+                "order_type": "LIMIT",
+                "confidence": None,
+                "reason": "[compacted]",
+                "quantity": qty,
+                "price": price,
+                "execution_status": "EXECUTED",
+                "risk_decision": None,
+                "market_bias": None,
+                "_compacted": True,
+            }
+            for qty, price in lot_queue
+            if qty > 0
+        ]
+
+        new_records = synthetic_records + post_cutoff
+        path = self._symbol_path(symbol)
+        tmp_path = path.parent / (path.name + ".tmp")
+        with tmp_path.open("w", encoding="utf-8") as fh:
+            for rec in new_records:
+                fh.write(json.dumps(rec) + "\n")
+        tmp_path.replace(path)
+
+        self._records_cache.pop(symbol, None)
+        self._fifo_cache.pop(symbol, None)
+        return cutoff
+
+    def compact_if_needed(self, symbol: str, threshold: int, keep_last_n: int) -> int:
+        """Compatta solo se il numero di record ha raggiunto la soglia.
+
+        Ritorna il numero di record rimossi, oppure 0 se la soglia non e' stata
+        raggiunta e nessuna azione e' stata eseguita.
+        """
+        records = self._read_all(symbol)
+        if len(records) < threshold:
+            return 0
+        return self.compact(symbol, keep_last_n)
+
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
@@ -143,8 +211,9 @@ class MemoryManager:
         """Ritorna le ultime n righe passando dalla cache di _read_all."""
         return self._read_all(symbol)[-n:]
 
-    def _walk_fifo(self, symbol: str) -> tuple[list[dict], deque[list[float]]]:
-        """Logica FIFO condivisa: itera i record e calcola P&L per ogni SELL EXECUTED.
+    @staticmethod
+    def _fifo_walk(records: list[dict]) -> tuple[list[dict], deque[list[float]]]:
+        """Logica FIFO pura su una lista di record, senza cache.
 
         Ogni BUY EXECUTED aggiunge un lotto (quantity, price) in coda.
         Ogni SELL EXECUTED consuma i lotti partendo dal piu vecchio.
@@ -157,9 +226,6 @@ class MemoryManager:
         - lot_queue: deque dei lotti BUY ancora aperti (non consumati da SELL),
           ognuno come [qty_residua, price]
         """
-        if symbol in self._fifo_cache:
-            return self._fifo_cache[symbol]
-        records = self._read_all(symbol)
         lot_queue: deque[list[float]] = deque()
         results: list[dict] = []
 
@@ -215,8 +281,16 @@ class MemoryManager:
                     "pnl_pct": pnl_pct,
                 })
 
-        self._fifo_cache[symbol] = (results, lot_queue)
         return results, lot_queue
+
+    def _walk_fifo(self, symbol: str) -> tuple[list[dict], deque[list[float]]]:
+        """Wrapper con cache attorno a _fifo_walk: legge tutti i record e li processa."""
+        if symbol in self._fifo_cache:
+            return self._fifo_cache[symbol]
+        records = self._read_all(symbol)
+        result = self._fifo_walk(records)
+        self._fifo_cache[symbol] = result
+        return result
 
     def compute_fifo_trades(self, symbol: str) -> list[dict]:
         """Calcola le vendite realizzate usando il metodo FIFO.

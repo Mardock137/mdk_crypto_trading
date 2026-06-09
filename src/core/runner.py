@@ -185,6 +185,18 @@ class TradingRunner:
             )
 
         try:
+            cb_compact = self._trading_config.get("memory_compaction", {})
+            removed = self._memory_manager.compact_if_needed(
+                self._symbol,
+                threshold=int(cb_compact.get("threshold", 5000)),
+                keep_last_n=int(cb_compact.get("keep_last_n", 100)),
+            )
+            if removed:
+                self._logger.info(
+                    "Compattazione memoria: rimossi %d record obsoleti per %s",
+                    removed,
+                    self._symbol,
+                )
             while not self._shutdown_requested:
                 if self._circuit_breaker.is_tripped():
                     self._touch_heartbeat()

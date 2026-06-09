@@ -1,6 +1,21 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.26.0 — 2026-06-09
+
+### Aggiunto
+
+- `src/utils/memory_manager.py`: aggiunta la compattazione automatica del file JSONL della memoria.
+  - `_fifo_walk(records)` *(nuovo metodo statico)*: logica FIFO pura su una lista di record, senza cache. Estrae il cuore del calcolo da `_walk_fifo`, che diventa un wrapper con cache attorno ad esso.
+  - `compact(symbol, keep_last_n)` *(nuovo)*: compatta il file JSONL mantenendo gli ultimi `keep_last_n` record reali. I lotti BUY aperti nella finestra rimossa vengono preservati come record sintetici (campo `_compacted: true`) per garantire la correttezza del calcolo FIFO successivo. Scrittura atomica via file `.jsonl.tmp` + `replace()`.
+  - `compact_if_needed(symbol, threshold, keep_last_n)` *(nuovo)*: chiama `compact` solo se il numero di record ha raggiunto la soglia; ritorna il numero di record rimossi o `0` se nessuna azione è stata eseguita.
+- `config/trading.yaml`: aggiunta sezione `memory_compaction` con `threshold: 5000` e `keep_last_n: 100`. A cicli di 5 minuti corrisponde a circa 17 giorni di storico prima che scatti la compattazione.
+- `src/core/runner.py`: all'avvio di `run()`, prima del loop principale, viene chiamato `compact_if_needed` con i parametri letti da `trading_config`. Se la compattazione scatta, viene scritto un log `INFO` con il numero di record rimossi.
+
+### Test
+
+- `tests/utils/test_memory_manager.py`: aggiunti 8 test per la nuova feature di compattazione — `test_compact_does_nothing_if_below_threshold`, `test_compact_preserves_open_lots_correctly`, `test_compact_preserves_realized_pnl`, `test_compact_keeps_recent_records_for_dm`, `test_compact_invalidates_cache`, `test_compact_atomic_write`, `test_compact_if_needed_triggers_above_threshold`, `test_compact_if_needed_skips_below_threshold`.
+
 ## 1.25.8 — 2026-06-09
 
 ### Modificato

@@ -652,3 +652,131 @@ def test_cache_invalidated_separately_per_symbol(tmp_path: Path) -> None:
     )
     assert len(mm.get_memory("BTCUSDC")) == 3
     assert len(mm.get_memory("ETHUSDC")) == 1
+
+
+# ------------------------------------------------------------------
+# compact / compact_if_needed
+# ------------------------------------------------------------------
+
+
+def test_compact_does_nothing_if_below_threshold(tmp_path: Path) -> None:
+    """Se il numero di record e' sotto la soglia, compact_if_needed non modifica nulla."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    for i in range(4):
+        mm.save_cycle("BTCUSDC", result=_make_result(), current_price=float(60000 + i))
+
+    removed = mm.compact_if_needed("BTCUSDC", threshold=5, keep_last_n=2)
+
+    assert removed == 0
+    assert len(mm._read_all("BTCUSDC")) == 4
+
+
+def test_compact_preserves_open_lots_correctly(tmp_path: Path) -> None:
+    """Dopo la compattazione, compute_open_position deve restituire lo stesso risultato."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    # BUY, SELL (consuma 1° lotto), BUY aperto, HOLD
+    mm.save_cycle("BTCUSDC", result=_make_result(action=TradeAction.BUY, quantity=0.001), current_price=80000.0)
+    mm.save_cycle("BTCUSDC", result=_make_result(action=TradeAction.SELL, quantity=0.001), current_price=83000.0)
+    mm.save_cycle("BTCUSDC", result=_make_result(action=TradeAction.BUY, quantity=0.002), current_price=85000.0)
+    mm.save_cycle(
+        "BTCUSDC",
+        result=_make_result(action=TradeAction.HOLD, execution_status=ExecutionStatus.NOT_EXECUTED, quantity=None),
+        current_price=None,
+    )
+
+    pos_before = mm.compute_open_position("BTCUSDC")
+    assert pos_before is not None
+
+    mm.compact("BTCUSDC", keep_last_n=1)
+
+    pos_after = mm.compute_open_position("BTCUSDC")
+    assert pos_after is not None
+    assert pos_after["open_qty"] == pytest.approx(pos_before["open_qty"])
+    assert pos_after["avg_entry_price"] == pytest.approx(pos_before["avg_entry_price"])
+
+
+def test_compact_preserves_realized_pnl(tmp_path: Path) -> None:
+    """Dopo la compattazione, compute_fifo_trades deve dare gli stessi numeri."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    # Il BUY finira' in pre-cutoff; la SELL resta in keep_last_n=1
+    mm.save_cycle("BTCUSDC", result=_make_result(action=TradeAction.BUY, quantity=0.001), current_price=80000.0)
+    mm.save_cycle("BTCUSDC", result=_make_result(action=TradeAction.SELL, quantity=0.001), current_price=83000.0)
+
+    trades_before = mm.compute_fifo_trades("BTCUSDC")
+
+    mm.compact("BTCUSDC", keep_last_n=1)
+
+    trades_after = mm.compute_fifo_trades("BTCUSDC")
+    assert len(trades_after) == len(trades_before)
+    assert trades_after[0]["realized_pnl"] == pytest.approx(trades_before[0]["realized_pnl"])
+    assert trades_after[0]["pnl_pct"] == pytest.approx(trades_before[0]["pnl_pct"])
+
+
+def test_compact_keeps_recent_records_for_dm(tmp_path: Path) -> None:
+    """get_memory deve restituire gli ultimi 10 record reali dopo la compattazione."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    for i in range(20):
+        mm.save_cycle("BTCUSDC", result=_make_result(), current_price=float(60000 + i))
+
+    all_records = mm._read_all("BTCUSDC")
+    expected_prices = [r["price"] for r in all_records[-10:]]
+
+    mm.compact("BTCUSDC", keep_last_n=10)
+
+    memory = mm.get_memory("BTCUSDC")
+    actual_prices = [r["price"] for r in memory]
+    assert actual_prices == expected_prices
+
+
+def test_compact_invalidates_cache(tmp_path: Path) -> None:
+    """compact deve svuotare _records_cache e _fifo_cache per il simbolo."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    for i in range(5):
+        mm.save_cycle("BTCUSDC", result=_make_result(), current_price=float(60000 + i))
+
+    # popola le cache
+    mm.get_memory("BTCUSDC")
+    mm.compute_open_position("BTCUSDC")
+    assert "BTCUSDC" in mm._records_cache
+    assert "BTCUSDC" in mm._fifo_cache
+
+    mm.compact("BTCUSDC", keep_last_n=2)
+
+    assert "BTCUSDC" not in mm._records_cache
+    assert "BTCUSDC" not in mm._fifo_cache
+
+
+def test_compact_atomic_write(tmp_path: Path) -> None:
+    """Il file temporaneo .jsonl.tmp non deve restare sul disco dopo la compattazione."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    for i in range(5):
+        mm.save_cycle("BTCUSDC", result=_make_result(), current_price=float(60000 + i))
+
+    mm.compact("BTCUSDC", keep_last_n=2)
+
+    assert not (tmp_path / "BTCUSDC.jsonl.tmp").exists()
+
+
+def test_compact_if_needed_triggers_above_threshold(tmp_path: Path) -> None:
+    """Se il numero di record >= soglia, compact_if_needed deve compattare e ritornare > 0."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    for i in range(6):
+        mm.save_cycle("BTCUSDC", result=_make_result(), current_price=float(60000 + i))
+
+    removed = mm.compact_if_needed("BTCUSDC", threshold=5, keep_last_n=2)
+
+    assert removed > 0
+    real_records = [r for r in mm._read_all("BTCUSDC") if not r.get("_compacted")]
+    assert len(real_records) == 2
+
+
+def test_compact_if_needed_skips_below_threshold(tmp_path: Path) -> None:
+    """Se il numero di record < soglia, compact_if_needed non fa nulla e ritorna 0."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    for i in range(4):
+        mm.save_cycle("BTCUSDC", result=_make_result(), current_price=float(60000 + i))
+
+    removed = mm.compact_if_needed("BTCUSDC", threshold=5, keep_last_n=2)
+
+    assert removed == 0
+    assert len(mm._read_all("BTCUSDC")) == 4

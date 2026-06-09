@@ -11,3 +11,7 @@ mandate:
 circuit_breaker:
   threshold: 3
   log_interval_seconds: 3600
+
+memory_compaction:
+  threshold: 5000
+  keep_last_n: 100
