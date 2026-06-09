@@ -200,6 +200,12 @@ def test_get_recent_performance_includes_quantity(tmp_path: Path) -> None:
     assert perf[0]["quantity"] == pytest.approx(0.002)
 
 
+def test_get_recent_performance_returns_empty_for_missing_symbol(tmp_path: Path) -> None:
+    """get_recent_performance deve ritornare lista vuota se il simbolo non ha file."""
+    mm = MemoryManager(memory_dir=tmp_path)
+    assert mm.get_recent_performance("ETHUSDC") == []
+
+
 def test_get_recent_performance_hold_has_no_pnl_fields(tmp_path: Path) -> None:
     """get_recent_performance: i record HOLD non devono avere realized_pnl o pnl_pct."""
     mm = MemoryManager(memory_dir=tmp_path)

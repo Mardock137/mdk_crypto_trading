@@ -93,14 +93,12 @@ class MemoryManager:
 
         Per le SELL eseguite include anche i dati FIFO (realized_pnl, pnl_pct).
         """
-        records = self._read_last_n(symbol, n=10)
         fifo_by_idx = self._build_fifo_index(symbol)
-
-        result: list[dict] = []
         all_records = self._read_all(symbol)
         total = len(all_records)
         last_10_start = max(0, total - 10)
 
+        result: list[dict] = []
         for i, record in enumerate(all_records[last_10_start:], start=last_10_start):
             entry: dict = {
                 "action": record.get("action"),
@@ -112,18 +110,6 @@ class MemoryManager:
                 entry["realized_pnl"] = fifo_by_idx[i]["realized_pnl"]
                 entry["pnl_pct"] = fifo_by_idx[i]["pnl_pct"]
             result.append(entry)
-
-        # fallback: se _build_fifo_index non ha dati usa i record semplici
-        if not result:
-            return [
-                {
-                    "action": r.get("action"),
-                    "price": r.get("price"),
-                    "quantity": r.get("quantity"),
-                    "execution_status": r.get("execution_status"),
-                }
-                for r in records
-            ]
         return result
 
     # ------------------------------------------------------------------

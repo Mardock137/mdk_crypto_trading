@@ -1,6 +1,16 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.25.5 — 2026-06-09
+
+### Modificato
+
+- `src/utils/memory_manager.py`: rimosso il ramo morto in `get_recent_performance`. La variabile `records` (chiamata ridondante a `_read_last_n`) e il blocco `if not result` finale sono stati eliminati: il fallback era irraggiungibile in modo utile perché `result` è vuoto se e solo se `all_records` è vuoto, nel qual caso anche `records` sarebbe stato `[]`. Nessun comportamento cambiato.
+
+### Test
+
+- `tests/utils/test_memory_manager.py`: aggiunto `test_get_recent_performance_returns_empty_for_missing_symbol` — verifica che il metodo ritorni `[]` quando non esiste nessun record per il simbolo richiesto.
+
 ## 1.25.4 — 2026-06-09
 
 ### Modificato
