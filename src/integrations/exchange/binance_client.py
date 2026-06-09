@@ -35,6 +35,10 @@ _binance_retry = retry(
 logger = logging.getLogger(__name__)
 
 
+_AGE_HOURS = "age_hours"
+_TYPE_LIMIT_MAKER = "LIMIT_MAKER"
+
+
 def _add_age_to_orders(orders: list[dict[str, Any]]) -> None:
     """Aggiunge ``age_hours`` a ogni ordine in-place.
 
@@ -51,7 +55,7 @@ def _add_age_to_orders(orders: list[dict[str, Any]]) -> None:
             order_time_ms = int(raw_time)
         except (TypeError, ValueError):
             continue
-        order["age_hours"] = round((now_ms - order_time_ms) / 3_600_000, 1)
+        order[_AGE_HOURS] = round((now_ms - order_time_ms) / 3_600_000, 1)
 
 
 class BinanceClient(BaseExchangeClient):
@@ -351,7 +355,7 @@ class BinanceClient(BaseExchangeClient):
             symbol=symbol,
             side="SELL",
             quantity=quantity,
-            aboveType="LIMIT_MAKER",
+            aboveType=_TYPE_LIMIT_MAKER,
             abovePrice=str(tp_price),
             belowType="STOP_LOSS_LIMIT",
             belowPrice=str(sl_limit_price),

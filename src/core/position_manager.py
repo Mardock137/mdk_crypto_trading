@@ -10,6 +10,16 @@ from src.utils.memory_manager import MemoryManager
 # considerati divergenti e viene emesso un WARNING diagnostico.
 _POSITION_QTY_TOLERANCE = 0.01
 
+# Chiavi dei dizionari ordine Binance
+_ORDER_TYPE = "type"
+_TYPE_LIMIT_MAKER = "LIMIT_MAKER"
+_TYPE_STOP_LOSS_LIMIT = "STOP_LOSS_LIMIT"
+_ORDER_LIST_ID = "orderListId"
+_STOP_PRICE = "stopPrice"
+_ORIG_QTY = "origQty"
+_ORDER_PRICE = "price"
+_AGE_HOURS = "age_hours"
+
 
 class PositionManager:
     """Gestisce la posizione aperta: calcolo P&L FIFO, breakeven automatico OCO e flag oco_review_required."""
@@ -103,29 +113,29 @@ class PositionManager:
 
         orders = portfolio.open_orders
         tp_order = next(
-            (o for o in orders if o.get("type") == "LIMIT_MAKER"), None
+            (o for o in orders if o.get(_ORDER_TYPE) == _TYPE_LIMIT_MAKER), None
         )
         sl_order = next(
-            (o for o in orders if o.get("type") == "STOP_LOSS_LIMIT"), None
+            (o for o in orders if o.get(_ORDER_TYPE) == _TYPE_STOP_LOSS_LIMIT), None
         )
         if tp_order is None or sl_order is None:
             return
 
-        tp_list_id = tp_order.get("orderListId")
-        sl_list_id = sl_order.get("orderListId")
+        tp_list_id = tp_order.get(_ORDER_LIST_ID)
+        sl_list_id = sl_order.get(_ORDER_LIST_ID)
         if tp_list_id is None or tp_list_id != sl_list_id:
             return
 
         try:
-            sl_stop_price = float(sl_order["stopPrice"])
+            sl_stop_price = float(sl_order[_STOP_PRICE])
         except (KeyError, TypeError, ValueError):
             return
         if sl_stop_price >= avg_entry:
             return
 
         try:
-            qty = float(tp_order["origQty"])
-            tp_price = float(tp_order["price"])
+            qty = float(tp_order[_ORIG_QTY])
+            tp_price = float(tp_order[_ORDER_PRICE])
             order_list_id = int(tp_list_id)
         except (KeyError, TypeError, ValueError) as exc:
             self._logger.warning("Breakeven: impossibile leggere i dati OCO: %s", exc)
@@ -156,8 +166,8 @@ class PositionManager:
     def is_oco_review_required(self, portfolio: PortfolioState) -> bool:
         """Restituisce True se almeno un ordine OCO è aperto da >= oco_review_interval_hours."""
         for order in portfolio.open_orders:
-            list_id = order.get("orderListId", -1)
-            age = order.get("age_hours", 0.0)
+            list_id = order.get(_ORDER_LIST_ID, -1)
+            age = order.get(_AGE_HOURS, 0.0)
             if list_id != -1 and float(age) >= self._oco_review_interval_hours:
                 return True
         return False

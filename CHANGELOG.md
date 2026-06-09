@@ -1,6 +1,13 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.25.6 — 2026-06-09
+
+### Modificato
+
+- `src/core/position_manager.py`: sostituite 8 stringhe magiche con costanti di modulo (`_ORDER_TYPE`, `_TYPE_LIMIT_MAKER`, `_TYPE_STOP_LOSS_LIMIT`, `_ORDER_LIST_ID`, `_STOP_PRICE`, `_ORIG_QTY`, `_ORDER_PRICE`, `_AGE_HOURS`) aggiunte sotto `_POSITION_QTY_TOLERANCE`. Nessun comportamento cambiato.
+- `src/integrations/exchange/binance_client.py`: sostituite 2 stringhe magiche (`"age_hours"` e `"LIMIT_MAKER"`) con le costanti di modulo `_AGE_HOURS` e `_TYPE_LIMIT_MAKER`. Nessun comportamento cambiato.
+
 ## 1.25.5 — 2026-06-09
 
 ### Modificato
