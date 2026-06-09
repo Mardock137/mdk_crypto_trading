@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.main import main
+from src.main import build_runner, main
 from src.utils.config import AppSettings, TradingMode
 
 
@@ -248,3 +248,48 @@ def test_main_raises_if_required_api_key_is_missing(
     """main() deve fallire subito se manca una API key LLM obbligatoria."""
     with pytest.raises(ValueError, match="OPENAI_API_KEY"):
         main()
+
+
+# ---------- Test diretti su build_runner ----------
+
+
+@patch("src.main.configure_logging")
+@patch("src.main.TelegramNotifier")
+@patch("src.main.TradingRunner")
+@patch("src.main.BinanceClient")
+@patch("src.main.GeminiInterface")
+@patch("src.main.AnthropicInterface")
+@patch("src.main.OpenAiInterface")
+@patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
+@patch("src.main.load_symbol_config", return_value={"symbol": "BTCUSDC", "quote_currency": "USDC"})
+def test_build_runner_returns_trading_runner(
+    mock_load_symbol: MagicMock,
+    mock_load_llm: MagicMock,
+    mock_openai_cls: MagicMock,
+    mock_anthropic_cls: MagicMock,
+    mock_gemini_cls: MagicMock,
+    mock_binance_cls: MagicMock,
+    mock_runner_cls: MagicMock,
+    mock_telegram_cls: MagicMock,
+    mock_configure_logging: MagicMock,
+) -> None:
+    """build_runner() deve istanziare TradingRunner e restituirlo."""
+    result = build_runner(_FAKE_SETTINGS)
+
+    mock_runner_cls.assert_called_once()
+    assert result is mock_runner_cls.return_value
+
+
+@patch("src.main.configure_logging")
+@patch("src.main.load_llm_model_config", return_value=_FAKE_LLM_CONFIG)
+@patch("src.main.load_symbol_config", return_value={"symbol": "BTCUSDC", "quote_currency": "USDC"})
+def test_build_runner_raises_if_required_api_key_is_missing(
+    mock_load_symbol: MagicMock,
+    mock_load_llm: MagicMock,
+    mock_configure_logging: MagicMock,
+) -> None:
+    """build_runner() deve sollevare ValueError se manca una API key LLM obbligatoria."""
+    settings_no_key = replace(_FAKE_SETTINGS, openai_api_key=None)
+
+    with pytest.raises(ValueError, match="OPENAI_API_KEY"):
+        build_runner(settings_no_key)

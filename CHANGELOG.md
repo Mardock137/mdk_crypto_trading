@@ -1,19 +1,36 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.25.4 — 2026-06-09
+
+### Modificato
+
+- `src/main.py`: estratta la funzione `build_runner(settings: AppSettings) -> TradingRunner` che assorbe l'intero montaggio del sistema (logging, configurazioni LLM, client exchange, agenti, workflow, runner). `main()` scende a 3 righe: `load_settings()` → `build_runner(settings)` → `runner.run()`. Nessun comportamento cambiato.
+
+### Test
+
+- `tests/test_main.py`: aggiunto import di `build_runner`; nuovi test `test_build_runner_returns_trading_runner` (verifica che la funzione istanzi e restituisca `TradingRunner`) e `test_build_runner_raises_if_required_api_key_is_missing` (verifica il `ValueError` chiamando `build_runner` direttamente).
+
+### Documentazione
+
+- `docs/architecture.md`: riga sul punto d'ingresso aggiornata per descrivere `main()` e `build_runner(settings)` separatamente.
+
 ## 1.25.3 — 2026-06-08
 
-### Refactoring
+### Modificato
 
 - `src/core/runner.py`: eliminata la duplicazione nei tre blocchi `except` di `_run_single_cycle`. Il nuovo metodo privato `_handle_cycle_error` centralizza le operazioni comuni (generazione `cid`, log, `log_error`, notifica Telegram, `_handle_circuit_breaker`). I parametri `reported`, `label`, `market_analysis`, `trade_proposal`, `risk_assessment` coprono le differenze tra i tre branch. Nessun comportamento cambiato.
 
 ## 1.25.2 — 2026-06-08
 
-### Refactoring
+### Aggiunto
 
 - `src/core/position_manager.py`: nuova classe `PositionManager` estratta da `runner.py`. Raccoglie le tre responsabilità legate alla posizione aperta: calcolo P&L non realizzato via FIFO (`augment_portfolio_with_open_position`), breakeven automatico dell'OCO (`maybe_apply_breakeven`) e flag di revisione periodica OCO (`is_oco_review_required`). La costante `_POSITION_QTY_TOLERANCE` si sposta in questo modulo.
-- `src/core/runner.py`: rimossi i tre metodi estratti e `_POSITION_QTY_TOLERANCE`; rimossi gli attributi `_breakeven_trigger_pct` e `_oco_review_interval_hours` dal runner; istanziato `PositionManager` in `__init__` con i valori letti da `_trading_config`; aggiornate le chiamate in `_run_single_cycle` e `_build_cycle_input`.
 - `tests/core/test_position_manager.py`: nuovo file con i 17 test spostati da `test_runner.py` (5 augment portfolio, 8 breakeven, 4 OCO review); i test usano `_make_position_manager(...)` e chiamano i metodi direttamente senza passare per il runner.
+
+### Modificato
+
+- `src/core/runner.py`: rimossi i tre metodi estratti e `_POSITION_QTY_TOLERANCE`; rimossi gli attributi `_breakeven_trigger_pct` e `_oco_review_interval_hours` dal runner; istanziato `PositionManager` in `__init__` con i valori letti da `_trading_config`; aggiornate le chiamate in `_run_single_cycle` e `_build_cycle_input`.
 - `tests/core/test_runner.py`: rimossi i 17 test spostati; adattato `test_build_cycle_input_sets_oco_review_required_true` per accedere a `runner._position_manager._oco_review_interval_hours`; rimosso import inutilizzato `ExecutionReport`.
 
 ## 1.25.1 — 2026-06-08

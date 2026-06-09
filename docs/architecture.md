@@ -177,7 +177,7 @@ Il runner:
 3. In caso di errore: il runner distingue due categorie. Errori operativi attesi (`MdkTradingError`, `OSError` — es. exchange offline, LLM sovraccarico): logga, notifica Telegram e **continua il loop**. Bug imprevisti (qualsiasi altra eccezione — es. `AttributeError`, `NameError`): logga, notifica Telegram e **propaga l'eccezione**. `run()` intercetta il bug critico, logga come `CRITICAL`, notifica e termina il processo pulitamente (Docker lo riavvierà).
 4. Su `Ctrl+C`: termina in modo pulito
 
-Il punto di ingresso è `src/main.py`, che fa il bootstrap di tutti i componenti (settings, LLM, exchange client, agenti, workflow, memory manager, runner) e avvia il loop.
+Il punto di ingresso è `src/main.py`: `main()` carica le settings con `load_settings()`, delega il bootstrap a `build_runner(settings)` (che assembla LLM client, exchange client, agenti, workflow, memory manager e runner) e chiama `runner.run()`.
 
 ---
 

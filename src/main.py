@@ -14,6 +14,7 @@ from src.integrations.llm_interfaces.anthropic_interface import AnthropicInterfa
 from src.integrations.llm_interfaces.gemini_interface import GeminiInterface
 from src.integrations.llm_interfaces.openai_interface import OpenAiInterface
 from src.utils.config import (
+    AppSettings,
     load_llm_model_config,
     load_settings,
     load_symbol_config,
@@ -26,8 +27,8 @@ from src.utils.telegram_notifier import TelegramNotifier
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def main() -> None:
-    settings = load_settings()
+def build_runner(settings: AppSettings) -> TradingRunner:
+    """Assembla e restituisce un TradingRunner configurato e pronto per il loop."""
     logger = configure_logging(level=settings.log_level)
     event_logger = EventLogger()
 
@@ -106,7 +107,7 @@ def main() -> None:
         chat_id=settings.telegram_chat_id,
     )
 
-    runner = TradingRunner(
+    return TradingRunner(
         workflow=workflow,
         event_logger=event_logger,
         logger=logger,
@@ -118,6 +119,10 @@ def main() -> None:
         telegram_notifier=telegram_notifier,
     )
 
+
+def main() -> None:
+    settings = load_settings()
+    runner = build_runner(settings)
     runner.run()
 
 
