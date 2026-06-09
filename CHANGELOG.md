@@ -1,6 +1,17 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.25.8 — 2026-06-09
+
+### Modificato
+
+- `config/trading.yaml`: aggiunta sezione `circuit_breaker` con i campi `threshold` (default `3`) e `log_interval_seconds` (default `3600`). Questi valori erano in precedenza costanti hardcoded in `CircuitBreaker`.
+- `src/core/runner.py`: `TradingRunner.__init__` legge ora `circuit_breaker.threshold` e `circuit_breaker.log_interval_seconds` da `trading_config` per costruire il `CircuitBreaker` di default (quando non viene passato un'istanza esplicita). I fallback software coincidono con le costanti di classe `CircuitBreaker.DEFAULT_THRESHOLD` e `CircuitBreaker.PAUSE_LOG_INTERVAL_SECONDS`.
+
+### Test
+
+- `tests/core/test_runner.py`: aggiunto `test_circuit_breaker_reads_threshold_and_interval_from_trading_config` — verifica che il runner legga `threshold` e `log_interval_seconds` da `trading_config` e li passi correttamente al `CircuitBreaker`.
+
 ## 1.25.7 — 2026-06-09
 
 ### Modificato

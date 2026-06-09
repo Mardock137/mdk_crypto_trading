@@ -7,3 +7,7 @@ mandate:
   max_drawdown_pct: 15.0
   horizon: "Intraday to swing (ore → giorni)"
   max_position_pct: 70.0
+
+circuit_breaker:
+  threshold: 3
+  log_interval_seconds: 3600

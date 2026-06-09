@@ -115,7 +115,14 @@ class TradingRunner:
         self._mandate = load_mandate(self._trading_config)
         self._shutdown_requested = False
         self._shutdown_event = threading.Event()
-        self._circuit_breaker = circuit_breaker or CircuitBreaker(logger)
+        cb_config = self._trading_config.get("circuit_breaker", {})
+        self._circuit_breaker = circuit_breaker or CircuitBreaker(
+            logger,
+            threshold=int(cb_config.get("threshold", CircuitBreaker.DEFAULT_THRESHOLD)),
+            pause_log_interval_seconds=float(
+                cb_config.get("log_interval_seconds", CircuitBreaker.PAUSE_LOG_INTERVAL_SECONDS)
+            ),
+        )
 
         self._position_manager = PositionManager(
             symbol=symbol,

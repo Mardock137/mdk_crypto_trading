@@ -56,6 +56,10 @@ mandate:
   max_drawdown_pct: 15.0
   horizon: "Intraday to swing (ore → giorni)"
   max_position_pct: 70.0
+
+circuit_breaker:
+  threshold: 3
+  log_interval_seconds: 3600
 ```
 
 Campi:
@@ -67,6 +71,8 @@ Campi:
 - `mandate.max_drawdown_pct`: drawdown massimo tollerato in percentuale.
 - `mandate.horizon`: orizzonte temporale tipico delle operazioni (es. intraday, swing).
 - `mandate.max_position_pct`: percentuale massima del capitale allocabile sulla singola posizione. Il guardrail nell'`ExecutionTraderAgent` calcola la percentuale rispetto al **valore totale del portafoglio** (USDC totali, liberi + bloccati in ordini aperti, più il controvalore totale delle monete). Il campo esiste già in vista del multi-simbolo.
+- `circuit_breaker.threshold`: numero di errori identici consecutivi dopo cui il sistema si blocca e invia l'alert Telegram. Il fallback software (se il campo manca) è `3`.
+- `circuit_breaker.log_interval_seconds`: ogni quanti secondi viene scritto nei log il reminder "sistema bloccato, riavvia manualmente" mentre il circuit breaker è scattato. Il fallback software è `3600`.
 
 Il mandate viene caricato all'avvio del runner tramite `load_mandate(trading_config)` in `src/utils/config.py` e propagato a ogni ciclo dentro `TradingCycleInput`. Se la sezione `mandate` manca o ha campi incompleti, il runner fallisce in fase di boot con un `ValueError` esplicito.
 

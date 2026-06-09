@@ -796,6 +796,36 @@ def test_first_cycle_is_not_skipped_even_with_skip_enabled(
 # ---------- Circuit breaker ----------
 
 
+def test_circuit_breaker_reads_threshold_and_interval_from_trading_config() -> None:
+    """Il runner deve leggere threshold e log_interval_seconds da trading_config."""
+    custom_config = {
+        **_MOCK_TRADING_CONFIG,
+        "circuit_breaker": {
+            "threshold": 5,
+            "log_interval_seconds": 1800,
+        },
+    }
+    with patch(
+        "src.core.runner.load_trading_config", return_value=custom_config,
+    ), patch(
+        "src.core.runner.load_cycle_skip_config",
+        return_value=_DEFAULT_DISABLED_SKIP_CONFIG,
+    ):
+        runner = TradingRunner(
+            workflow=MagicMock(),
+            event_logger=MagicMock(),
+            logger=logging.getLogger("mdk_crypto_trading.test_cb_config"),
+            settings=_make_settings(),
+            symbol="BTCUSDC",
+            exchange_client=MagicMock(),
+            memory_manager=MagicMock(spec=MemoryManager),
+            performance_reviewer=MagicMock(),
+        )
+
+    assert runner._circuit_breaker.threshold == 5
+    assert runner._circuit_breaker._pause_log_interval_seconds == 1800.0
+
+
 def _stop_after_n_waits_side_effect(n: int):
     call_count = {"n": 0}
 
