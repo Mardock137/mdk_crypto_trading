@@ -13,6 +13,7 @@ from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponen
 from src.core.contracts import MarketDataSnapshot, PortfolioState
 from src.core.exceptions import ExchangeError
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
+from src.integrations.exchange.order_fields import AGE_HOURS, TYPE_LIMIT_MAKER, TYPE_STOP_LOSS_LIMIT
 from src.utils.config import AppSettings, TradingMode
 from src.utils import indicators
 
@@ -35,10 +36,6 @@ _binance_retry = retry(
 logger = logging.getLogger(__name__)
 
 
-_AGE_HOURS = "age_hours"
-_TYPE_LIMIT_MAKER = "LIMIT_MAKER"
-
-
 def _add_age_to_orders(orders: list[dict[str, Any]]) -> None:
     """Aggiunge ``age_hours`` a ogni ordine in-place.
 
@@ -55,7 +52,7 @@ def _add_age_to_orders(orders: list[dict[str, Any]]) -> None:
             order_time_ms = int(raw_time)
         except (TypeError, ValueError):
             continue
-        order[_AGE_HOURS] = round((now_ms - order_time_ms) / 3_600_000, 1)
+        order[AGE_HOURS] = round((now_ms - order_time_ms) / 3_600_000, 1)
 
 
 class BinanceClient(BaseExchangeClient):
@@ -355,9 +352,9 @@ class BinanceClient(BaseExchangeClient):
             symbol=symbol,
             side="SELL",
             quantity=quantity,
-            aboveType=_TYPE_LIMIT_MAKER,
+            aboveType=TYPE_LIMIT_MAKER,
             abovePrice=str(tp_price),
-            belowType="STOP_LOSS_LIMIT",
+            belowType=TYPE_STOP_LOSS_LIMIT,
             belowPrice=str(sl_limit_price),
             belowStopPrice=str(sl_stop_price),
             belowTimeInForce="GTC",

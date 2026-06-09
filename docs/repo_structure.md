@@ -76,7 +76,8 @@
  │    ├── 📁 integrations/                                   # Integrazione delle API esterne.
  │    │    ├── 📁 exchange/                                  # Interfaccia verso gli exchange crypto.
  │    │    │    ├── 📄 base_exchange_client.py               # Base interface per i client exchange.
- │    │    │    └── 📄 binance_client.py                     # Client Binance con supporto DEMO/REAL.
+ │    │    │    ├── 📄 binance_client.py                     # Client Binance con supporto DEMO/REAL.
+ │    │    │    └── 📄 order_fields.py                       # Costanti dei campi-ordine Binance (fonte unica di verità).
  │    │    └── 📁 llm_interfaces/                            # Interfaccia verso i modelli LLM.
  │    │         ├── 📄 anthropic_interface.py                # Client LLM per Anthropic Claude (con retry automatico).
  │    │         ├── 📄 base_llm_interface.py                 # Base interface per i provider LLM.

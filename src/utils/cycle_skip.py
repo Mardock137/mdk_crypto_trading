@@ -16,6 +16,7 @@ from src.core.contracts import (
     PortfolioState,
     TradeAction,
 )
+from src.integrations.exchange.order_fields import ORDER_ID_LOOKUP_KEYS
 
 
 def extract_open_order_ids(portfolio: PortfolioState) -> set[str]:
@@ -107,7 +108,7 @@ def _get_indicator(market: MarketDataSnapshot, key: str) -> float | None:
 
 
 def _get_order_id(order: dict[str, Any]) -> str | None:
-    for key in ("orderId", "order_id", "id"):
+    for key in ORDER_ID_LOOKUP_KEYS:
         value = order.get(key)
         if value is not None:
             return str(value)

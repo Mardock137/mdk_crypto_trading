@@ -1,6 +1,16 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.25.7 — 2026-06-09
+
+### Modificato
+
+- `src/integrations/exchange/order_fields.py` *(nuovo)*: modulo con le costanti pubbliche dei campi-ordine Binance (`ORDER_TYPE`, `ORDER_LIST_ID`, `STOP_PRICE`, `ORIG_QTY`, `ORDER_PRICE`, `AGE_HOURS`, `ORDER_ID`, `CLIENT_ORDER_ID`, `TYPE_LIMIT_MAKER`, `TYPE_STOP_LOSS_LIMIT`, `ORDER_ID_LOOKUP_KEYS`). Fonte unica di verità per tutti i file che accedono ai dizionari ordine.
+- `src/core/position_manager.py`: rimosse le 8 costanti locali; importati i valori equivalenti da `order_fields`.
+- `src/integrations/exchange/binance_client.py`: rimosse le costanti locali `_AGE_HOURS` e `_TYPE_LIMIT_MAKER`; sostituito il letterale `belowType="STOP_LOSS_LIMIT"` con `TYPE_STOP_LOSS_LIMIT`; tutti e tre ora importati da `order_fields`.
+- `src/agents/execution_trader.py`: sostituite le stringhe `"orderId"` e `"clientOrderId"` con `ORDER_ID` e `CLIENT_ORDER_ID` importati da `order_fields`.
+- `src/utils/cycle_skip.py`: sostituita la tupla letterale `("orderId", "order_id", "id")` con `ORDER_ID_LOOKUP_KEYS` importato da `order_fields`.
+
 ## 1.25.6 — 2026-06-09
 
 ### Modificato

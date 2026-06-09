@@ -14,6 +14,7 @@ from src.core.contracts import (
 )
 from src.core.exceptions import ExchangeError, OrderReplacementError
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
+from src.integrations.exchange.order_fields import CLIENT_ORDER_ID, ORDER_ID
 
 _logger = logging.getLogger(__name__)
 
@@ -180,9 +181,9 @@ class ExecutionTraderAgent(BaseAgent[ExecutionInput, ExecutionReport]):
         if proposal.action is TradeAction.CANCEL_AND_REPLACE_ORDER:
             order_id = details.order_id
             known_ids = {
-                str(o.get("orderId", "")) for o in portfolio.open_orders
+                str(o.get(ORDER_ID, "")) for o in portfolio.open_orders
             } | {
-                str(o.get("clientOrderId", "")) for o in portfolio.open_orders
+                str(o.get(CLIENT_ORDER_ID, "")) for o in portfolio.open_orders
             }
             known_ids.discard("")
             if order_id not in known_ids:
