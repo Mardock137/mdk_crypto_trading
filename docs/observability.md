@@ -122,7 +122,7 @@ Ogni report contiene:
 
 - Sintesi testuale del Reviewer (giudizio LLM, max 400 caratteri)
 - Aderenza al mandato: `ALIGNED`, `DRIFTING` o `MISALIGNED`
-- Mandato operativo di riferimento (obiettivo, rendimento minimo, drawdown, orizzonte, trade/settimana)
+- Mandato operativo di riferimento (drawdown massimo, orizzonte, posizione massima)
 - Statistiche deterministiche calcolate in Python (zero LLM): cicli totali, HOLD ratio, BUY/SELL eseguiti, SELL falliti, segnali forti ignorati, giorni senza trade eseguito, P&L realizzato e medio percentuale
 - 1-3 suggerimenti concreti per il Decision Maker
 

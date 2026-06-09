@@ -31,7 +31,7 @@ flowchart TD
 
 ### Breakeven automatico (deterministico)
 
-Prima del pre-check e della catena LLM, il runner esegue `_maybe_apply_breakeven`. Se `unrealized_pnl_pct >= breakeven_trigger_pct` (configurabile in `config/trading.yaml`, default `2.0%`) e c'è un OCO attivo con lo SL ancora sotto il prezzo di ingresso, il runner:
+Prima del pre-check e della catena LLM, il runner esegue `PositionManager.maybe_apply_breakeven`. Se `unrealized_pnl_pct >= breakeven_trigger_pct` (configurabile in `config/trading.yaml`, default `2.0%`) e c'è un OCO attivo con lo SL ancora sotto il prezzo di ingresso, il runner:
 
 1. Cancella l'OCO esistente via `cancel_oco(symbol, orderListId)`
 2. Piazza un nuovo OCO con lo stesso TP e lo SL trigger = `avg_entry_price`
@@ -122,7 +122,7 @@ Agente consultivo fuori dalla catena decisionale. Gira **una volta al giorno**, 
 
 ## Kill switch
 
-Se `KILL_SWITCH=1` nel `.env`, nessuna scrittura raggiunge l'exchange: l'Execution Trader blocca qualsiasi ordine e ritorna `NOT_EXECUTED`, e il breakeven automatico (`_maybe_apply_breakeven`) viene saltato senza toccare gli OCO attivi. Il resto della catena gira normalmente (analisi, decisione, risk check) e le letture di mercato e portafoglio restano attive: servono solo a osservare, non modificano nulla.
+Se `KILL_SWITCH=1` nel `.env`, nessuna scrittura raggiunge l'exchange: l'Execution Trader blocca qualsiasi ordine e ritorna `NOT_EXECUTED`, e il breakeven automatico (`PositionManager.maybe_apply_breakeven`) viene saltato senza toccare gli OCO attivi. Il resto della catena gira normalmente (analisi, decisione, risk check) e le letture di mercato e portafoglio restano attive: servono solo a osservare, non modificano nulla.
 
 ---
 

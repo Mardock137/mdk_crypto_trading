@@ -22,13 +22,13 @@ MDK Crypto Trading è un sistema autonomo di trading spot su criptovalute, strut
 
 ## 👥 Agenti e modelli
 
-| Agente                   | Ruolo                                                                           | Modello                       |
-|--------------------------|---------------------------------------------------------------------------------|-------------------------------|
-| **Market Analyst**       | Analizza indicatori tecnici e genera un segnale di mercato                      | GPT-5.4                       |
-| **Decision Maker**       | Valuta il segnale e formula una proposta operativa (BUY, SELL, HOLD)            | Claude Opus 4.7 (thinking)    |
-| **Risk Manager**         | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche           | Gemini 3.1 Pro                |
-| **Execution Trader**     | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)                  | —                             |
-| **Performance Reviewer** | Ruolo consultivo, fuori catena: genera un report giornaliero letto dal DM       | Claude Sonnet 4.6             |
+| Agente                   | Ruolo                                                                                                    | Modello                    |
+|--------------------------|----------------------------------------------------------------------------------------------------------|----------------------------|
+| **Market Analyst**       | Analizza indicatori tecnici e genera un segnale di mercato                                               | GPT-5.4                    |
+| **Decision Maker**       | Valuta il segnale e formula una proposta operativa (BUY, SELL, SELL_OCO, HOLD, CANCEL_AND_REPLACE_ORDER) | Claude Opus 4.7 (thinking) |
+| **Risk Manager**         | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche                                    | Gemini 3.1 Pro             |
+| **Execution Trader**     | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)                                           | —                          |
+| **Performance Reviewer** | Ruolo consultivo, fuori catena: genera un report giornaliero letto dal DM                                | Claude Sonnet 4.6          |
 
 ## 🔄 Come funziona
 
@@ -43,6 +43,12 @@ Ogni ciclo operativo segue questa sequenza:
 7. Log del ciclo completo in `logs/events/`
 
 L'intervallo tra i cicli è configurabile da `.env` (`CYCLE_INTERVAL_SECONDS`).
+
+Il sistema include tre meccanismi deterministici trasversali al ciclo:
+
+- **Breakeven automatico**: se il P&L non realizzato supera la soglia configurata, lo Stop Loss dell'OCO attivo viene spostato automaticamente al prezzo di ingresso, prima della catena LLM.
+- **Cycle-skip**: se prezzo, RSI, segno MACD e ordini aperti sono rimasti invariati rispetto al ciclo precedente (e l'ultima azione era `HOLD`), il ciclo viene saltato senza chiamare alcun agente LLM. Configurabile in `config/cycle_skip.yaml`.
+- **Circuit breaker**: dopo 3 errori identici consecutivi il sistema si mette in pausa e invia un alert Telegram, richiedendo riavvio manuale.
 
 ## 🚀 Come si lancia
 
