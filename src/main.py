@@ -59,8 +59,8 @@ def build_runner(settings: AppSettings) -> TradingRunner:
         max_tokens=ma_config.get("max_tokens"),
     )
 
-    # Client LLM per il Decision Maker (Claude Opus 4.7 con adaptive thinking)
-    # Nota: `temperature` non e accettata da Opus 4.7 con thinking abilitato,
+    # Client LLM per il Decision Maker (Claude Opus 4.8 con adaptive thinking)
+    # Nota: `temperature` non e accettata da Opus 4.8 con thinking abilitato,
     # quindi non viene passata: l'interfaccia la ignora quando `thinking_effort` e valorizzato.
     dm_llm = AnthropicInterface(
         api_key=settings.claude_api_key,

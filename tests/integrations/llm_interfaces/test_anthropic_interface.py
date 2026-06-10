@@ -239,7 +239,7 @@ from anthropic import InternalServerError
 from anthropic._exceptions import OverloadedError
 
 
-# --- Test per thinking_effort (Opus 4.7) ---
+# --- Test per thinking_effort (Opus 4.8) ---
 
 
 @patch("src.integrations.llm_interfaces.anthropic_interface.Anthropic")
@@ -257,7 +257,7 @@ def test_thinking_effort_enables_thinking_and_removes_temperature(
 
     interface = AnthropicInterface(
         api_key="fake-key",
-        model="claude-opus-4-7",
+        model="claude-opus-4-8",
         thinking_effort="high",
     )
     interface.generate_json("s", {"k": "v"})
@@ -337,7 +337,7 @@ def test_extract_text_skips_thinking_blocks(mock_anthropic_cls: MagicMock) -> No
 
     interface = AnthropicInterface(
         api_key="fake-key",
-        model="claude-opus-4-7",
+        model="claude-opus-4-8",
         thinking_effort="high",
     )
     result = interface.generate_json("system prompt", {"chiave": "valore"})
@@ -366,7 +366,7 @@ def test_extract_text_concatenates_multiple_text_blocks(
 
     interface = AnthropicInterface(
         api_key="fake-key",
-        model="claude-opus-4-7",
+        model="claude-opus-4-8",
         thinking_effort="high",
     )
     result = interface.generate_json("s", {"k": "v"})

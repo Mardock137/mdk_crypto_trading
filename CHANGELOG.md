@@ -1,6 +1,15 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.26.1 — 2026-06-10
+
+### Modificato
+
+- `config/llm_models/decision_maker.yaml`: modello aggiornato da `claude-opus-4-7` a `claude-opus-4-8`. Upgrade diretto senza breaking changes: stesso prezzo, stessa API, stesso set di feature (adaptive thinking, 1M context window, 128k max output tokens). I livelli di `thinking_effort` sono stati ri-calibrati internamente da Anthropic su 4.8 (con `medium` il modello ragiona leggermente di più rispetto a 4.7), ma la configurazione non richiede modifiche.
+- `src/main.py`, `src/integrations/llm_interfaces/anthropic_interface.py`: commenti e docstring aggiornati da Opus 4.7 a Opus 4.8.
+- `tests/integrations/llm_interfaces/test_anthropic_interface.py`: commento e model string nei test aggiornati da `claude-opus-4-7` a `claude-opus-4-8`.
+- Documentazione (`README.md`, `docs/repo_structure.md`, `docs/architecture.md`, `docs/decision_logic.md`, `docs/config.md`): tutti i riferimenti a Opus 4.7 aggiornati a Opus 4.8.
+
 ## 1.26.0 — 2026-06-09
 
 ### Aggiunto

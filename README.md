@@ -3,7 +3,7 @@
 [![CI](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml/badge.svg)](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml)
 
 - **Versione Python**: `3.14.5`
-- **Versione MDK Crypto Trading**: `1.26.0`
+- **Versione MDK Crypto Trading**: `1.26.1`
 
 ## 📋 Indice
 
@@ -25,7 +25,7 @@ MDK Crypto Trading è un sistema autonomo di trading spot su criptovalute, strut
 | Agente                   | Ruolo                                                                                                    | Modello                    |
 |--------------------------|----------------------------------------------------------------------------------------------------------|----------------------------|
 | **Market Analyst**       | Analizza indicatori tecnici e genera un segnale di mercato                                               | GPT-5.4                    |
-| **Decision Maker**       | Valuta il segnale e formula una proposta operativa (BUY, SELL, SELL_OCO, HOLD, CANCEL_AND_REPLACE_ORDER) | Claude Opus 4.7 (thinking) |
+| **Decision Maker**       | Valuta il segnale e formula una proposta operativa (BUY, SELL, SELL_OCO, HOLD, CANCEL_AND_REPLACE_ORDER) | Claude Opus 4.8 (thinking) |
 | **Risk Manager**         | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche                                    | Gemini 3.1 Pro             |
 | **Execution Trader**     | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)                                           | —                          |
 | **Performance Reviewer** | Ruolo consultivo, fuori catena: genera un report giornaliero letto dal DM                                | Claude Sonnet 4.6          |
@@ -64,7 +64,7 @@ python dev_support/verify_connections.py
 
 ## 🤖 API integrate
 
-- **Anthropic API**: Decision Maker (`Claude Opus 4.7` con adaptive thinking) e Performance Reviewer (`Claude Sonnet 4.6`)
+- **Anthropic API**: Decision Maker (`Claude Opus 4.8` con adaptive thinking) e Performance Reviewer (`Claude Sonnet 4.6`)
 - **OpenAI API** (`GPT-5.4`): Market Analyst
 - **Gemini API** (`Gemini 3.1 Pro`): Risk Manager
 - **Binance API**: dati di mercato, portafoglio, ordini aperti, esecuzione ordini (DEMO e REAL)

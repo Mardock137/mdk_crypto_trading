@@ -23,7 +23,7 @@ class AnthropicInterface(BaseLlmInterface):
     """Implementazione di BaseLlmInterface per il provider Anthropic (Claude).
 
     Supporta sia i modelli "classici" (es. Sonnet 4.6) sia quelli che richiedono
-    adaptive thinking (es. Opus 4.7). La distinzione avviene tramite il parametro
+    adaptive thinking (es. Opus 4.8). La distinzione avviene tramite il parametro
     ``thinking_effort``:
 
     - ``None`` (default): comportamento classico — viene passata ``temperature``
@@ -101,9 +101,9 @@ class AnthropicInterface(BaseLlmInterface):
         """Estrae il testo dalla risposta Anthropic, ignorando i blocchi thinking.
 
         La risposta Anthropic e una lista di content blocks. I modelli con thinking
-        (es. Opus 4.7) possono includere blocchi ``thinking`` insieme a quelli
+        (es. Opus 4.8) possono includere blocchi ``thinking`` insieme a quelli
         ``text``: questi vanno scartati a prescindere dal loro contenuto (su Opus
-        4.7 di default arrivano vuoti, ma con ``display: "summarized"`` possono
+        4.8 di default arrivano vuoti, ma con ``display: "summarized"`` possono
         contenere un riassunto del ragionamento). I modelli classici restituiscono
         solo blocchi ``text``. Consideriamo "text" qualsiasi blocco che non sia
         esplicitamente ``thinking``, per retrocompatibilita.
