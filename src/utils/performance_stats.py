@@ -167,6 +167,7 @@ def build_performance_stats(
         buy_and_hold_return_pct=buy_and_hold_return_pct,
         strategy_return_pct=strategy_return_pct,
         max_drawdown_pct=max_drawdown_pct,
+        has_open_position=memory_manager.compute_open_position(symbol) is not None,
     )
 
 
@@ -247,6 +248,7 @@ def _format_markdown_report(
         f"- BUY eseguiti: {stats.buy_executed}\n"
         f"- SELL eseguiti: {stats.sell_executed}\n"
         f"- SELL falliti: {stats.sell_failed}\n"
+        f"- Posizione aperta: {'sì' if stats.has_open_position else 'no'}\n"
         f"- Segnali BULLISH forti ignorati: {stats.strong_bullish_ignored}\n"
         f"- Segnali BEARISH forti ignorati: {stats.strong_bearish_ignored}\n"
         f"- Giorni senza trade eseguito: {stats.days_without_executed_trade}\n"

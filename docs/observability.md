@@ -124,7 +124,7 @@ Ogni report contiene:
 - Aderenza al mandato: `ALIGNED`, `DRIFTING` o `MISALIGNED`
 - Mandato operativo di riferimento (drawdown massimo, orizzonte, posizione massima)
 - **KPI ufficiali** (sezione `## KPI`): P&L cumulato su tutti i trade, win rate, vincita/perdita media, rendimento strategia vs buy-and-hold, max drawdown nel periodo. I KPI basati sull'equity (`strategy_return_pct`, `buy_and_hold_return_pct`, `max_drawdown_pct`) mostrano `n/d` se lo storico `equity_usdc` non è ancora disponibile per il periodo (record precedenti alla v1.27.0).
-- Statistiche deterministiche calcolate in Python (zero LLM): cicli totali, HOLD ratio, BUY/SELL eseguiti, SELL falliti, segnali forti ignorati, giorni senza trade eseguito, P&L realizzato e medio percentuale degli ultimi 10 trade
+- Statistiche deterministiche calcolate in Python (zero LLM): cicli totali, HOLD ratio, BUY/SELL eseguiti, SELL falliti, segnali forti ignorati, giorni senza trade eseguito, **stato posizione aperta** (`has_open_position`), P&L realizzato e medio percentuale degli ultimi 10 trade
 - 1-3 suggerimenti concreti per il Decision Maker
 
 Questo stesso file viene letto dal DM nei cicli successivi (campo `latest_performance_review`). La cartella `data/` è ignorata da git: i report restano locali alla VM.

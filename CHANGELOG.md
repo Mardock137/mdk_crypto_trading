@@ -1,6 +1,24 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.27.1 — 2026-06-12
+
+### Aggiunto
+
+- `src/core/contracts.py` — `PerformanceStats`: nuovo campo `has_open_position: bool = False` (retrocompatibile). Indica se il sistema detiene crypto al momento del calcolo, calcolato deterministicamente via `MemoryManager.compute_open_position`.
+- `src/utils/performance_stats.py`: `build_performance_stats` calcola `has_open_position` e lo passa a `PerformanceStats`. `_format_markdown_report` mostra "Posizione aperta: sì/no" nella sezione Statistiche.
+- `config/prompts/performance_reviewer.md`: documentato `stats.has_open_position` in "DATI DISPONIBILI"; aggiunta la regola speciale sul campo DRIFTING: `strong_bearish_ignored` alto NON indica deriva quando `has_open_position` è `false` (sistema flat — su spot non c'è nulla da vendere); contribuisce a DRIFTING solo se `has_open_position` è `true` (mancata gestione dell'uscita). Aggiunto un rimando incrociato nella regola generale DRIFTING per eliminare ogni ambiguità tra le due regole.
+
+### Modificato
+
+- `README.md`: bump versione `1.27.0` → `1.27.1`.
+- `docs/observability.md`: aggiunto `has_open_position` alla descrizione dei report performance.
+
+### Test
+
+- `tests/utils/test_performance_stats.py`: 2 nuovi test — `has_open_position` true quando `compute_open_position` ritorna un dict, false quando ritorna None.
+- `tests/agents/test_performance_reviewer.py`: 1 nuovo test — il payload inviato all'LLM include il campo `has_open_position`.
+
 ## 1.27.0 — 2026-06-12
 
 ### Aggiunto

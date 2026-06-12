@@ -194,6 +194,8 @@ class PerformanceStats:
     buy_and_hold_return_pct: float | None = None
     strategy_return_pct: float | None = None
     max_drawdown_pct: float | None = None
+    # Stato posizione al momento del calcolo (determinato via FIFO)
+    has_open_position: bool = False
 
 
 @dataclass(slots=True)

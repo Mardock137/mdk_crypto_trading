@@ -139,3 +139,27 @@ def test_agent_run_calls_llm_and_parses_response() -> None:
     assert payload["symbol"] == "BTCUSDC"
     assert payload["days_analyzed"] == 7
     assert "stats" in payload and "mandate" in payload
+
+
+def test_agent_run_payload_includes_has_open_position() -> None:
+    """Il payload inviato all'LLM deve includere stats.has_open_position."""
+    mock_llm = MagicMock()
+    mock_llm.generate_json.return_value = {
+        "summary": "OK.",
+        "mandate_adherence": "ALIGNED",
+        "suggestions": ["Nessuna azione"],
+    }
+
+    agent = PerformanceReviewerAgent(llm=mock_llm)
+    mock_prompt = MagicMock()
+    mock_prompt.read_text.return_value = "system prompt"
+    with patch("src.agents.base_agent.time.sleep"):
+        with patch.object(
+            type(agent), "prompt_path",
+            new_callable=PropertyMock, return_value=mock_prompt,
+        ):
+            agent.run(_make_input())
+
+    _, payload = mock_llm.generate_json.call_args.args
+    assert "has_open_position" in payload["stats"]
+    assert payload["stats"]["has_open_position"] is False

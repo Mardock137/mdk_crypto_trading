@@ -41,6 +41,7 @@ def _mock_mm_without_trades() -> MagicMock:
     mm = MagicMock()
     mm.compute_fifo_trades.return_value = []
     mm.get_price_equity_series.return_value = []
+    mm.compute_open_position.return_value = None
     return mm
 
 
@@ -286,6 +287,7 @@ def _mock_mm_with_equity(equity_series: list[dict]) -> MagicMock:
     mm = MagicMock()
     mm.compute_fifo_trades.return_value = []
     mm.get_price_equity_series.return_value = equity_series
+    mm.compute_open_position.return_value = None
     return mm
 
 
@@ -409,3 +411,32 @@ def test_write_performance_report_kpi_shows_nd_when_equity_missing(tmp_path: Pat
     content = path.read_text(encoding="utf-8")
 
     assert "n/d" in content
+
+
+# ---------- has_open_position ----------
+
+
+def test_build_stats_has_open_position_true_when_position_exists() -> None:
+    """has_open_position deve essere True se compute_open_position ritorna un dict."""
+    mm = MagicMock()
+    mm.compute_fifo_trades.return_value = []
+    mm.get_price_equity_series.return_value = []
+    mm.compute_open_position.return_value = {"open_qty": 0.001, "avg_entry_price": 60000.0}
+    stats = build_performance_stats(
+        "BTCUSDC", mm, [], days=7, today=date(2026, 4, 20),
+    )
+
+    assert stats.has_open_position is True
+
+
+def test_build_stats_has_open_position_false_when_flat() -> None:
+    """has_open_position deve essere False se compute_open_position ritorna None."""
+    mm = MagicMock()
+    mm.compute_fifo_trades.return_value = []
+    mm.get_price_equity_series.return_value = []
+    mm.compute_open_position.return_value = None
+    stats = build_performance_stats(
+        "BTCUSDC", mm, [], days=7, today=date(2026, 4, 20),
+    )
+
+    assert stats.has_open_position is False
