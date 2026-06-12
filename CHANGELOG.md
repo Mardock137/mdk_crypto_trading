@@ -1,6 +1,29 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.27.0 — 2026-06-12
+
+### Aggiunto
+
+- `docs/kpi.md`: definizione ufficiale dei 6 KPI (P&L cumulato, win rate, rapporto vincita/perdita, numero di trade, rendimento vs buy-and-hold, max drawdown), limiti operativi (drawdown max 15%), benchmark e tabella di disponibilità per storico pre/post v1.27.0.
+- `src/core/contracts.py` — `PerformanceStats`: 7 nuovi campi con default retrocompatibili: `realized_pnl_total_usdc`, `win_rate_pct`, `avg_win_pct`, `avg_loss_pct` (KPI cumulativi su tutti i trade); `buy_and_hold_return_pct`, `strategy_return_pct`, `max_drawdown_pct` (KPI equity-based, `None` se storico insufficiente).
+- `src/utils/memory_manager.py`: `save_cycle` accetta ora il parametro opzionale `equity_usdc: float | None = None` e lo include nel record JSONL quando fornito. Nuovo metodo pubblico `get_price_equity_series(symbol, since, until)` che ritorna la serie temporale di prezzo ed equity nella finestra indicata; retrocompatibile con record privi di `equity_usdc`.
+- `src/core/runner.py`: `_run_single_cycle` calcola l'equity del portafoglio (cash USDC + valore crypto al prezzo corrente) e la passa a `save_cycle`. Nuovo metodo statico `_compute_equity(portfolio, current_price)`.
+- `src/utils/performance_stats.py`: `build_performance_stats` calcola i 4 KPI cumulativi (P&L totale, win rate, avg_win, avg_loss) su tutti i trade FIFO e i 3 KPI equity-based (buy-and-hold, rendimento strategia, max drawdown) dalla serie equity del periodo. `_format_markdown_report` include la nuova sezione `## KPI` nel report. Nuova helper privata `_fmt_pct`.
+- `config/prompts/performance_reviewer.md`: documentati i 7 nuovi campi `stats.*` nella sezione "DATI DISPONIBILI".
+
+### Modificato
+
+- `README.md`: bump versione `1.26.1` → `1.27.0`; aggiunto `docs/kpi.md` all'indice della documentazione.
+- `docs/repo_structure.md`: aggiunto `docs/kpi.md` nell'albero; nota sul nuovo campo `equity_usdc` nella memoria.
+- `docs/observability.md`: documentato il campo `equity_usdc` nei record di memoria (nuova sezione); aggiornata la descrizione dei report performance con i nuovi KPI; aggiunto `docs/kpi.md` ai riferimenti.
+
+### Test
+
+- `tests/utils/test_performance_stats.py`: 9 nuovi test per i KPI cumulativi, i KPI equity-based, i casi limite (nessun trade, storico equity assente, un solo punto equity) e il report markdown.
+- `tests/utils/test_memory_manager.py`: 3 nuovi test per `save_cycle` con `equity_usdc`, retrocompatibilità dei record privi del campo, e `get_price_equity_series` con filtro per data.
+- `tests/core/test_runner.py`: 1 nuovo test che verifica il calcolo e il passaggio dell'equity a `save_cycle`.
+
 ## 1.26.1 — 2026-06-10
 
 ### Modificato

@@ -64,6 +64,13 @@ AI Performance Reviewer di MDK Crypto Trading
 - `stats.days_without_executed_trade`: giorni dall'ultimo trade eseguito.
 - `stats.sells_in_profit`: numero di SELL recenti chiuse in profitto (FIFO).
 - `stats.sells_in_loss`: numero di SELL recenti chiuse in perdita (FIFO). Confronta i due valori per giudicare la qualità delle uscite.
+- `stats.realized_pnl_total_usdc`: P&L cumulato su **tutti** i trade chiusi nello storico disponibile (FIFO), in USDC.
+- `stats.win_rate_pct`: percentuale di trade chiusi in profitto sul totale dei trade chiusi (0–100).
+- `stats.avg_win_pct`: guadagno medio percentuale dei trade vincenti.
+- `stats.avg_loss_pct`: perdita media percentuale (valore assoluto) dei trade perdenti.
+- `stats.strategy_return_pct`: rendimento percentuale del portafoglio nel periodo analizzato (può essere `null` se lo storico equity non è ancora disponibile per il periodo).
+- `stats.buy_and_hold_return_pct`: rendimento percentuale che si sarebbe ottenuto tenendo il BTC fermo dall'inizio alla fine del periodo (può essere `null`). Confrontalo con `strategy_return_pct` per valutare se il sistema aggiunge valore rispetto alla passività.
+- `stats.max_drawdown_pct`: massimo drawdown dal picco registrato nel periodo (può essere `null`). Il limite operativo è **15%**: sopra questa soglia il sistema è fuori mandato.
 
 ## 📝 SCHEMA RISPOSTA
 

@@ -123,12 +123,42 @@ Ogni report contiene:
 - Sintesi testuale del Reviewer (giudizio LLM, max 400 caratteri)
 - Aderenza al mandato: `ALIGNED`, `DRIFTING` o `MISALIGNED`
 - Mandato operativo di riferimento (drawdown massimo, orizzonte, posizione massima)
-- Statistiche deterministiche calcolate in Python (zero LLM): cicli totali, HOLD ratio, BUY/SELL eseguiti, SELL falliti, segnali forti ignorati, giorni senza trade eseguito, P&L realizzato e medio percentuale
+- **KPI ufficiali** (sezione `## KPI`): P&L cumulato su tutti i trade, win rate, vincita/perdita media, rendimento strategia vs buy-and-hold, max drawdown nel periodo. I KPI basati sull'equity (`strategy_return_pct`, `buy_and_hold_return_pct`, `max_drawdown_pct`) mostrano `n/d` se lo storico `equity_usdc` non è ancora disponibile per il periodo (record precedenti alla v1.27.0).
+- Statistiche deterministiche calcolate in Python (zero LLM): cicli totali, HOLD ratio, BUY/SELL eseguiti, SELL falliti, segnali forti ignorati, giorni senza trade eseguito, P&L realizzato e medio percentuale degli ultimi 10 trade
 - 1-3 suggerimenti concreti per il Decision Maker
 
 Questo stesso file viene letto dal DM nei cicli successivi (campo `latest_performance_review`). La cartella `data/` è ignorata da git: i report restano locali alla VM.
 
 Il trigger è giornaliero: se il file del giorno esiste già, il Reviewer non viene chiamato (zero costo LLM).
+
+---
+
+## Memoria decisionale (`data/memory/`)
+
+La memoria del Decision Maker è un file JSONL per simbolo (es. `BTCUSDC.jsonl`). Ogni riga è un record JSON corrispondente a un ciclo completato. I campi fissi sono:
+
+```json
+{
+  "timestamp": "2026-06-11T14:30:00",
+  "action": "BUY",
+  "order_type": "MARKET",
+  "confidence": 0.82,
+  "reason": "...",
+  "quantity": 0.001,
+  "price": 101500.0,
+  "execution_status": "EXECUTED",
+  "risk_decision": "APPROVE",
+  "market_bias": "BULLISH"
+}
+```
+
+Dalla **v1.27.0** ogni record include anche il campo opzionale:
+
+| Campo          | Tipo    | Descrizione                                                                                                                                        |
+|----------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `equity_usdc`  | `float` | Valore totale del portafoglio al momento del ciclo: cash USDC + valore crypto al prezzo corrente. Assente nei record prodotti prima della v1.27.0. |
+
+Questo campo è usato dal `PerformanceStats` per calcolare i KPI che richiedono una serie storica del valore del portafoglio (`strategy_return_pct`, `buy_and_hold_return_pct`, `max_drawdown_pct`). I record privi di `equity_usdc` vengono semplicemente ignorati nel calcolo di questi KPI.
 
 ---
 
@@ -320,4 +350,4 @@ pytest tests/utils/test_event_logger.py -v
 
 - **Codice**: `src/utils/logging_config.py`, `src/utils/event_logger.py`, `src/utils/telegram_notifier.py`, `src/utils/log_utils.py`
 - **Test**: `tests/utils/test_logging_config.py`, `tests/utils/test_event_logger.py`, `tests/utils/test_telegram_notifier.py`
-- **Doc correlati**: `docs/architecture.md`, `docs/config.md`
+- **Doc correlati**: `docs/architecture.md`, `docs/config.md`, `docs/kpi.md`

@@ -972,3 +972,46 @@ def test_build_cycle_input_sets_oco_review_required_true(mock_wait: MagicMock) -
     runner.run()
 
     assert captured_input.get("oco_review_required") is True
+
+
+# ---------- Equity logging ----------
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_run_single_cycle_passes_equity_to_save_cycle(mock_wait: MagicMock) -> None:
+    """_run_single_cycle deve calcolare l'equity e passarla a memory_manager.save_cycle."""
+    mock_mm = MagicMock(spec=MemoryManager)
+    mock_exchange = MagicMock()
+
+    portfolio = PortfolioState(
+        usdc_balance=400.0,
+        usdc_balance_total=500.0,
+        usdc_value=200.0,
+        portfolio_qty_free=0.002,
+        portfolio_qty_total=0.002,
+    )
+    mock_exchange.get_portfolio_state.return_value = portfolio
+    mock_exchange.get_market_snapshot.return_value = MarketDataSnapshot(
+        symbol="BTCUSDC", price=100000.0,
+    )
+
+    mock_workflow = MagicMock()
+    mock_result = mock_workflow.run_cycle.return_value
+    mock_result.execution_report.was_executed = False
+    mock_result.execution_report.execution_status = ExecutionStatus.NOT_EXECUTED
+    mock_result.execution_report.execution_details = {}
+
+    runner = _make_runner(
+        exchange_client=mock_exchange,
+        workflow=mock_workflow,
+        memory_manager=mock_mm,
+    )
+    runner.run()
+
+    mock_mm.save_cycle.assert_called_once()
+    call_kwargs = mock_mm.save_cycle.call_args.kwargs
+    assert call_kwargs["symbol"] == "BTCUSDC"
+    assert call_kwargs["current_price"] == pytest.approx(100000.0)
+    # equity = usdc_balance_total (500) + usdc_value (200) = 700
+    # (usdc_balance libero = 400 NON deve essere usato: cattura la regressione)
+    assert call_kwargs["equity_usdc"] == pytest.approx(700.0)

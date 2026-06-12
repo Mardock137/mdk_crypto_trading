@@ -300,6 +300,9 @@ class TradingRunner:
                 symbol=self._symbol,
                 result=result,
                 current_price=cycle_input.market_data.price,
+                equity_usdc=self._compute_equity(
+                    cycle_input.portfolio, cycle_input.market_data.price
+                ),
             )
             self._cycle_skip_handler.record_completed_cycle(
                 market_data=cycle_input.market_data,
@@ -434,3 +437,16 @@ class TradingRunner:
             latest_performance_review=self._review_runner.load_latest_review(),
             oco_review_required=self._position_manager.is_oco_review_required(portfolio),
         )
+
+    @staticmethod
+    def _compute_equity(portfolio: PortfolioState, current_price: float | None) -> float | None:
+        """Calcola il valore totale del portafoglio in USDC (cash + crypto al prezzo corrente).
+
+        Usa ``usdc_balance_total`` (libero + bloccato) per il contante e
+        ``usdc_value`` per il valore delle crypto, coerentemente con il calcolo
+        in ``ExecutionTrader``. Ritorna None se il prezzo corrente non è
+        disponibile (serie equity non aggiornabile in modo affidabile).
+        """
+        if current_price is None:
+            return None
+        return round(portfolio.usdc_balance_total + portfolio.usdc_value, 4)

@@ -780,3 +780,107 @@ def test_compact_if_needed_skips_below_threshold(tmp_path: Path) -> None:
 
     assert removed == 0
     assert len(mm._read_all("BTCUSDC")) == 4
+
+
+# ------------------------------------------------------------------
+# save_cycle — equity_usdc
+# ------------------------------------------------------------------
+
+
+def test_save_cycle_includes_equity_usdc_when_provided(tmp_path: Path) -> None:
+    """save_cycle deve includere il campo equity_usdc se viene fornito."""
+    import json
+
+    mm = MemoryManager(memory_dir=tmp_path)
+    mm.save_cycle(
+        symbol="BTCUSDC",
+        result=_make_result(),
+        current_price=100000.0,
+        equity_usdc=1234.56,
+    )
+
+    record = json.loads((tmp_path / "BTCUSDC.jsonl").read_text(encoding="utf-8").strip())
+    assert record["equity_usdc"] == pytest.approx(1234.56)
+
+
+def test_save_cycle_omits_equity_usdc_when_none(tmp_path: Path) -> None:
+    """save_cycle NON deve includere equity_usdc se viene passato None (retrocompatibilità)."""
+    import json
+
+    mm = MemoryManager(memory_dir=tmp_path)
+    mm.save_cycle(
+        symbol="BTCUSDC",
+        result=_make_result(),
+        current_price=100000.0,
+        equity_usdc=None,
+    )
+
+    record = json.loads((tmp_path / "BTCUSDC.jsonl").read_text(encoding="utf-8").strip())
+    assert "equity_usdc" not in record
+
+
+# ------------------------------------------------------------------
+# get_price_equity_series
+# ------------------------------------------------------------------
+
+
+def test_get_price_equity_series_returns_records_in_window(tmp_path: Path) -> None:
+    """get_price_equity_series deve ritornare solo i record nel range di date."""
+    mm = MemoryManager(memory_dir=tmp_path)
+
+    from datetime import date
+
+    # Record dentro la finestra
+    for i in range(3):
+        mm.save_cycle(
+            symbol="BTCUSDC",
+            result=_make_result(),
+            current_price=float(60000 + i * 1000),
+            equity_usdc=float(1000 + i * 100),
+        )
+
+    series = mm.get_price_equity_series(
+        "BTCUSDC",
+        since=date.today(),
+        until=date.today(),
+    )
+
+    assert len(series) == 3
+    assert series[0]["price"] == pytest.approx(60000.0)
+    assert series[0]["equity_usdc"] == pytest.approx(1000.0)
+    assert series[2]["equity_usdc"] == pytest.approx(1200.0)
+
+
+def test_get_price_equity_series_equity_none_for_old_records(tmp_path: Path) -> None:
+    """I record privi di equity_usdc devono avere equity_usdc=None nella serie."""
+    import json
+
+    mm = MemoryManager(memory_dir=tmp_path)
+    path = mm._symbol_path("BTCUSDC")
+    path.write_text(
+        json.dumps({
+            "timestamp": "2026-04-20T10:00:00",
+            "action": "HOLD",
+            "order_type": "NONE",
+            "confidence": 0.5,
+            "reason": "test",
+            "quantity": None,
+            "price": 60000.0,
+            "execution_status": "NOT_EXECUTED",
+            "risk_decision": "APPROVE",
+            "market_bias": "NEUTRAL",
+        }) + "\n",
+        encoding="utf-8",
+    )
+
+    from datetime import date
+
+    series = mm.get_price_equity_series(
+        "BTCUSDC",
+        since=date(2026, 4, 20),
+        until=date(2026, 4, 20),
+    )
+
+    assert len(series) == 1
+    assert series[0]["price"] == pytest.approx(60000.0)
+    assert series[0]["equity_usdc"] is None

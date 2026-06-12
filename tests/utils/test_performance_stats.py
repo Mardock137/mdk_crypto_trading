@@ -40,6 +40,7 @@ def _event(
 def _mock_mm_without_trades() -> MagicMock:
     mm = MagicMock()
     mm.compute_fifo_trades.return_value = []
+    mm.get_price_equity_series.return_value = []
     return mm
 
 
@@ -131,6 +132,7 @@ def test_build_stats_uses_fifo_trades_for_pnl() -> None:
         {"realized_pnl": 5.0, "pnl_pct": 1.0},
         {"realized_pnl": -3.0, "pnl_pct": -0.5},
     ]
+    mm.get_price_equity_series.return_value = []
     stats = build_performance_stats(
         "BTCUSDC", mm, [], days=7, today=date(2026, 4, 20),
     )
@@ -159,6 +161,7 @@ def test_build_stats_sells_in_profit_counts_breakeven_as_profit() -> None:
         {"realized_pnl": 0.0, "pnl_pct": 0.0},
         {"realized_pnl": -2.0, "pnl_pct": -1.0},
     ]
+    mm.get_price_equity_series.return_value = []
     stats = build_performance_stats(
         "BTCUSDC", mm, [], days=7, today=date(2026, 4, 20),
     )
@@ -209,3 +212,200 @@ def test_write_performance_report_creates_file(tmp_path: Path) -> None:
     assert "Agire sui segnali forti" in content
     assert "SELL in profitto" in content
     assert "SELL in perdita" in content
+
+
+# ---------- KPI cumulativi (tutti i trade) ----------
+
+
+def test_build_stats_realized_pnl_total_usdc_uses_all_trades() -> None:
+    """realized_pnl_total_usdc deve sommare tutti i trade FIFO, non solo gli ultimi 10."""
+    mm = MagicMock()
+    mm.compute_fifo_trades.return_value = [
+        {"realized_pnl": 10.0, "pnl_pct": 2.0},
+    ] * 15  # 15 trade
+    mm.get_price_equity_series.return_value = []
+    stats = build_performance_stats(
+        "BTCUSDC", mm, [], days=7, today=date(2026, 4, 20),
+    )
+
+    assert stats.realized_pnl_total_usdc == pytest.approx(150.0)
+
+
+def test_build_stats_win_rate_pct_all_wins() -> None:
+    """win_rate_pct deve essere 100% se tutti i trade sono vincenti."""
+    mm = MagicMock()
+    mm.compute_fifo_trades.return_value = [
+        {"realized_pnl": 5.0, "pnl_pct": 1.0},
+        {"realized_pnl": 3.0, "pnl_pct": 0.5},
+    ]
+    mm.get_price_equity_series.return_value = []
+    stats = build_performance_stats(
+        "BTCUSDC", mm, [], days=7, today=date(2026, 4, 20),
+    )
+
+    assert stats.win_rate_pct == pytest.approx(100.0)
+    assert stats.avg_win_pct == pytest.approx(0.75)
+    assert stats.avg_loss_pct == pytest.approx(0.0)
+
+
+def test_build_stats_win_rate_and_avg_win_loss_mixed() -> None:
+    """win_rate_pct, avg_win_pct e avg_loss_pct devono essere calcolati correttamente su un mix."""
+    mm = MagicMock()
+    mm.compute_fifo_trades.return_value = [
+        {"realized_pnl": 4.0, "pnl_pct": 2.0},
+        {"realized_pnl": 6.0, "pnl_pct": 3.0},
+        {"realized_pnl": -2.0, "pnl_pct": -1.0},
+    ]
+    mm.get_price_equity_series.return_value = []
+    stats = build_performance_stats(
+        "BTCUSDC", mm, [], days=7, today=date(2026, 4, 20),
+    )
+
+    assert stats.win_rate_pct == pytest.approx(100 * 2 / 3, rel=1e-4)
+    assert stats.avg_win_pct == pytest.approx(2.5)
+    assert stats.avg_loss_pct == pytest.approx(1.0)
+
+
+def test_build_stats_cumulative_kpis_zero_without_trades() -> None:
+    """Senza trade i KPI cumulativi devono essere zero."""
+    stats = build_performance_stats(
+        "BTCUSDC", _mock_mm_without_trades(), [], days=7,
+        today=date(2026, 4, 20),
+    )
+
+    assert stats.realized_pnl_total_usdc == 0.0
+    assert stats.win_rate_pct == 0.0
+    assert stats.avg_win_pct == 0.0
+    assert stats.avg_loss_pct == 0.0
+
+
+# ---------- KPI equity-based ----------
+
+
+def _mock_mm_with_equity(equity_series: list[dict]) -> MagicMock:
+    mm = MagicMock()
+    mm.compute_fifo_trades.return_value = []
+    mm.get_price_equity_series.return_value = equity_series
+    return mm
+
+
+def test_build_stats_buy_and_hold_and_strategy_return() -> None:
+    """buy_and_hold_return_pct e strategy_return_pct devono essere calcolati dalla serie."""
+    series = [
+        {"timestamp": "2026-04-14T10:00:00", "price": 60000.0, "equity_usdc": 1000.0},
+        {"timestamp": "2026-04-20T10:00:00", "price": 63000.0, "equity_usdc": 1100.0},
+    ]
+    stats = build_performance_stats(
+        "BTCUSDC", _mock_mm_with_equity(series), [], days=7,
+        today=date(2026, 4, 20),
+    )
+
+    assert stats.buy_and_hold_return_pct == pytest.approx(5.0, rel=1e-4)
+    assert stats.strategy_return_pct == pytest.approx(10.0, rel=1e-4)
+
+
+def test_build_stats_max_drawdown_from_equity() -> None:
+    """max_drawdown_pct deve rilevare la discesa massima dal picco."""
+    series = [
+        {"timestamp": "2026-04-14T10:00:00", "price": 60000.0, "equity_usdc": 1000.0},
+        {"timestamp": "2026-04-15T10:00:00", "price": 62000.0, "equity_usdc": 1200.0},
+        {"timestamp": "2026-04-16T10:00:00", "price": 58000.0, "equity_usdc": 900.0},
+        {"timestamp": "2026-04-20T10:00:00", "price": 61000.0, "equity_usdc": 1050.0},
+    ]
+    stats = build_performance_stats(
+        "BTCUSDC", _mock_mm_with_equity(series), [], days=7,
+        today=date(2026, 4, 20),
+    )
+
+    # Picco 1200, minimo 900 → drawdown = (1200-900)/1200*100 = 25%
+    assert stats.max_drawdown_pct == pytest.approx(25.0, rel=1e-4)
+
+
+def test_build_stats_equity_kpis_none_without_series() -> None:
+    """Senza serie equity i KPI equity-based devono essere None."""
+    stats = build_performance_stats(
+        "BTCUSDC", _mock_mm_without_trades(), [], days=7,
+        today=date(2026, 4, 20),
+    )
+
+    assert stats.buy_and_hold_return_pct is None
+    assert stats.strategy_return_pct is None
+    assert stats.max_drawdown_pct is None
+
+
+def test_build_stats_equity_kpis_none_with_single_point() -> None:
+    """Con un solo punto nella serie equity i KPI equity-based devono essere None."""
+    mm = _mock_mm_with_equity([
+        {"timestamp": "2026-04-20T10:00:00", "price": 60000.0, "equity_usdc": 1000.0},
+    ])
+    stats = build_performance_stats(
+        "BTCUSDC", mm, [], days=7, today=date(2026, 4, 20),
+    )
+
+    assert stats.buy_and_hold_return_pct is None
+    assert stats.strategy_return_pct is None
+    assert stats.max_drawdown_pct is None
+
+
+# ---------- Report markdown: sezione KPI ----------
+
+
+def test_write_performance_report_includes_kpi_section(tmp_path: Path) -> None:
+    """Il report markdown deve includere la sezione ## KPI con tutti i nuovi campi."""
+    mandate = InvestmentMandate(
+        max_drawdown_pct=15.0,
+        horizon="Intraday to swing",
+        max_position_pct=70.0,
+    )
+    mm = _mock_mm_with_equity([
+        {"timestamp": "2026-04-14T10:00:00", "price": 60000.0, "equity_usdc": 1000.0},
+        {"timestamp": "2026-04-20T10:00:00", "price": 63000.0, "equity_usdc": 1100.0},
+    ])
+    stats = build_performance_stats(
+        "BTCUSDC", mm, [], days=7, today=date(2026, 4, 20),
+    )
+    review = PerformanceReview(
+        summary="OK",
+        mandate_adherence=MandateAdherence.ALIGNED,
+        suggestions=["Nessuna azione"],
+    )
+
+    path = write_performance_report(
+        "BTCUSDC", mandate, stats, review, days_analyzed=7,
+        reports_dir=tmp_path, today=date(2026, 4, 20),
+    )
+    content = path.read_text(encoding="utf-8")
+
+    assert "## KPI" in content
+    assert "Win rate" in content
+    assert "Vincita media" in content
+    assert "Perdita media" in content
+    assert "Rendimento strategia" in content
+    assert "buy-and-hold" in content
+    assert "Max drawdown" in content
+
+
+def test_write_performance_report_kpi_shows_nd_when_equity_missing(tmp_path: Path) -> None:
+    """Il report deve mostrare 'n/d' per i KPI equity-based quando la serie è assente."""
+    mandate = InvestmentMandate(
+        max_drawdown_pct=15.0,
+        horizon="Intraday to swing",
+        max_position_pct=70.0,
+    )
+    stats = build_performance_stats(
+        "BTCUSDC", _mock_mm_without_trades(), [], days=7,
+        today=date(2026, 4, 20),
+    )
+    review = PerformanceReview(
+        summary="OK",
+        mandate_adherence=MandateAdherence.ALIGNED,
+        suggestions=["s1"],
+    )
+
+    path = write_performance_report(
+        "BTCUSDC", mandate, stats, review, days_analyzed=7,
+        reports_dir=tmp_path, today=date(2026, 4, 20),
+    )
+    content = path.read_text(encoding="utf-8")
+
+    assert "n/d" in content

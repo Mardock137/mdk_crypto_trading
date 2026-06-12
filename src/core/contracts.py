@@ -185,6 +185,15 @@ class PerformanceStats:
     days_without_executed_trade: int
     sells_in_profit: int = 0
     sells_in_loss: int = 0
+    # KPI cumulativi (tutti i trade chiusi nello storico disponibile)
+    realized_pnl_total_usdc: float = 0.0
+    win_rate_pct: float = 0.0
+    avg_win_pct: float = 0.0
+    avg_loss_pct: float = 0.0
+    # KPI basati sulla serie equity del periodo (None se storico insufficiente)
+    buy_and_hold_return_pct: float | None = None
+    strategy_return_pct: float | None = None
+    max_drawdown_pct: float | None = None
 
 
 @dataclass(slots=True)

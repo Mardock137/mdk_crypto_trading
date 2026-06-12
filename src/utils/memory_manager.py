@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from collections import deque
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from src.core.contracts import TradingCycleResult
@@ -40,9 +40,10 @@ class MemoryManager:
         symbol: str,
         result: TradingCycleResult,
         current_price: float | None,
+        equity_usdc: float | None = None,
     ) -> None:
         """Salva il riassunto di un ciclo completato nel file JSONL del simbolo."""
-        record = {
+        record: dict = {
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
             "action": result.trade_proposal.action.value,
             "order_type": result.trade_proposal.order_type.value,
@@ -54,6 +55,8 @@ class MemoryManager:
             "risk_decision": result.risk_assessment.risk_decision.value,
             "market_bias": result.market_analysis.market_bias.value,
         }
+        if equity_usdc is not None:
+            record["equity_usdc"] = equity_usdc
         path = self._symbol_path(symbol)
         with path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(record) + "\n")
@@ -349,3 +352,57 @@ class MemoryManager:
             "open_qty": round(total_qty, 8),
             "avg_entry_price": round(total_cost / total_qty, 8),
         }
+
+    def get_price_equity_series(
+        self,
+        symbol: str,
+        since: date | None = None,
+        until: date | None = None,
+    ) -> list[dict]:
+        """Ritorna la serie temporale di prezzo ed equity nella finestra indicata.
+
+        Ogni entry contiene:
+        - ``timestamp`` (str): timestamp del record.
+        - ``price`` (float | None): prezzo del ciclo (None se assente/invalido).
+        - ``equity_usdc`` (float | None): valore totale del portafoglio (None per
+          i record precedenti alla v1.27.0, che non registravano questo campo).
+
+        I limiti ``since`` / ``until`` sono inclusivi e confrontati sulla data
+        (i primi 10 caratteri del timestamp). Passare ``None`` rimuove il filtro
+        sul lato corrispondente.
+        """
+        records = self._read_all(symbol)
+        result: list[dict] = []
+        for record in records:
+            ts_str = record.get("timestamp")
+            if not isinstance(ts_str, str) or len(ts_str) < 10:
+                continue
+            try:
+                rec_date = date.fromisoformat(ts_str[:10])
+            except ValueError:
+                continue
+            if since is not None and rec_date < since:
+                continue
+            if until is not None and rec_date > until:
+                continue
+
+            raw_price = record.get("price")
+            try:
+                price_val: float | None = float(raw_price) if raw_price is not None else None
+            except (TypeError, ValueError):
+                price_val = None
+
+            raw_equity = record.get("equity_usdc")
+            try:
+                equity_val: float | None = (
+                    float(raw_equity) if raw_equity is not None else None
+                )
+            except (TypeError, ValueError):
+                equity_val = None
+
+            result.append({
+                "timestamp": ts_str,
+                "price": price_val,
+                "equity_usdc": equity_val,
+            })
+        return result

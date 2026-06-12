@@ -3,7 +3,7 @@
 [![CI](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml/badge.svg)](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml)
 
 - **Versione Python**: `3.14.5`
-- **Versione MDK Crypto Trading**: `1.26.1`
+- **Versione MDK Crypto Trading**: `1.27.0`
 
 ## 📋 Indice
 
@@ -76,6 +76,7 @@ python dev_support/verify_connections.py
 - [Architettura](docs/architecture.md)
 - [Configurazione](docs/config.md)
 - [Sistema di logging](docs/observability.md)
+- [KPI e performance](docs/kpi.md)
 - [Endpoints API](docs/api_endpoints.md)
 - [Gerarchia e ruoli](docs/hierarchy_and_roles.md)
 - [Logica decisionale](docs/decision_logic.md)

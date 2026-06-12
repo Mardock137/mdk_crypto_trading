@@ -9,7 +9,7 @@
  ├── 📁 .venv/                                               # Ambiente virtuale con tutte le dipendenze installate.
  │
  ├── 📁 data/                                                # Dati persistenti del sistema (ignorata da git).
- │    ├── 📁 memory/                                         # Memoria decisionale per simbolo (un file JSONL per coppia).
+ │    ├── 📁 memory/                                         # Memoria decisionale per simbolo (un file JSONL per coppia). Ogni record include i campi operativi del ciclo; dalla v1.27.0 include anche `equity_usdc` (valore totale del portafoglio al momento del ciclo, usato per calcolare i KPI di drawdown e rendimento strategia).
  │    ├── 📁 performance_reports/                            # Report giornalieri del Performance Reviewer (YYYY-MM-DD.md).
  │    └── 📄 heartbeat                                       # Timestamp UTC dell'ultimo ciclo avviato; usato dal HEALTHCHECK Docker.
  │
@@ -46,6 +46,7 @@
  │    ├── 📄 decision_logic.md                               # Descrive la logica decisionale di MDK Crypto Trading.
  │    ├── 📄 deploy.md                                       # Guida completa al deploy su Google Compute Engine con Docker.
  │    ├── 📄 hierarchy_and_roles.md                          # Gerarchia e ruoli dei 4 agenti.
+ │    ├── 📄 kpi.md                                          # Definizione ufficiale dei 6 KPI, limiti e benchmark.
  │    ├── 📄 observability.md                                # Sistema di logging: log testuale e log eventi JSON.
  │    ├── 📄 repo_structure.md                               # Struttura e spiegazione della repo.
  │    └── 📄 TEMPLATE.md                                     # Template standard per la documentazione (struttura, emoji, regole).
