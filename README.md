@@ -3,7 +3,7 @@
 [![CI](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml/badge.svg)](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml)
 
 - **Versione Python**: `3.14.5`
-- **Versione MDK Crypto Trading**: `1.27.1`
+- **Versione MDK Crypto Trading**: `1.28.0`
 
 ## 📋 Indice
 
@@ -68,6 +68,7 @@ python dev_support/verify_connections.py
 - **OpenAI API** (`GPT-5.4`): Market Analyst
 - **Gemini API** (`Gemini 3.1 Pro`): Risk Manager
 - **Binance API**: dati di mercato, portafoglio, ordini aperti, esecuzione ordini (DEMO e REAL)
+- **Alpha Vantage API**: notizie crypto con sentiment score (base del futuro News Reviewer)
 - **Telegram Bot API** (opzionale): notifiche in tempo reale su ordini eseguiti, errori e avvio/stop del bot
 
 ## ℹ️ Documentazione

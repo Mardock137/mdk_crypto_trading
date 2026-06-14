@@ -67,6 +67,21 @@ class MarketDataSnapshot:
 
 
 @dataclass(slots=True)
+class NewsArticle:
+    """Articolo di notizie con sentiment, prodotto da un NewsClient."""
+
+    title: str
+    url: str
+    source: str
+    summary: str
+    time_published: str
+    overall_sentiment_score: float | None = None
+    overall_sentiment_label: str | None = None
+    btc_sentiment_score: float | None = None
+    btc_relevance: float | None = None
+
+
+@dataclass(slots=True)
 class PortfolioState:
     usdc_balance: float
     usdc_balance_total: float

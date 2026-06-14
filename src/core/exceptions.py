@@ -34,6 +34,10 @@ class LlmError(MdkTradingError, RuntimeError):
     """
 
 
+class NewsError(MdkTradingError):
+    """Errore proveniente da un provider di notizie (Alpha Vantage, rete, ecc.)."""
+
+
 class CycleExecutionError(MdkTradingError):
     """Errore durante un ciclo di trading: porta con sé i risultati parziali.
 

@@ -7,6 +7,7 @@ from src.utils.config import (
     load_cycle_skip_config,
     load_llm_model_config,
     load_mandate,
+    load_news_config,
     load_settings,
     load_symbol_config,
     load_trading_config,
@@ -35,6 +36,31 @@ def test_load_settings_reads_required_values() -> None:
     assert settings.claude_api_key == "claude-key"
     assert settings.telegram_bot_token == "tg-token"
     assert settings.telegram_chat_id == "tg-chat"
+
+
+def test_load_settings_reads_alpha_vantage_api_key() -> None:
+    """ALPHA_VANTAGE_API_KEY viene letta e associata correttamente ad AppSettings."""
+    settings = load_settings(
+        {
+            "TRADING_MODE": "DEMO",
+            "CYCLE_INTERVAL_SECONDS": "7200",
+            "ALPHA_VANTAGE_API_KEY": "av-test-key",
+        }
+    )
+
+    assert settings.alpha_vantage_api_key == "av-test-key"
+
+
+def test_load_settings_alpha_vantage_api_key_defaults_to_none() -> None:
+    """Se ALPHA_VANTAGE_API_KEY non è nel .env, alpha_vantage_api_key deve essere None."""
+    settings = load_settings(
+        {
+            "TRADING_MODE": "DEMO",
+            "CYCLE_INTERVAL_SECONDS": "7200",
+        }
+    )
+
+    assert settings.alpha_vantage_api_key is None
 
 
 def test_load_settings_telegram_defaults_to_none() -> None:
@@ -247,4 +273,37 @@ def test_load_cycle_skip_config_raises_if_threshold_field_missing(tmp_path: Path
 
     with pytest.raises(ValueError, match="rsi_delta"):
         load_cycle_skip_config(yaml_file)
+
+
+# ---------- load_news_config ----------
+
+_VALID_NEWS_YAML = """\
+source: alpha_vantage
+query:
+  topics: blockchain
+  tickers: ""
+  lookback_hours: 12
+  max_articles: 50
+  sort: LATEST
+"""
+
+
+def test_load_news_config_returns_expected_values(tmp_path: Path) -> None:
+    yaml_file = tmp_path / "news.yaml"
+    yaml_file.write_text(_VALID_NEWS_YAML, encoding="utf-8")
+
+    config = load_news_config(yaml_file)
+
+    assert config["source"] == "alpha_vantage"
+    assert config["query"]["topics"] == "blockchain"
+    assert config["query"]["lookback_hours"] == 12
+    assert config["query"]["max_articles"] == 50
+    assert config["query"]["sort"] == "LATEST"
+
+
+def test_load_news_config_fallback_when_file_missing(tmp_path: Path) -> None:
+    """Se il file non esiste, deve ritornare un dict vuoto senza errori."""
+    config = load_news_config(tmp_path / "missing.yaml")
+
+    assert config == {}
 

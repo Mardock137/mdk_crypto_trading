@@ -50,6 +50,7 @@ def _make_settings(**overrides: Any) -> AppSettings:
         "log_level": "INFO",
         "telegram_bot_token": None,
         "telegram_chat_id": None,
+        "alpha_vantage_api_key": None,
     }
     defaults.update(overrides)
     return AppSettings(**defaults)

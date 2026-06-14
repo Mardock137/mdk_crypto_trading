@@ -35,6 +35,7 @@ Contiene chiavi API, modalità di esecuzione e variabili riservate. Mai committa
 | `BINANCE_DEMO_BASE_URL`   | in DEMO      | —        | URL Binance Demo (`https://demo-api.binance.com`) |
 | `TELEGRAM_BOT_TOKEN`      | no           | —        | Token del bot Telegram (notifiche opzionali)      |
 | `TELEGRAM_CHAT_ID`        | no           | —        | ID della chat Telegram di destinazione            |
+| `ALPHA_VANTAGE_API_KEY`   | no           | —        | Chiave API Alpha Vantage (notizie crypto)         |
 
 Vedi `.env.example` per un template completo.
 
@@ -121,6 +122,31 @@ quote_currency: USDC
 - `symbol`: coppia di trading attiva (es. `BTCUSDC`, `ETHUSDC`)
 - `quote_currency`: valuta di riferimento usata per calcolare saldi e controvalore. Deve corrispondere al suffisso del simbolo
 
+### `config/news.yaml`
+
+Configurazione della fonte news crypto.
+
+```yaml
+source: alpha_vantage
+query:
+  topics: blockchain      # copertura crypto generale
+  tickers: ""             # vuoto: nessun filtro stretto, cattura anche news sistemiche
+  lookback_hours: 12
+  max_articles: 50
+  sort: LATEST
+```
+
+Campi:
+
+- `source`: identificatore della fonte news attiva (attualmente solo `alpha_vantage`).
+- `query.topics`: categoria di notizie da richiedere ad Alpha Vantage (es. `blockchain`). Copre le news crypto in generale senza limitarsi a BTC.
+- `query.tickers`: filtro per ticker specifici (es. `CRYPTO:BTC`). Se vuoto, nessun filtro stretto: si ricevono anche news sistemiche.
+- `query.lookback_hours`: finestra temporale in ore per la chiamata (calcola `time_from = ora UTC - lookback_hours`).
+- `query.max_articles`: numero massimo di articoli da richiedere ad Alpha Vantage (parametro `limit`).
+- `query.sort`: ordinamento degli articoli (`LATEST`, `EARLIEST`, `RELEVANCE`).
+
+Il file viene letto da `load_news_config()` in `src/utils/config.py`. Se il file manca, la funzione ritorna un dict vuoto senza errori (fallback safe).
+
 ### `config/llm_models/`
 
 Configurazione dei modelli LLM usati dagli agenti. Un file YAML per agente.
@@ -201,7 +227,7 @@ Test automatici per il caricamento della configurazione:
 pytest tests/utils/test_config.py -v
 ```
 
-Verifica manuale delle connessioni API (Binance, OpenAI, Gemini, Claude, Telegram):
+Verifica manuale delle connessioni API (Binance, OpenAI, Gemini, Claude, Telegram, Alpha Vantage):
 
 ```bash
 python dev_support/verify_connections.py

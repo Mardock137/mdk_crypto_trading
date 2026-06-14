@@ -1,6 +1,36 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.28.0 — 2026-06-14
+
+### Aggiunto
+
+- `src/core/contracts.py` — nuovo dataclass `NewsArticle` (title, url, source, summary, time_published, overall_sentiment_score, overall_sentiment_label, btc_sentiment_score, btc_relevance). Output del client news, coerente con lo stile degli altri contratti.
+- `src/core/exceptions.py` — nuova `NewsError(MdkTradingError)`, sorella di `ExchangeError` e `LlmError`. Incapsula tutti gli errori provenienti dalla fonte news (rate limit, chiave errata, rete, parsing).
+- `src/integrations/news/__init__.py` — marker di package.
+- `src/integrations/news/base_news_client.py` — `BaseNewsClient(ABC)` con il metodo astratto `get_recent_news() -> list[NewsArticle]`. Rende la fonte news sostituibile con la stessa interfaccia di `BaseExchangeClient` e `BaseLlmInterface`.
+- `src/integrations/news/alpha_vantage_client.py` — `AlphaVantageClient(BaseNewsClient)`. Chiama `GET https://www.alphavantage.co/query?function=NEWS_SENTIMENT`, calcola `time_from` (ora UTC - `lookback_hours`), fa retry su errori transienti con `tenacity` (backoff esponenziale, max 3 tentativi). Gestisce il quirk Alpha Vantage: risposta `200` con campo `Information`/`Note`/`Error Message` → `NewsError`. Estrae il sentiment specifico BTC dal blocco `ticker_sentiment`.
+- `config/news.yaml` — configurazione della fonte news (source, topics, tickers, lookback_hours, max_articles, sort).
+- `.env.example` — nuova sezione `ALPHA_VANTAGE_API_KEY`.
+
+### Modificato
+
+- `src/utils/config.py` — `AppSettings`: nuovo campo `alpha_vantage_api_key: str | None`; `load_settings`: legge `ALPHA_VANTAGE_API_KEY` dall'env; nuova funzione `load_news_config(config_path=...)` con fallback safe (dict vuoto se il file manca).
+- `dev_support/verify_connections.py` — aggiunto test `8. Alpha Vantage` che scarica le notizie e stampa quante ne arrivano; saltato se la chiave manca.
+- `README.md` — bump versione `1.27.1` → `1.28.0`; aggiunta Alpha Vantage in "API integrate".
+- `docs/repo_structure.md` — aggiunto `src/integrations/news/`, `config/news.yaml` e `tests/integrations/news/` nell'albero.
+- `docs/api_endpoints.md` — nuova sezione "Alpha Vantage" con l'endpoint `NEWS_SENTIMENT`.
+- `docs/config.md` — aggiunta riga `ALPHA_VANTAGE_API_KEY` alla tabella `.env`; nuova sezione `config/news.yaml`.
+- `docs/architecture.md` — aggiunto strato `news/` in `src/integrations/`.
+
+### Test
+
+- `tests/integrations/news/test_alpha_vantage_client.py` (nuovo, `requests.get` mockato): parsing corretto del feed in `list[NewsArticle]`; estrazione sentiment BTC; feed vuoto e feed mancante → lista vuota; risposta con `Information`/`Note`/`Error Message` → `NewsError`; errore HTTP non-retriable e ConnectionError → `NewsError`; corretta costruzione dei parametri (topics, tickers, limit, time_from, sort).
+- `tests/utils/test_config.py` — 2 nuovi test: lettura `ALPHA_VANTAGE_API_KEY` e fallback `None`; 2 nuovi test: `load_news_config` con valori corretti e fallback file mancante.
+- `tests/core/test_exceptions.py` — 1 nuovo test: `NewsError` eredita da `MdkTradingError`.
+
+---
+
 ## 1.27.1 — 2026-06-12
 
 ### Aggiunto

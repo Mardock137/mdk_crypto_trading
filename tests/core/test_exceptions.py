@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.core.exceptions import ExchangeError, LlmError, MdkTradingError
+from src.core.exceptions import ExchangeError, LlmError, MdkTradingError, NewsError
 
 
 def test_mdk_trading_error_is_exception() -> None:
@@ -42,3 +42,8 @@ def test_llm_error_is_catchable_as_runtime_error() -> None:
 def test_exchange_error_is_not_runtime_error() -> None:
     """ExchangeError NON deve essere un RuntimeError: le due categorie sono distinte."""
     assert not issubclass(ExchangeError, RuntimeError)
+
+
+def test_news_error_is_mdk_trading_error() -> None:
+    """NewsError deve essere una sottoclasse di MdkTradingError."""
+    assert issubclass(NewsError, MdkTradingError)

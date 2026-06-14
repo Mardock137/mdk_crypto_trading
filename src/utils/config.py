@@ -45,6 +45,7 @@ class AppSettings:
     log_level: str
     telegram_bot_token: str | None
     telegram_chat_id: str | None
+    alpha_vantage_api_key: str | None
 
 
 def load_settings(
@@ -77,6 +78,7 @@ def load_settings(
         log_level=env.get("LOG_LEVEL", "INFO"),
         telegram_bot_token=env.get("TELEGRAM_BOT_TOKEN"),
         telegram_chat_id=env.get("TELEGRAM_CHAT_ID"),
+        alpha_vantage_api_key=env.get("ALPHA_VANTAGE_API_KEY"),
     )
 
 
@@ -191,6 +193,19 @@ def load_llm_model_config(
 ) -> dict[str, Any]:
     """Carica la configurazione di un modello LLM dal file YAML."""
     return _load_yaml(config_path)
+
+
+def load_news_config(
+    config_path: str | Path = _PROJECT_ROOT / "config/news.yaml",
+) -> dict[str, Any]:
+    """Carica la configurazione della fonte news dal file YAML.
+
+    Fallback safe: se il file non esiste, ritorna un dict vuoto senza errori.
+    """
+    resolved = Path(config_path)
+    if not resolved.exists():
+        return {}
+    return _load_yaml(resolved)
 
 
 def _require_value(env: Mapping[str, str], key: str) -> str:

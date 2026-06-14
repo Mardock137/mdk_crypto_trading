@@ -26,6 +26,7 @@ _FAKE_SETTINGS = AppSettings(
     log_level="INFO",
     telegram_bot_token="tg-token-test",
     telegram_chat_id="tg-chat-test",
+    alpha_vantage_api_key=None,
 )
 
 _FAKE_LLM_CONFIG = {"model": "gpt-test", "temperature": 0.2, "max_tokens": 512}

@@ -1,0 +1,7 @@
+source: alpha_vantage
+query:
+  topics: blockchain      # copertura crypto generale
+  tickers: ""             # vuoto: nessun filtro stretto, cattura anche news sistemiche
+  lookback_hours: 12
+  max_articles: 50
+  sort: LATEST

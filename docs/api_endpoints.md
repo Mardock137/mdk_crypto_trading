@@ -10,6 +10,7 @@ Elenco degli endpoint API esterni utilizzati da MDK Crypto Trading, raggruppati 
 - [OpenAI](#openai)
 - [Gemini](#gemini)
 - [Binance](#binance)
+- [Alpha Vantage](#alpha-vantage)
 - [📚 Riferimenti](#-riferimenti)
 
 ---
@@ -55,6 +56,12 @@ Elenco degli endpoint API esterni utilizzati da MDK Crypto Trading, raggruppati 
 
 ---
 
+## Alpha Vantage
+
+- `GET https://www.alphavantage.co/query?function=NEWS_SENTIMENT` → Scarica notizie crypto con sentiment score. Usato da `AlphaVantageClient` con parametri `topics`, `tickers`, `time_from`, `limit`, `sort`. La risposta `200` può contenere un campo `Information`, `Note` o `Error Message` in caso di rate limit o chiave non valida: questi casi vengono rilevati e sollevati come `NewsError`.
+
+---
+
 ## 📚 Riferimenti
 
 - **Codice**:
@@ -62,9 +69,11 @@ Elenco degli endpoint API esterni utilizzati da MDK Crypto Trading, raggruppati 
   - `src/integrations/llm_interfaces/openai_interface.py`
   - `src/integrations/llm_interfaces/gemini_interface.py`
   - `src/integrations/exchange/binance_client.py`
+  - `src/integrations/news/alpha_vantage_client.py`
 - **Doc correlati**: `docs/architecture.md`, `docs/config.md`
 - **Risorse esterne**:
   - [Anthropic API](https://docs.anthropic.com/en/api)
   - [OpenAI API](https://platform.openai.com/docs/api-reference)
   - [Gemini API](https://ai.google.dev/api)
   - [Binance API](https://binance-docs.github.io/apidocs/spot/en/)
+  - [Alpha Vantage API](https://www.alphavantage.co/documentation/)

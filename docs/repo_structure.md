@@ -25,6 +25,7 @@
  │    │    ├── 📄 performance_reviewer.md                    # Prompt operativo del Performance Reviewer.
  │    │    └── 📄 risk_manager.md                            # Prompt operativo del Risk Manager.
  │    ├── 📄 cycle_skip.yaml                                 # Configurazione del pre-check deterministico che salta cicli quando il contesto e' invariato.
+ │    ├── 📄 news.yaml                                       # Configurazione della fonte news (source, topics, tickers, lookback_hours, max_articles, sort).
  │    ├── 📄 symbols.yaml                                    # Simbolo di trading attivo e quote currency (es. BTCUSDC / USDC).
  │    └── 📄 trading.yaml                                    # Regole operative statiche del sistema (min_order_usdc + investment mandate).
  │
@@ -79,6 +80,9 @@
  │    │    │    ├── 📄 base_exchange_client.py               # Base interface per i client exchange.
  │    │    │    ├── 📄 binance_client.py                     # Client Binance con supporto DEMO/REAL.
  │    │    │    └── 📄 order_fields.py                       # Costanti dei campi-ordine Binance (fonte unica di verità).
+ │    │    ├── 📁 news/                                      # Integrazione fonte notizie crypto.
+ │    │    │    ├── 📄 base_news_client.py                   # Interfaccia astratta BaseNewsClient (fonte sostituibile).
+ │    │    │    └── 📄 alpha_vantage_client.py               # AlphaVantageClient: download notizie con sentiment + retry tenacity. Base del futuro News Reviewer.
  │    │    └── 📁 llm_interfaces/                            # Interfaccia verso i modelli LLM.
  │    │         ├── 📄 anthropic_interface.py                # Client LLM per Anthropic Claude (con retry automatico).
  │    │         ├── 📄 base_llm_interface.py                 # Base interface per i provider LLM.
@@ -117,6 +121,8 @@
  │    ├── 📁 integrations/                                   # Test delle integrazioni.
  │    │    ├── 📁 exchange/
  │    │    │    └── 📄 test_binance_client.py
+ │    │    ├── 📁 news/
+ │    │    │    └── 📄 test_alpha_vantage_client.py
  │    │    └── 📁 llm_interfaces/
  │    │         ├── 📄 test_anthropic_interface.py
  │    │         ├── 📄 test_base_llm_interface.py

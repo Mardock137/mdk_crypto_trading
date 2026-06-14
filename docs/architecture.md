@@ -100,7 +100,7 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 ### `src/core/`
 
 - `contracts.py`: strutture dati condivise tra agenti (input, output, enum)
-- `exceptions.py`: gerarchia di eccezioni operative del sistema. `MdkTradingError` è la base per tutti gli errori attesi; `ExchangeError(MdkTradingError)` per errori provenienti dall'exchange; `LlmError(MdkTradingError, RuntimeError)` per errori provenienti da un provider LLM. L'ereditarietà multipla di `LlmError` garantisce backward-compatibility con il codice che cattura `RuntimeError`.
+- `exceptions.py`: gerarchia di eccezioni operative del sistema. `MdkTradingError` è la base per tutti gli errori attesi; `ExchangeError(MdkTradingError)` per errori provenienti dall'exchange; `LlmError(MdkTradingError, RuntimeError)` per errori provenienti da un provider LLM; `NewsError(MdkTradingError)` per errori provenienti dalla fonte news. L'ereditarietà multipla di `LlmError` garantisce backward-compatibility con il codice che cattura `RuntimeError`.
 - `workflow.py`: catena lineare Market Analyst → Decision Maker → Risk Manager → Execution Trader
 - `runner.py`: `TradingRunner`, direttore d'orchestra del loop operativo (loop, segnali, orchestrazione del singolo ciclo). Delega le decisioni specialistiche a 4 collaboratori dedicati:
   - `cycle_skip_handler.py`: `CycleSkipHandler` — possiede lo snapshot del ciclo precedente e il counter dei salti consecutivi, decide se saltare il ciclo (pre-check deterministico)
@@ -112,6 +112,7 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 
 - `llm_interfaces/`: interfaccia astratta (`BaseLlmInterface`) e implementazioni per Anthropic (`AnthropicInterface`), OpenAI (`OpenAiInterface`) e Gemini (`GeminiInterface`), con retry automatico via `tenacity`. Supportano `temperature` e `max_tokens` configurabili. La base usa il pattern **Template Method**: `generate_json` è concreto nella classe base e centralizza retry, controllo risposta vuota, parsing JSON e gestione errori; le sottoclassi implementano solo i metodi astratti specifici del provider (`_call_provider`, `_extract_text`, `_log_empty_response`) e possono fare override dell'hook `_strip_response` (Anthropic lo usa per togliere wrapping markdown). Tutti gli errori sollevati da `generate_json` sono `LlmError` (definito in `src/core/exceptions.py`).
 - `exchange/`: interfaccia astratta (`BaseExchangeClient`), implementazione per Binance (`BinanceClient`) con supporto modalità DEMO e REAL, e `order_fields.py` come fonte unica dei nomi-campo degli ordini Binance (usato da `BinanceClient`, `PositionManager`, `ExecutionTrader` e `CycleSkipHandler`).
+- `news/`: interfaccia astratta (`BaseNewsClient`) con un solo metodo `get_recent_news() -> list[NewsArticle]` e implementazione `AlphaVantageClient`. Scarica notizie crypto con sentiment da Alpha Vantage (`NEWS_SENTIMENT`), gestisce il quirk della risposta `200` con payload di errore, fa retry su errori transienti via `tenacity`. È la base del futuro **News Reviewer**: in questa fase esiste in isolamento, testato e configurabile, senza aggancio al loop di trading.
 
 `BinanceClient` espone:
 
