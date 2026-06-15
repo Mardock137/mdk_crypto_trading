@@ -1011,6 +1011,64 @@ def test_build_cycle_input_sets_oco_review_required_true(mock_wait: MagicMock) -
     assert captured_input.get("oco_review_required") is True
 
 
+# ---------- latest_news_review in _build_cycle_input ----------
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_build_cycle_input_populates_latest_news_review_from_runner(
+    mock_wait: MagicMock,
+) -> None:
+    """Se il news runner è presente, latest_news_review viene popolato da load_latest_review."""
+    mock_news_client = MagicMock()
+    mock_news_reviewer = MagicMock()
+    expected_review = "# News Review — 2026-06-15\nSentiment: BULLISH"
+
+    runner = _make_runner(
+        news_client=mock_news_client,
+        news_reviewer=mock_news_reviewer,
+    )
+
+    captured_inputs: list[Any] = []
+
+    def _capturing_run_cycle(cycle_input: Any) -> None:
+        captured_inputs.append(cycle_input)
+        raise KeyboardInterrupt
+
+    mock_workflow = MagicMock()
+    mock_workflow.run_cycle.side_effect = _capturing_run_cycle
+    runner._workflow = mock_workflow
+
+    with patch.object(
+        runner._news_review_runner,  # type: ignore[union-attr]
+        "load_latest_review",
+        return_value=expected_review,
+    ):
+        runner.run()
+
+    assert len(captured_inputs) == 1
+    assert captured_inputs[0].latest_news_review == expected_review
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_build_cycle_input_latest_news_review_empty_when_runner_absent(
+    mock_wait: MagicMock,
+) -> None:
+    """Se il news runner è None (chiave AV mancante), latest_news_review è stringa vuota."""
+    runner = _make_runner()  # news_client=None → _news_review_runner=None
+
+    captured: dict[str, object] = {}
+
+    class _CapturingWorkflow:
+        def run_cycle(self, cycle_input: Any) -> None:  # type: ignore[return]
+            captured["latest_news_review"] = cycle_input.latest_news_review
+            raise KeyboardInterrupt
+
+    runner._workflow = _CapturingWorkflow()
+    runner.run()
+
+    assert captured.get("latest_news_review") == ""
+
+
 # ---------- Equity logging ----------
 
 

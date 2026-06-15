@@ -23,6 +23,7 @@ L'MVP separa chiaramente analisi, decisione, controllo del rischio ed esecuzione
 ```mermaid
 flowchart TD
     reviewer["Performance Reviewer<br/>(1/day, fuori catena)"] -.->|report markdown| decisionMaker
+    newsReviewer["News Reviewer<br/>(ogni 12h, fuori catena)"] -.->|digest news| decisionMaker
     marketAnalyst["Market Analyst"] --> decisionMaker["Decision Maker"]
     decisionMaker --> riskManager["Risk Manager"]
     riskManager --> executionTrader["Execution Trader"]
@@ -78,7 +79,7 @@ flowchart TD
 - Il digest viene serializzato in markdown in `data/news_reports/YYYY-MM-DD_HH-MM.md`.
 - Se non ci sono articoli → scrive un report `NEUTRAL` senza chiamare il LLM.
 - Errori del client o del LLM sono non-bloccanti: il ciclo prosegue normalmente.
-- Il consumo da parte del Decision Maker è previsto nella Fase 4 (quando il cerchio si chiude). `load_latest_review()` è già pronto.
+- Il digest viene letto dal Decision Maker ad ogni ciclo tramite il campo `latest_news_review` nel `DecisionMakerInput`: il cerchio è chiuso.
 - Modello LLM e parametri configurati in `config/llm_models/news_reviewer.yaml`.
 - Prompt operativo in `config/prompts/news_reviewer.md`.
 
@@ -175,7 +176,7 @@ I contratti principali sono:
 - `RiskAssessment`: output del `Risk Manager`
 - `ExecutionReport`: output del `Execution Trader`
 - `PerformanceStats` / `PerformanceReview`: input/output del `Performance Reviewer`. `PerformanceStats` include ora `sells_in_profit` e `sells_in_loss`: contatori delle ultime 10 SELL FIFO chiuse in profitto/perdita, usati dal Reviewer per valutare la qualità delle uscite.
-- `NewsReviewerInput` / `NewsDigest`: input e output del `News Reviewer`. `NewsDigest` contiene `overall_sentiment` (`NewsSentiment`: BULLISH/BEARISH/NEUTRAL), `summary`, `key_events` e `risk_flags`.
+- `NewsReviewerInput` / `NewsDigest`: input e output del `News Reviewer`. `NewsDigest` contiene `overall_sentiment` (`NewsSentiment`: BULLISH/BEARISH/NEUTRAL), `summary`, `key_events` e `risk_flags`. Il digest serializzato viene letto dal runner come `latest_news_review` e passato al `DecisionMakerInput`.
 - `InvestmentMandate`: mandato operativo (caricato da `trading.yaml`)
 - `TradingCycleInput` / `TradingCycleResult`: input e output del ciclo completo
 

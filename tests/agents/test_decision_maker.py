@@ -523,3 +523,27 @@ def test_build_user_payload_oco_review_required_defaults_false() -> None:
 
     assert "oco_review_required" in payload
     assert payload["oco_review_required"] is False
+
+
+def test_build_user_payload_includes_latest_news_review() -> None:
+    """_build_user_payload deve includere latest_news_review nel dict inviato al modello."""
+    mock_llm = MagicMock()
+    agent = DecisionMakerAgent(llm=mock_llm)
+    agent_input = _make_dm_input(latest_news_review="# News Review — 2026-06-15\nSentiment: BULLISH")
+
+    payload = agent._build_user_payload(agent_input)
+
+    assert "latest_news_review" in payload
+    assert payload["latest_news_review"] == "# News Review — 2026-06-15\nSentiment: BULLISH"
+
+
+def test_build_user_payload_latest_news_review_defaults_empty() -> None:
+    """latest_news_review deve essere stringa vuota di default."""
+    mock_llm = MagicMock()
+    agent = DecisionMakerAgent(llm=mock_llm)
+    agent_input = _make_dm_input()
+
+    payload = agent._build_user_payload(agent_input)
+
+    assert "latest_news_review" in payload
+    assert payload["latest_news_review"] == ""

@@ -3,7 +3,7 @@
 [![CI](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml/badge.svg)](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml)
 
 - **Versione Python**: `3.14.5`
-- **Versione MDK Crypto Trading**: `1.30.0`
+- **Versione MDK Crypto Trading**: `1.31.0`
 
 ## 📋 Indice
 
@@ -18,7 +18,7 @@
 
 MDK Crypto Trading è un sistema autonomo di trading spot su criptovalute, strutturato come una società di investimenti gestita interamente da agenti IA.
 
-4 agenti operativi collaborano in sequenza (uno analizza il mercato, uno decide l'operazione, uno controlla il rischio e l'ultimo esegue l'ordine su Binance), mentre un quinto agente consultivo produce un report giornaliero sulle performance. Il sistema gira in loop continuo a intervalli configurabili, opera in modalità DEMO (Binance Demo Trading) o REAL, e registra ogni decisione in log strutturati JSON.
+4 agenti operativi collaborano in sequenza (uno analizza il mercato, uno decide l'operazione, uno controlla il rischio e l'ultimo esegue l'ordine su Binance), mentre due agenti consultivi fuori catena alimentano il Decision Maker: uno con un report giornaliero sulle performance, l'altro con un digest news ogni 12 ore. Il sistema gira in loop continuo a intervalli configurabili, opera in modalità DEMO (Binance Demo Trading) o REAL, e registra ogni decisione in log strutturati JSON.
 
 ## 👥 Agenti e modelli
 
@@ -29,18 +29,20 @@ MDK Crypto Trading è un sistema autonomo di trading spot su criptovalute, strut
 | **Risk Manager**         | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche                                    | Gemini 3.1 Pro             |
 | **Execution Trader**     | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)                                           | —                          |
 | **Performance Reviewer** | Ruolo consultivo, fuori catena: genera un report giornaliero letto dal DM                                | Claude Sonnet 4.6          |
+| **News Reviewer**        | Ruolo consultivo, fuori catena: genera un digest news ogni 12h (sentiment, eventi, risk flag) letto dal DM | Claude Sonnet 4.6        |
 
 ## 🔄 Come funziona
 
 Ogni ciclo operativo segue questa sequenza:
 
 1. Una volta al giorno: il `Performance Reviewer` analizza gli ultimi 7 giorni e genera un report letto dal `Decision Maker` nei cicli successivi
-2. Raccolta dati di mercato e portafoglio da Binance
-3. `Market Analyst` → analisi e segnale
-4. `Decision Maker` → proposta operativa (legge il report del Reviewer)
-5. `Risk Manager` → approvazione o blocco
-6. `Execution Trader` → esecuzione su Binance (solo se approvata)
-7. Log del ciclo completo in `logs/events/`
+2. Ogni 12 ore: il `News Reviewer` scarica le notizie crypto, ne produce un digest (sentiment BULLISH/BEARISH/NEUTRAL, eventi chiave, risk flag) e lo salva in `data/news_reports/`. Il `Decision Maker` lo legge come contesto nei cicli successivi
+3. Raccolta dati di mercato e portafoglio da Binance
+4. `Market Analyst` → analisi e segnale
+5. `Decision Maker` → proposta operativa (legge il report del Performance Reviewer e il digest news)
+6. `Risk Manager` → approvazione o blocco
+7. `Execution Trader` → esecuzione su Binance (solo se approvata)
+8. Log del ciclo completo in `logs/events/`
 
 L'intervallo tra i cicli è configurabile da `.env` (`CYCLE_INTERVAL_SECONDS`).
 
@@ -68,7 +70,7 @@ python dev_support/verify_connections.py
 - **OpenAI API** (`GPT-5.4`): Market Analyst
 - **Gemini API** (`Gemini 3.1 Pro`): Risk Manager
 - **Binance API**: dati di mercato, portafoglio, ordini aperti, esecuzione ordini (DEMO e REAL)
-- **Alpha Vantage API**: notizie crypto con sentiment score (base del futuro News Reviewer)
+- **Alpha Vantage API**: notizie crypto con sentiment score (News Reviewer, opzionale)
 - **Telegram Bot API** (opzionale): notifiche in tempo reale su ordini eseguiti, errori e avvio/stop del bot
 
 ## ℹ️ Documentazione

@@ -1,6 +1,27 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.31.0 — 2026-06-15
+
+### Aggiunto
+
+- `src/core/contracts.py` — `latest_news_review: str = ""` aggiunto a `DecisionMakerInput` e `TradingCycleInput` (campo con default vuoto: retrocompatibile).
+
+### Modificato
+
+- `src/core/runner.py` — `_build_cycle_input` popola `latest_news_review` chiamando `_news_review_runner.load_latest_review()` se il runner è presente; stringa vuota se la chiave Alpha Vantage manca o il runner è `None`.
+- `src/core/workflow.py` — `run_cycle` propaga `latest_news_review=cycle_input.latest_news_review` nel `DecisionMakerInput`.
+- `src/agents/decision_maker.py` — `_build_user_payload` include `"latest_news_review": agent_input.latest_news_review` nel dict inviato al modello.
+- `config/prompts/decision_maker.md` — nuova sottosezione "News review" (dopo "Performance review"): descrive `latest_news_review` come contesto macro (sentiment + eventi + risk_flags), spiega che non è un ordine automatico, che i `risk_flags` meritano attenzione particolare e che il campo può essere vuoto se le news sono disabilitate.
+
+### Test
+
+- `tests/agents/test_decision_maker.py` — due nuovi test: `latest_news_review` è incluso nel payload; è stringa vuota di default.
+- `tests/core/test_workflow.py` — aggiunto `latest_news_review="fake news digest"` al `TradingCycleInput` di test e assert nella `DummyDecisionMaker` che il campo arrivi correttamente nel `DecisionMakerInput`.
+- `tests/core/test_runner.py` — due nuovi test: `_build_cycle_input` popola `latest_news_review` da `load_latest_review()` quando il news runner è presente; campo vuoto quando il runner è `None`.
+
+---
+
 ## 1.30.0 — 2026-06-15
 
 ### Aggiunto

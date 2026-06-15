@@ -21,20 +21,23 @@ flowchart TD
     marketAnalyst["Market Analyst\n(Analisi)"]
     executionTrader["Execution Trader\n(Esecuzione)"]
     reviewer["Performance Reviewer\n(Consulente, fuori catena)"]
+    newsReviewer["News Reviewer\n(Consulente, fuori catena)"]
 
     riskManager -->|"può bloccare"| decisionMaker
     decisionMaker -->|"si basa su"| marketAnalyst
     riskManager -->|"autorizza"| executionTrader
     reviewer -.->|"report giornaliero"| decisionMaker
+    newsReviewer -.->|"digest news ogni 12h"| decisionMaker
 ```
 
-| Livello | Agente                   | Ruolo                          | Autorità                                                                                                                                                                                                                           |
-|---------|--------------------------|--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1       | **Risk Manager**         | Chief Risk Officer             | Ha potere di veto: può approvare, bloccare o chiedere modifiche a qualsiasi proposta. Nessun ordine passa senza la sua autorizzazione.                                                                                             |
-| 2       | **Decision Maker**       | Portfolio Manager              | Decide la strategia operativa (BUY, SELL, SELL_OCO, HOLD, CANCEL_AND_REPLACE_ORDER), ma le sue proposte sono sempre soggette al giudizio del Risk Manager.                                                                         |
-| 3       | **Market Analyst**       | Research Analyst               | Fornisce analisi e segnali di mercato. Non ha potere decisionale: il suo output è un input per il Decision Maker.                                                                                                                  |
-| 4       | **Execution Trader**     | Broker                         | Esegue ordini su Binance, ma solo se autorizzati dal Risk Manager. Non prende decisioni autonome.                                                                                                                                  |
-| —       | **Performance Reviewer** | Performance Auditor consulente | Ruolo consultivo, fuori dalla catena decisionale. Produce un giudizio giornaliero sulle performance recenti letto dal Decision Maker nei cicli successivi. Non partecipa alla decisione del singolo trade e non ha potere di veto. |
+| Livello | Agente                   | Ruolo                          | Autorità                                                                                                                                                                                                                                 |
+|---------|--------------------------|--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1       | **Risk Manager**         | Chief Risk Officer             | Ha potere di veto: può approvare, bloccare o chiedere modifiche a qualsiasi proposta. Nessun ordine passa senza la sua autorizzazione.                                                                                                   |
+| 2       | **Decision Maker**       | Portfolio Manager              | Decide la strategia operativa (BUY, SELL, SELL_OCO, HOLD, CANCEL_AND_REPLACE_ORDER), ma le sue proposte sono sempre soggette al giudizio del Risk Manager.                                                                               |
+| 3       | **Market Analyst**       | Research Analyst               | Fornisce analisi e segnali di mercato. Non ha potere decisionale: il suo output è un input per il Decision Maker.                                                                                                                        |
+| 4       | **Execution Trader**     | Broker                         | Esegue ordini su Binance, ma solo se autorizzati dal Risk Manager. Non prende decisioni autonome.                                                                                                                                        |
+| —       | **Performance Reviewer** | Performance Auditor consulente | Ruolo consultivo, fuori dalla catena decisionale. Produce un giudizio giornaliero sulle performance recenti letto dal Decision Maker nei cicli successivi. Non partecipa alla decisione del singolo trade e non ha potere di veto.       |
+| —       | **News Reviewer**        | Market Intelligence consulente | Ruolo consultivo, fuori dalla catena decisionale. Produce un digest news ogni 12h (sentiment, eventi, risk flag) letto dal Decision Maker come contesto macro. Non partecipa alla decisione del singolo trade e non ha potere di veto. |
 
 ---
 
@@ -42,7 +45,7 @@ flowchart TD
 
 Nessun ordine viene eseguito senza l'approvazione esplicita del Risk Manager (`APPROVE`). Anche se il Decision Maker propone un'operazione con alta confidenza, il Risk Manager può bloccarla in qualsiasi momento.
 
-Il Performance Reviewer sta deliberatamente **fuori** da questa gerarchia: è un consulente che osserva i dati storici e scrive un report, senza toccare la catena decisionale in tempo reale. Il suo output è un input informativo per il Decision Maker, non un vincolo operativo.
+Il `Performance Reviewer` e il `News Reviewer` stanno deliberatamente **fuori** da questa gerarchia: sono consulenti che producono report periodici senza toccare la catena decisionale in tempo reale. I loro output sono input informativi per il Decision Maker, non vincoli operativi. Entrambi sono non-bloccanti: se falliscono, il ciclo prosegue normalmente.
 
 ---
 

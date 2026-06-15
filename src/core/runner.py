@@ -461,6 +461,11 @@ class TradingRunner:
             performance_summary=self._memory_manager.get_performance_summary(self._symbol),
             recent_performance=self._memory_manager.get_recent_performance(self._symbol),
             latest_performance_review=self._review_runner.load_latest_review(),
+            latest_news_review=(
+                self._news_review_runner.load_latest_review()
+                if self._news_review_runner is not None
+                else ""
+            ),
             oco_review_required=self._position_manager.is_oco_review_required(portfolio),
         )
 

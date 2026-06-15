@@ -51,6 +51,7 @@ def _make_cycle_input() -> TradingCycleInput:
             max_position_pct=70.0,
         ),
         latest_performance_review="fake review content",
+        latest_news_review="fake news digest",
     )
 
 
@@ -79,6 +80,7 @@ class DummyDecisionMaker:
         assert agent_input.market_analysis.market_bias is MarketBias.BULLISH
         assert agent_input.mandate.max_drawdown_pct == 15.0
         assert agent_input.latest_performance_review == "fake review content"
+        assert agent_input.latest_news_review == "fake news digest"
         assert agent_input.current_price == pytest.approx(100000.0)
         return TradeProposal(
             action=TradeAction.BUY,
@@ -168,6 +170,7 @@ def test_workflow_runs_agents_in_expected_order() -> None:
             max_position_pct=70.0,
         ),
         latest_performance_review="fake review content",
+        latest_news_review="fake news digest",
     )
 
     result = workflow.run_cycle(cycle_input)
@@ -216,6 +219,7 @@ def test_workflow_does_not_execute_when_risk_blocks() -> None:
             max_position_pct=70.0,
         ),
         latest_performance_review="fake review content",
+        latest_news_review="fake news digest",
     )
 
     result = workflow.run_cycle(cycle_input)
@@ -343,6 +347,7 @@ def test_workflow_does_not_execute_when_risk_requests_adjustment() -> None:
             max_position_pct=70.0,
         ),
         latest_performance_review="fake review content",
+        latest_news_review="fake news digest",
     )
 
     result = workflow.run_cycle(cycle_input)

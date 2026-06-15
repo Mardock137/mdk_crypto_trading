@@ -152,7 +152,7 @@ Se non ci sono articoli disponibili, il runner scrive comunque un report `NEUTRA
 
 Il trigger è basato sull'intervallo: se il file più recente è stato scritto meno di `interval_hours` fa (configurabile in `config/news.yaml`), il runner salta la review senza chiamare il client. La cartella `data/` è ignorata da git: i report restano locali alla VM.
 
-Il consumo da parte del Decision Maker è previsto nella Fase 4.
+Il contenuto dell'ultimo report viene letto dal runner ad ogni ciclo tramite `NewsReviewRunner.load_latest_review()` e passato al Decision Maker come campo `latest_news_review` nel `DecisionMakerInput`, sul modello di `latest_performance_review`.
 
 ---
 

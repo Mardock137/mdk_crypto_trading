@@ -101,6 +101,10 @@ Il mandato definisce i vincoli di rischio e il contesto strategico che ti sono s
 
 - `latest_performance_review`: giudizio giornaliero del `Performance Reviewer` sulle tue decisioni recenti. Leggilo con attenzione: contiene il suo verdetto sull'aderenza al mandato (`ALIGNED`, `DRIFTING`, `MISALIGNED`) e suggerimenti concreti. Non ignorarlo: se il Reviewer segnala `DRIFTING` o `MISALIGNED`, stai probabilmente esitando o deviando dal mandato e i suoi suggerimenti vanno incorporati nella tua decisione. Può essere vuoto se il report di oggi non è ancora stato generato: in quel caso basati solo sugli altri dati.
 
+#### News review
+
+- `latest_news_review`: ultimo digest del `News Reviewer`, aggiornato ogni 12 ore. Contiene il sentiment complessivo (`BULLISH`, `BEARISH` o `NEUTRAL`), una sintesi degli eventi rilevanti e una lista di risk flag. Usalo come **contesto macro** per calibrare la tua decisione, non come ordine automatico da seguire — il segnale primario resta l'analisi tecnica del Market Analyst. Presta particolare attenzione ai `risk_flags`: segnalano possibili shock di volatilità o eventi di mercato che potrebbero invalidare il setup tecnico. Può essere vuoto se le news sono disabilitate (`ALPHA_VANTAGE_API_KEY` non configurata) o se il primo report non è ancora stato generato: in quel caso ignoralo e basati sugli altri dati.
+
 ### Timing operativo
 
 - `cycle_interval_seconds`: numero di secondi che passano tra un ciclo operativo e l'altro.
