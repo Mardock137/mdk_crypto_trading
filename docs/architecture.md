@@ -107,20 +107,19 @@ Contiene i 5 agenti del sistema su una gerarchia a due livelli:
 
 Ogni agente espone un input strutturato e un output strutturato.
 
-I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent`, `ExecutionTraderAgent`) formano la catena decisionale lineare. `PerformanceReviewerAgent` sta fuori dalla catena e viene invocato solo una volta al giorno dal runner. `NewsReviewerAgent` è anch'esso fuori dalla catena e viene invocato ogni 12 ore dal runner tramite `NewsReviewRunner`; il consumo dei report da parte del Decision Maker è previsto nella Fase 4.
+I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent`, `ExecutionTraderAgent`) formano la catena decisionale lineare. `PerformanceReviewerAgent` sta fuori dalla catena e viene invocato solo una volta al giorno dal runner. `NewsReviewerAgent` è anch'esso fuori dalla catena e viene invocato ogni 12 ore dal runner tramite `NewsReviewRunner`; i suoi report vengono letti dal Decision Maker nei cicli successivi (campo `latest_news_review`).
 
 `MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent` e `PerformanceReviewerAgent` estendono `BaseLlmAgent` e ricevono un `BaseLlmInterface`. Il `run` ereditato dalla base legge il prompt da disco, costruisce il payload tramite `_build_user_payload`, invia i dati al modello e fa retry sul parsing tramite `_call_llm_with_retry` (backoff esponenziale), poi normalizza la risposta tramite `unwrap_llm_response()` e la parsa nei rispettivi contratti (`MarketAnalysis`, `TradeProposal`, `RiskAssessment`, `PerformanceReview`). `ExecutionTraderAgent` non usa LLM: riceve un `BaseExchangeClient` e piazza gli ordini direttamente sull'exchange.
 
 ### `src/core/`
 
-- `contracts.py`: strutture dati condivise tra agenti (input, output, enum)
 - `contracts.py`: strutture dati condivise tra agenti (input, output, enum). Include ora `NewsSentiment` (enum BULLISH/BEARISH/NEUTRAL disaccoppiato da `MarketBias`), `NewsDigest` (output del News Reviewer) e `NewsReviewerInput` (input del News Reviewer).
 - `exceptions.py`: gerarchia di eccezioni operative del sistema. `MdkTradingError` è la base per tutti gli errori attesi; `ExchangeError(MdkTradingError)` per errori provenienti dall'exchange; `LlmError(MdkTradingError, RuntimeError)` per errori provenienti da un provider LLM; `NewsError(MdkTradingError)` per errori provenienti dalla fonte news. L'ereditarietà multipla di `LlmError` garantisce backward-compatibility con il codice che cattura `RuntimeError`.
 - `workflow.py`: catena lineare Market Analyst → Decision Maker → Risk Manager → Execution Trader
 - `runner.py`: `TradingRunner`, direttore d'orchestra del loop operativo (loop, segnali, orchestrazione del singolo ciclo). Delega le decisioni specialistiche a 4 collaboratori dedicati:
   - `cycle_skip_handler.py`: `CycleSkipHandler` — possiede lo snapshot del ciclo precedente e il counter dei salti consecutivi, decide se saltare il ciclo (pre-check deterministico)
   - `performance_review_runner.py`: `PerformanceReviewRunner` — esegue il review giornaliero (al massimo una volta al giorno) e legge l'ultimo report markdown
-  - `news_review_runner.py`: `NewsReviewRunner` — esegue la review news ogni 12 ore (gate sui file `YYYY-MM-DD_HH-MM.md` in `data/news_reports/`), scrive il digest, gestisce il caso "no articoli" → `NEUTRAL` senza LLM, è non-bloccante; espone `load_latest_review()` per la Fase 4
+  - `news_review_runner.py`: `NewsReviewRunner` — esegue la review news ogni 12 ore (gate sui file `YYYY-MM-DD_HH-MM.md` in `data/news_reports/`), scrive il digest, gestisce il caso "no articoli" → `NEUTRAL` senza LLM, è non-bloccante; espone `load_latest_review()` letto dal Decision Maker (`latest_news_review`)
   - `position_manager.py`: `PositionManager` — calcola il P&L non realizzato via FIFO (`augment_portfolio_with_open_position`), sposta automaticamente lo SL al breakeven se le condizioni sono soddisfatte (`maybe_apply_breakeven`) e segnala se un OCO attivo richiede revisione (`is_oco_review_required`)
   - `notifications.py`: funzioni pure che costruiscono i messaggi Telegram (start/stop/error/order), inclusi i dettagli Binance-specific (`cummulativeQuoteQty`/`executedQty`) per il prezzo medio dei MARKET order
 

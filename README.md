@@ -22,14 +22,14 @@ MDK Crypto Trading è un sistema autonomo di trading spot su criptovalute, strut
 
 ## 👥 Agenti e modelli
 
-| Agente                   | Ruolo                                                                                                    | Modello                    |
-|--------------------------|----------------------------------------------------------------------------------------------------------|----------------------------|
-| **Market Analyst**       | Analizza indicatori tecnici e genera un segnale di mercato                                               | GPT-5.4                    |
-| **Decision Maker**       | Valuta il segnale e formula una proposta operativa (BUY, SELL, SELL_OCO, HOLD, CANCEL_AND_REPLACE_ORDER) | Claude Opus 4.8 (thinking) |
-| **Risk Manager**         | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche                                    | Gemini 3.1 Pro             |
-| **Execution Trader**     | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)                                           | —                          |
-| **Performance Reviewer** | Ruolo consultivo, fuori catena: genera un report giornaliero letto dal DM                                | Claude Sonnet 4.6          |
-| **News Reviewer**        | Ruolo consultivo, fuori catena: genera un digest news ogni 12h (sentiment, eventi, risk flag) letto dal DM | Claude Sonnet 4.6        |
+| Agente                   | Ruolo                                                                                                      | Modello                    |
+|--------------------------|------------------------------------------------------------------------------------------------------------|----------------------------|
+| **Market Analyst**       | Analizza indicatori tecnici e genera un segnale di mercato                                                 | GPT-5.4                    |
+| **Decision Maker**       | Valuta il segnale e formula una proposta operativa (BUY, SELL, SELL_OCO, HOLD, CANCEL_AND_REPLACE_ORDER)   | Claude Opus 4.8 (thinking) |
+| **Risk Manager**         | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche                                      | Gemini 3.1 Pro             |
+| **Execution Trader**     | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)                                             | —                          |
+| **Performance Reviewer** | Ruolo consultivo, fuori catena: genera un report giornaliero letto dal DM                                  | Claude Sonnet 4.6          |
+| **News Reviewer**        | Ruolo consultivo, fuori catena: genera un digest news ogni 12h (sentiment, eventi, risk flag) letto dal DM | Claude Sonnet 4.6          |
 
 ## 🔄 Come funziona
 
