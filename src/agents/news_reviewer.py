@@ -25,11 +25,15 @@ class NewsReviewerAgent(BaseLlmAgent[NewsReviewerInput, NewsDigest]):
         )
 
     def _build_user_payload(self, agent_input: NewsReviewerInput) -> dict[str, Any]:
+        articles_without_url = [
+            {k: v for k, v in dataclasses.asdict(a).items() if k != "url"}
+            for a in agent_input.articles
+        ]
         return {
             "symbol": agent_input.symbol,
             "hours_analyzed": agent_input.hours_analyzed,
             "article_count": len(agent_input.articles),
-            "articles": [dataclasses.asdict(a) for a in agent_input.articles],
+            "articles": articles_without_url,
         }
 
     def _parse_response(self, data: Any) -> NewsDigest:

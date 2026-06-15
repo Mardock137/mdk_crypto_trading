@@ -1,4 +1,5 @@
 source: alpha_vantage
+interval_hours: 12        # cadenza del NewsReviewRunner (gate sul file di report)
 query:
   topics: blockchain      # copertura crypto generale
   tickers: ""             # vuoto: nessun filtro stretto, cattura anche news sistemiche

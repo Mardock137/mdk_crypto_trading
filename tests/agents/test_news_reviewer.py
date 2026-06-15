@@ -156,3 +156,4 @@ def test_agent_run_calls_llm_and_parses_response() -> None:
     assert payload["article_count"] == 1
     assert isinstance(payload["articles"], list)
     assert payload["articles"][0]["title"] == "Bitcoin ETF inflows record"
+    assert "url" not in payload["articles"][0], "url non deve essere inviato all'LLM"

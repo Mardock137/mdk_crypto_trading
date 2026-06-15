@@ -9,6 +9,7 @@ MDK Crypto Trading produce due tipi di log complementari: un log testuale per il
 - [Log testuale (`logs/mdk_crypto_trading.log`)](#log-testuale-logsmdk_crypto_tradinglog)
 - [Log eventi JSON (`logs/events/`)](#log-eventi-json-logsevents)
 - [Report performance (`data/performance_reports/`)](#report-performance-dataperformance_reports)
+- [Report news (`data/news_reports/`)](#report-news-datanews_reports)
 - [Heartbeat Docker (`data/heartbeat`)](#heartbeat-docker-dataheartbeat)
 - [Struttura della cartella `logs/`](#struttura-della-cartella-logs)
 - [🔧 Configurazione](#-configurazione)
@@ -130,6 +131,28 @@ Ogni report contiene:
 Questo stesso file viene letto dal DM nei cicli successivi (campo `latest_performance_review`). La cartella `data/` è ignorata da git: i report restano locali alla VM.
 
 Il trigger è giornaliero: se il file del giorno esiste già, il Reviewer non viene chiamato (zero costo LLM).
+
+---
+
+## Report news (`data/news_reports/`)
+
+Il `News Reviewer` genera **un report markdown ogni 12 ore** (gate basato sul file più recente), salvato in `data/news_reports/YYYY-MM-DD_HH-MM.md`.
+
+Il formato del nome file usa `_` come separatore tra data e ora (Windows-safe, niente `:`) ed è ordinabile cronologicamente. Esempio: `2026-06-15_13-30.md`.
+
+Ogni report contiene:
+
+- Timestamp UTC, simbolo e finestra analizzata (ultime N ore)
+- **Sentiment complessivo**: `BULLISH`, `BEARISH` o `NEUTRAL`
+- Sintesi testuale del digest (`## Sintesi`)
+- Lista degli eventi chiave rilevanti (`## Eventi chiave`)
+- Lista dei risk flag segnalati (`## Risk flag`)
+
+Se non ci sono articoli disponibili, il runner scrive comunque un report `NEUTRAL` senza chiamare il LLM (evita chiamate inutili e fa avanzare il gate per il ciclo successivo).
+
+Il trigger è basato sull'intervallo: se il file più recente è stato scritto meno di `interval_hours` fa (configurabile in `config/news.yaml`), il runner salta la review senza chiamare il client. La cartella `data/` è ignorata da git: i report restano locali alla VM.
+
+Il consumo da parte del Decision Maker è previsto nella Fase 4.
 
 ---
 

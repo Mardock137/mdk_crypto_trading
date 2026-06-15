@@ -72,9 +72,13 @@ flowchart TD
 ### News Reviewer
 
 - Agente consultivo, **fuori dalla catena decisionale**: non valuta né approva i trade del momento.
-- In questa fase (Fase 2) esiste e si testa in isolamento ma non è ancora invocato dal runner né collegato al Decision Maker (lo sarà nelle Fasi 3 e 4).
+- Invocato dal runner ogni 12 ore tramite `NewsReviewRunner.maybe_run()` (gate basato sull'ultimo file di report in `data/news_reports/`): se non sono trascorse 12 ore dall'ultimo report, il ciclo prosegue senza chiamarlo.
 - Riceve un `NewsReviewerInput` (simbolo, lista di `NewsArticle`, finestra temporale in ore) prodotto dall'`AlphaVantageClient`.
 - Invia i dati a Claude Sonnet 4.6 che produce un `NewsDigest` strutturato (overall_sentiment `BULLISH`/`BEARISH`/`NEUTRAL`, summary, key_events, risk_flags).
+- Il digest viene serializzato in markdown in `data/news_reports/YYYY-MM-DD_HH-MM.md`.
+- Se non ci sono articoli → scrive un report `NEUTRAL` senza chiamare il LLM.
+- Errori del client o del LLM sono non-bloccanti: il ciclo prosegue normalmente.
+- Il consumo da parte del Decision Maker è previsto nella Fase 4 (quando il cerchio si chiude). `load_latest_review()` è già pronto.
 - Modello LLM e parametri configurati in `config/llm_models/news_reviewer.yaml`.
 - Prompt operativo in `config/prompts/news_reviewer.md`.
 
@@ -102,7 +106,7 @@ Contiene i 5 agenti del sistema su una gerarchia a due livelli:
 
 Ogni agente espone un input strutturato e un output strutturato.
 
-I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent`, `ExecutionTraderAgent`) formano la catena decisionale lineare. `PerformanceReviewerAgent` sta fuori dalla catena e viene invocato solo una volta al giorno dal runner. `NewsReviewerAgent` è anch'esso fuori dalla catena; nella Fase 2 esiste in isolamento e verrà collegato al runner nelle Fasi successive.
+I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent`, `ExecutionTraderAgent`) formano la catena decisionale lineare. `PerformanceReviewerAgent` sta fuori dalla catena e viene invocato solo una volta al giorno dal runner. `NewsReviewerAgent` è anch'esso fuori dalla catena e viene invocato ogni 12 ore dal runner tramite `NewsReviewRunner`; il consumo dei report da parte del Decision Maker è previsto nella Fase 4.
 
 `MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent` e `PerformanceReviewerAgent` estendono `BaseLlmAgent` e ricevono un `BaseLlmInterface`. Il `run` ereditato dalla base legge il prompt da disco, costruisce il payload tramite `_build_user_payload`, invia i dati al modello e fa retry sul parsing tramite `_call_llm_with_retry` (backoff esponenziale), poi normalizza la risposta tramite `unwrap_llm_response()` e la parsa nei rispettivi contratti (`MarketAnalysis`, `TradeProposal`, `RiskAssessment`, `PerformanceReview`). `ExecutionTraderAgent` non usa LLM: riceve un `BaseExchangeClient` e piazza gli ordini direttamente sull'exchange.
 
@@ -115,6 +119,7 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 - `runner.py`: `TradingRunner`, direttore d'orchestra del loop operativo (loop, segnali, orchestrazione del singolo ciclo). Delega le decisioni specialistiche a 4 collaboratori dedicati:
   - `cycle_skip_handler.py`: `CycleSkipHandler` — possiede lo snapshot del ciclo precedente e il counter dei salti consecutivi, decide se saltare il ciclo (pre-check deterministico)
   - `performance_review_runner.py`: `PerformanceReviewRunner` — esegue il review giornaliero (al massimo una volta al giorno) e legge l'ultimo report markdown
+  - `news_review_runner.py`: `NewsReviewRunner` — esegue la review news ogni 12 ore (gate sui file `YYYY-MM-DD_HH-MM.md` in `data/news_reports/`), scrive il digest, gestisce il caso "no articoli" → `NEUTRAL` senza LLM, è non-bloccante; espone `load_latest_review()` per la Fase 4
   - `position_manager.py`: `PositionManager` — calcola il P&L non realizzato via FIFO (`augment_portfolio_with_open_position`), sposta automaticamente lo SL al breakeven se le condizioni sono soddisfatte (`maybe_apply_breakeven`) e segnala se un OCO attivo richiede revisione (`is_oco_review_required`)
   - `notifications.py`: funzioni pure che costruiscono i messaggi Telegram (start/stop/error/order), inclusi i dettagli Binance-specific (`cummulativeQuoteQty`/`executedQty`) per il prezzo medio dei MARKET order
 
@@ -122,7 +127,7 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 
 - `llm_interfaces/`: interfaccia astratta (`BaseLlmInterface`) e implementazioni per Anthropic (`AnthropicInterface`), OpenAI (`OpenAiInterface`) e Gemini (`GeminiInterface`), con retry automatico via `tenacity`. Supportano `temperature` e `max_tokens` configurabili. La base usa il pattern **Template Method**: `generate_json` è concreto nella classe base e centralizza retry, controllo risposta vuota, parsing JSON e gestione errori; le sottoclassi implementano solo i metodi astratti specifici del provider (`_call_provider`, `_extract_text`, `_log_empty_response`) e possono fare override dell'hook `_strip_response` (Anthropic lo usa per togliere wrapping markdown). Tutti gli errori sollevati da `generate_json` sono `LlmError` (definito in `src/core/exceptions.py`).
 - `exchange/`: interfaccia astratta (`BaseExchangeClient`), implementazione per Binance (`BinanceClient`) con supporto modalità DEMO e REAL, e `order_fields.py` come fonte unica dei nomi-campo degli ordini Binance (usato da `BinanceClient`, `PositionManager`, `ExecutionTrader` e `CycleSkipHandler`).
-- `news/`: interfaccia astratta (`BaseNewsClient`) con un solo metodo `get_recent_news() -> list[NewsArticle]` e implementazione `AlphaVantageClient`. Scarica notizie crypto con sentiment da Alpha Vantage (`NEWS_SENTIMENT`), gestisce il quirk della risposta `200` con payload di errore, fa retry su errori transienti via `tenacity`. È la base del futuro **News Reviewer**: in questa fase esiste in isolamento, testato e configurabile, senza aggancio al loop di trading.
+- `news/`: interfaccia astratta (`BaseNewsClient`) con un solo metodo `get_recent_news() -> list[NewsArticle]` e implementazione `AlphaVantageClient`. Scarica notizie crypto con sentiment da Alpha Vantage (`NEWS_SENTIMENT`), gestisce il quirk della risposta `200` con payload di errore, fa retry su errori transienti via `tenacity`. È usato dal `NewsReviewRunner` ad ogni ciclo (ogni 12h): `build_runner` lo costruisce se `ALPHA_VANTAGE_API_KEY` è presente e lo passa a `TradingRunner`.
 
 `BinanceClient` espone:
 
@@ -149,6 +154,7 @@ I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAg
 - `event_log_reader.py`: `load_recent_events` legge i file JSONL degli ultimi N giorni filtrati per simbolo (usato dal Performance Reviewer)
 - `memory_manager.py`: persistenza e recupero della memoria operativa del sistema (vedi sotto)
 - `performance_stats.py`: `build_performance_stats` calcola in modo deterministico (zero LLM) le statistiche operative degli ultimi N giorni, inclusi `sells_in_profit` e `sells_in_loss` (dalle ultime 10 trade FIFO); `write_performance_report` serializza il giudizio del Reviewer in markdown
+- `news_report.py`: `write_news_report` serializza un `NewsDigest` in markdown (`YYYY-MM-DD_HH-MM.md`, Windows-safe) e lo salva in `data/news_reports/`
 - `telegram_notifier.py`: notifiche Telegram opzionali via Bot API — avvio/stop del bot, ordini eseguiti, errori nei cicli
 
 Per i dettagli completi sul sistema di logging, vedi `docs/observability.md`.
@@ -185,7 +191,7 @@ Il ciclo operativo è gestito da due componenti complementari:
 Il runner:
 
 1. Logga l'avvio e lo stato del kill switch
-2. Ad ogni iterazione: eventualmente genera il report giornaliero (`PerformanceReviewRunner.maybe_run_today`) → raccoglie dati da Binance → **arricchisce il portafoglio** con `avg_entry_price` e `unrealized_pnl_pct` via `PositionManager.augment_portfolio_with_open_position` → eventualmente applica il breakeven automatico via `PositionManager.maybe_apply_breakeven` → eventualmente salta il ciclo via `CycleSkipHandler.try_skip` → legge la memoria storica e l'ultimo report → costruisce `TradingCycleInput` (con `oco_review_required` da `PositionManager.is_oco_review_required`) → esegue il workflow → logga il risultato → salva il ciclo in memoria → registra lo snapshot via `CycleSkipHandler.record_completed_cycle`
+2. Ad ogni iterazione: eventualmente genera il report giornaliero (`PerformanceReviewRunner.maybe_run_today`) → eventualmente genera il digest news (`NewsReviewRunner.maybe_run`, gate ogni 12h) → raccoglie dati da Binance → **arricchisce il portafoglio** con `avg_entry_price` e `unrealized_pnl_pct` via `PositionManager.augment_portfolio_with_open_position` → eventualmente applica il breakeven automatico via `PositionManager.maybe_apply_breakeven` → eventualmente salta il ciclo via `CycleSkipHandler.try_skip` → legge la memoria storica e l'ultimo report → costruisce `TradingCycleInput` (con `oco_review_required` da `PositionManager.is_oco_review_required`) → esegue il workflow → logga il risultato → salva il ciclo in memoria → registra lo snapshot via `CycleSkipHandler.record_completed_cycle`
 3. In caso di errore: il runner distingue due categorie. Errori operativi attesi (`MdkTradingError`, `OSError` — es. exchange offline, LLM sovraccarico): logga, notifica Telegram e **continua il loop**. Bug imprevisti (qualsiasi altra eccezione — es. `AttributeError`, `NameError`): logga, notifica Telegram e **propaga l'eccezione**. `run()` intercetta il bug critico, logga come `CRITICAL`, notifica e termina il processo pulitamente (Docker lo riavvierà).
 4. Su `Ctrl+C`: termina in modo pulito
 

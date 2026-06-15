@@ -5,6 +5,7 @@ from pathlib import Path
 from src.agents.decision_maker import DecisionMakerAgent
 from src.agents.execution_trader import ExecutionTraderAgent
 from src.agents.market_analyst import MarketAnalystAgent
+from src.agents.news_reviewer import NewsReviewerAgent
 from src.agents.performance_reviewer import PerformanceReviewerAgent
 from src.agents.risk_manager import RiskManagerAgent
 from src.core.runner import TradingRunner
@@ -13,9 +14,11 @@ from src.integrations.exchange.binance_client import BinanceClient
 from src.integrations.llm_interfaces.anthropic_interface import AnthropicInterface
 from src.integrations.llm_interfaces.gemini_interface import GeminiInterface
 from src.integrations.llm_interfaces.openai_interface import OpenAiInterface
+from src.integrations.news.alpha_vantage_client import AlphaVantageClient
 from src.utils.config import (
     AppSettings,
     load_llm_model_config,
+    load_news_config,
     load_settings,
     load_symbol_config,
 )
@@ -107,6 +110,34 @@ def build_runner(settings: AppSettings) -> TradingRunner:
         chat_id=settings.telegram_chat_id,
     )
 
+    news_client = None
+    news_reviewer_agent = None
+    if settings.alpha_vantage_api_key:
+        news_config = load_news_config()
+        query = news_config.get("query", {})
+        news_client = AlphaVantageClient(
+            api_key=settings.alpha_vantage_api_key,
+            topics=str(query.get("topics", "blockchain")),
+            tickers=str(query.get("tickers", "")),
+            lookback_hours=int(query.get("lookback_hours", 12)),
+            max_articles=int(query.get("max_articles", 50)),
+            sort=str(query.get("sort", "LATEST")),
+        )
+        nr_config = load_llm_model_config(
+            _PROJECT_ROOT / "config/llm_models/news_reviewer.yaml"
+        )
+        nr_llm = AnthropicInterface(
+            api_key=settings.claude_api_key,
+            model=nr_config["model"],
+            temperature=float(nr_config["temperature"]),
+            max_tokens=nr_config.get("max_tokens"),
+        )
+        news_reviewer_agent = NewsReviewerAgent(llm=nr_llm)
+    else:
+        logger.warning(
+            "ALPHA_VANTAGE_API_KEY non configurata: News Reviewer disabilitato"
+        )
+
     return TradingRunner(
         workflow=workflow,
         event_logger=event_logger,
@@ -117,6 +148,8 @@ def build_runner(settings: AppSettings) -> TradingRunner:
         memory_manager=memory_manager,
         performance_reviewer=performance_reviewer,
         telegram_notifier=telegram_notifier,
+        news_client=news_client,
+        news_reviewer=news_reviewer_agent,
     )
 
 

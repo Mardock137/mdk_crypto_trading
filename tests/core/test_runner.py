@@ -95,12 +95,17 @@ def _make_runner(
     performance_reports_dir: Path | None = None,
     cycle_skip_config: CycleSkipConfig | None = None,
     circuit_breaker: CircuitBreaker | None = None,
+    news_client: MagicMock | None = None,
+    news_reviewer: MagicMock | None = None,
 ) -> TradingRunner:
+    _MOCK_NEWS_CONFIG = {"interval_hours": 12, "query": {"lookback_hours": 12}}
     with patch(
         "src.core.runner.load_trading_config", return_value=_MOCK_TRADING_CONFIG,
     ), patch(
         "src.core.runner.load_cycle_skip_config",
         return_value=cycle_skip_config or _DEFAULT_DISABLED_SKIP_CONFIG,
+    ), patch(
+        "src.core.runner.load_news_config", return_value=_MOCK_NEWS_CONFIG,
     ):
         return TradingRunner(
             workflow=workflow or MagicMock(),
@@ -118,7 +123,38 @@ def _make_runner(
                 else Path("data/performance_reports")
             ),
             circuit_breaker=circuit_breaker,
+            news_client=news_client,
+            news_reviewer=news_reviewer,
         )
+
+
+# ---------- News Review Runner ----------
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_news_review_runner_maybe_run_called_when_present(mock_wait: MagicMock) -> None:
+    """Se news_client e news_reviewer sono presenti, maybe_run deve essere chiamato."""
+    mock_news_client = MagicMock()
+    mock_news_reviewer = MagicMock()
+    runner = _make_runner(
+        news_client=mock_news_client,
+        news_reviewer=mock_news_reviewer,
+    )
+
+    with patch.object(runner._news_review_runner, "maybe_run") as mock_maybe_run:  # type: ignore[union-attr]
+        runner.run()
+
+    mock_maybe_run.assert_called_once()
+
+
+@patch("src.core.runner.threading.Event.wait", side_effect=KeyboardInterrupt)
+def test_news_review_runner_not_called_when_absent(mock_wait: MagicMock) -> None:
+    """Se news_client e news_reviewer sono None, _news_review_runner è None e non viene chiamato."""
+    runner = _make_runner()  # news_client=None, news_reviewer=None di default
+
+    assert runner._news_review_runner is None
+    # Non deve sollevare eccezioni
+    runner.run()
 
 
 # ---------- Heartbeat ----------

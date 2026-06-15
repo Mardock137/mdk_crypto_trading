@@ -128,6 +128,7 @@ Configurazione della fonte news crypto.
 
 ```yaml
 source: alpha_vantage
+interval_hours: 12        # cadenza del NewsReviewRunner (gate sul file di report)
 query:
   topics: blockchain      # copertura crypto generale
   tickers: ""             # vuoto: nessun filtro stretto, cattura anche news sistemiche
@@ -139,9 +140,10 @@ query:
 Campi:
 
 - `source`: identificatore della fonte news attiva (attualmente solo `alpha_vantage`).
+- `interval_hours`: ogni quante ore il `NewsReviewRunner` deve eseguire una nuova review. Il gate è basato sul file di report più recente in `data/news_reports/`: se è più recente di `interval_hours`, il ciclo prosegue senza chiamare il client. Default software: `12`.
 - `query.topics`: categoria di notizie da richiedere ad Alpha Vantage (es. `blockchain`). Copre le news crypto in generale senza limitarsi a BTC.
 - `query.tickers`: filtro per ticker specifici (es. `CRYPTO:BTC`). Se vuoto, nessun filtro stretto: si ricevono anche news sistemiche.
-- `query.lookback_hours`: finestra temporale in ore per la chiamata (calcola `time_from = ora UTC - lookback_hours`).
+- `query.lookback_hours`: finestra temporale in ore per la chiamata (calcola `time_from = ora UTC - lookback_hours`). Usata anche come `hours_analyzed` nel report markdown.
 - `query.max_articles`: numero massimo di articoli da richiedere ad Alpha Vantage (parametro `limit`).
 - `query.sort`: ordinamento degli articoli (`LATEST`, `EARLIEST`, `RELEVANCE`).
 

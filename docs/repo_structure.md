@@ -10,6 +10,7 @@
  │
  ├── 📁 data/                                                # Dati persistenti del sistema (ignorata da git).
  │    ├── 📁 memory/                                         # Memoria decisionale per simbolo (un file JSONL per coppia). Ogni record include i campi operativi del ciclo; dalla v1.27.0 include anche `equity_usdc` (valore totale del portafoglio al momento del ciclo, usato per calcolare i KPI di drawdown e rendimento strategia).
+ │    ├── 📁 news_reports/                                   # Report bi-giornalieri del News Reviewer (YYYY-MM-DD_HH-MM.md). Prodotti da NewsReviewRunner ogni 12h.
  │    ├── 📁 performance_reports/                            # Report giornalieri del Performance Reviewer (YYYY-MM-DD.md).
  │    └── 📄 heartbeat                                       # Timestamp UTC dell'ultimo ciclo avviato; usato dal HEALTHCHECK Docker.
  │
@@ -65,7 +66,7 @@
  │    │    ├── 📄 decision_maker.py                          # Agente che formula la proposta operativa.
  │    │    ├── 📄 execution_trader.py                        # Agente che esegue la proposta approvata.
  │    │    ├── 📄 market_analyst.py                          # Agente di analisi del mercato.
- │    │    ├── 📄 news_reviewer.py                            # Agente consultivo: digest strutturato del flusso notizie (fuori catena; base del News Reviewer).
+ │    │    ├── 📄 news_reviewer.py                            # Agente consultivo: digest strutturato del flusso notizie (fuori catena; invocato dal NewsReviewRunner ogni 12h).
  │    │    ├── 📄 performance_reviewer.py                    # Agente consultivo: giudizio giornaliero sulle performance recenti.
  │    │    └── 📄 risk_manager.py                            # Agente di controllo rischio.
  │    ├── 📁 core/                                           # Contratti condivisi e orchestrazione del workflow.
@@ -73,6 +74,7 @@
  │    │    ├── 📄 contracts.py                               # Schemi condivisi per input/output degli agenti.
  │    │    ├── 📄 cycle_skip_handler.py                      # CycleSkipHandler: stato cross-cycle e decisione di skip deterministico.
  │    │    ├── 📄 exceptions.py                              # Gerarchia di eccezioni operative: MdkTradingError (base), ExchangeError, LlmError, CycleExecutionError.
+ │    │    ├── 📄 news_review_runner.py                      # NewsReviewRunner: review news ogni 12h con gate su file, digest NEUTRAL senza LLM se no articoli, non-bloccante.
  │    │    ├── 📄 notifications.py                           # Funzioni pure che costruiscono i messaggi Telegram (start/stop/error/order).
  │    │    ├── 📄 performance_review_runner.py               # PerformanceReviewRunner: review giornaliero e lettura ultimo report.
  │    │    ├── 📄 position_manager.py                        # PositionManager: calcolo P&L aperto (FIFO), breakeven automatico OCO, flag oco_review_required.
@@ -85,7 +87,7 @@
  │    │    │    └── 📄 order_fields.py                       # Costanti dei campi-ordine Binance (fonte unica di verità).
  │    │    ├── 📁 news/                                      # Integrazione fonte notizie crypto.
  │    │    │    ├── 📄 base_news_client.py                   # Interfaccia astratta BaseNewsClient (fonte sostituibile).
- │    │    │    └── 📄 alpha_vantage_client.py               # AlphaVantageClient: download notizie con sentiment + retry tenacity. Base del futuro News Reviewer.
+ │    │    │    └── 📄 alpha_vantage_client.py               # AlphaVantageClient: download notizie con sentiment + retry tenacity. Usato dal NewsReviewRunner ogni 12h.
  │    │    └── 📁 llm_interfaces/                            # Interfaccia verso i modelli LLM.
  │    │         ├── 📄 anthropic_interface.py                # Client LLM per Anthropic Claude (con retry automatico).
  │    │         ├── 📄 base_llm_interface.py                 # Base interface per i provider LLM.
@@ -100,6 +102,7 @@
  │    │    ├── 📄 log_utils.py                               # Helper `truncate_for_log`: tronca blob di risposta LLM nei messaggi di WARNING.
  │    │    ├── 📄 logging_config.py                          # Configurazione centralizzata del logging (console + file).
  │    │    ├── 📄 memory_manager.py                          # Persistenza e recupero delle decisioni passate (JSONL) per la memoria del Decision Maker. Cache per-ciclo su letture e calcoli FIFO, invalidata a ogni save_cycle.
+ │    │    ├── 📄 news_report.py                              # write_news_report: serializza NewsDigest in markdown (YYYY-MM-DD_HH-MM.md) e lo salva in data/news_reports/.
  │    │    ├── 📄 performance_stats.py                       # build_performance_stats deterministica + writer del report markdown.
  │    │    └── 📄 telegram_notifier.py                       # Notifiche Telegram opzionali (avvio/stop, ordini eseguiti, errori).
  │    └── 📄 main.py                                         # Entry point del sistema: bootstrap e avvio del runner.
@@ -117,6 +120,7 @@
  │    │    ├── 📄 test_contracts.py
  │    │    ├── 📄 test_cycle_skip_handler.py
  │    │    ├── 📄 test_exceptions.py
+ │    │    ├── 📄 test_news_review_runner.py
  │    │    ├── 📄 test_notifications.py
  │    │    ├── 📄 test_performance_review_runner.py
  │    │    ├── 📄 test_position_manager.py
@@ -140,6 +144,7 @@
  │    │    ├── 📄 test_indicators.py
  │    │    ├── 📄 test_logging_config.py
  │    │    ├── 📄 test_memory_manager.py
+ │    │    ├── 📄 test_news_report.py
  │    │    ├── 📄 test_performance_stats.py
  │    │    └── 📄 test_telegram_notifier.py
  │    └── 📄 test_main.py

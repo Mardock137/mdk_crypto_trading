@@ -1,6 +1,30 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.30.0 — 2026-06-15
+
+### Aggiunto
+
+- `src/core/news_review_runner.py` — `NewsReviewRunner`, gemello del `PerformanceReviewRunner`. Gate basato sui file di report (`YYYY-MM-DD_HH-MM.md`): sopravvive ai restart, non usa stato in memoria. Se non ci sono articoli → scrive un digest `NEUTRAL` senza chiamare il LLM (evita chiamate inutili e fa avanzare il gate). Se il client lancia un'eccezione → warning loggato, ciclo prosegue. Espone `load_latest_review()` pronto per la Fase 4.
+- `src/utils/news_report.py` — `write_news_report(symbol, digest, hours_analyzed, reports_dir, now)` + `_format_news_markdown_report`. Nome file `YYYY-MM-DD_HH-MM.md` (Windows-safe, no `:`, ordinabile). Sezioni: titolo con data/ora UTC, simbolo, finestra analizzata, sentiment, Sintesi, Eventi chiave, Risk flag.
+
+### Modificato
+
+- `config/news.yaml` — aggiunto campo `interval_hours: 12` (cadenza del `NewsReviewRunner`).
+- `src/agents/news_reviewer.py` — in `_build_user_payload`, gli articoli vengono serializzati escludendo il campo `url` (irrilevante per il giudizio del LLM).
+- `src/core/runner.py` — nuova costante `_NEWS_REPORTS_DIR`; `TradingRunner.__init__` accetta i parametri opzionali `news_client`, `news_reviewer`, `news_reports_dir` e costruisce `_news_review_runner` leggendo `interval_hours`/`lookback_hours` da `load_news_config()`; in `_run_single_cycle`, subito dopo `maybe_run_today()`, chiama `_news_review_runner.maybe_run()` se presente.
+- `src/main.py` — `build_runner`: se `settings.alpha_vantage_api_key` è presente, costruisce `AlphaVantageClient` e `NewsReviewerAgent` (terza istanza `AnthropicInterface` da `config/llm_models/news_reviewer.yaml`) e li passa a `TradingRunner`; altrimenti logga un warning "News Reviewer disabilitato" e passa `None`. La chiave Alpha Vantage resta opzionale.
+
+### Test
+
+- `tests/core/test_news_review_runner.py` (nuovo): nessun report → esegue (client + agente chiamati, report scritto); report recente entro `interval_hours` → skip; report vecchio oltre l'intervallo → esegue; lista articoli vuota → report NEUTRAL scritto, agente non chiamato; `NewsError` dal client → nessuna eccezione propagata, warning loggato; errore generico dal reviewer → non propagato; `load_latest_review` ritorna l'ultimo contenuto / stringa vuota se assente; `_latest_report_time` parsare nome file / ritorna `None` su filename non parsabile.
+- `tests/utils/test_news_report.py` (nuovo): creazione file nella dir corretta; creazione dir se mancante; formato nome file `YYYY-MM-DD_HH-MM.md`; markdown contiene sentiment, sintesi, eventi e risk flag; placeholder per liste vuote; report NEUTRAL completo.
+- `tests/agents/test_news_reviewer.py` — aggiunto assert che `url` non sia nel payload degli articoli inviati al LLM.
+- `tests/core/test_runner.py` — `_make_runner` accetta `news_client`/`news_reviewer` (default `None`) e patcha `load_news_config`; nuovo test che verifica che `maybe_run()` venga chiamato quando il news runner è presente; nuovo test che verifica che `_news_review_runner` sia `None` quando i parametri sono assenti.
+- `tests/test_main.py` — tre nuovi test: con chiave AV presente → `AlphaVantageClient` e `NewsReviewerAgent` istanziati, `AnthropicInterface` chiamata 3 volte, `load_llm_model_config` chiamata 5 volte; senza chiave AV → `AlphaVantageClient` non chiamato, `AnthropicInterface` 2 volte; senza chiave AV → warning loggato con "News Reviewer".
+
+---
+
 ## 1.29.0 — 2026-06-15
 
 ### Aggiunto

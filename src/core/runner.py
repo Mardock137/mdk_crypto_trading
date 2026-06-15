@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from src.agents.news_reviewer import NewsReviewerAgent
 from src.agents.performance_reviewer import PerformanceReviewerAgent
 from src.core import notifications
 from src.core.contracts import (
@@ -23,14 +24,17 @@ from src.core.contracts import (
 from src.core.circuit_breaker import CircuitBreaker, build_error_signature
 from src.core.exceptions import CycleExecutionError, MdkTradingError
 from src.core.cycle_skip_handler import CycleSkipHandler
+from src.core.news_review_runner import NewsReviewRunner
 from src.core.performance_review_runner import PerformanceReviewRunner
 from src.core.position_manager import PositionManager
 from src.core.workflow import TradingWorkflow
 from src.integrations.exchange.base_exchange_client import BaseExchangeClient
+from src.integrations.news.base_news_client import BaseNewsClient
 from src.utils.config import (
     AppSettings,
     load_cycle_skip_config,
     load_mandate,
+    load_news_config,
     load_trading_config,
 )
 from src.utils.event_logger import EventLogger
@@ -39,6 +43,7 @@ from src.utils.telegram_notifier import TelegramNotifier
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _PERFORMANCE_REPORTS_DIR = _PROJECT_ROOT / "data/performance_reports"
+_NEWS_REPORTS_DIR = _PROJECT_ROOT / "data/news_reports"
 _HEARTBEAT_PATH = _PROJECT_ROOT / "data/heartbeat"
 
 
@@ -102,6 +107,9 @@ class TradingRunner:
         telegram_notifier: TelegramNotifier | None = None,
         performance_reports_dir: Path = _PERFORMANCE_REPORTS_DIR,
         circuit_breaker: CircuitBreaker | None = None,
+        news_client: BaseNewsClient | None = None,
+        news_reviewer: NewsReviewerAgent | None = None,
+        news_reports_dir: Path = _NEWS_REPORTS_DIR,
     ) -> None:
         self._workflow = workflow
         self._event_logger = event_logger
@@ -152,6 +160,22 @@ class TradingRunner:
             reports_dir=performance_reports_dir,
             logger=logger,
         )
+
+        if news_client is not None and news_reviewer is not None:
+            news_config = load_news_config()
+            self._news_review_runner: NewsReviewRunner | None = NewsReviewRunner(
+                symbol=symbol,
+                news_client=news_client,
+                news_reviewer=news_reviewer,
+                reports_dir=news_reports_dir,
+                logger=logger,
+                interval_hours=int(news_config.get("interval_hours", 12)),
+                lookback_hours=int(
+                    news_config.get("query", {}).get("lookback_hours", 12)
+                ),
+            )
+        else:
+            self._news_review_runner = None
 
     def run(self) -> None:
         """Avvia il loop operativo. Esce su KeyboardInterrupt o SIGTERM."""
@@ -257,6 +281,8 @@ class TradingRunner:
         self._touch_heartbeat()
         self._logger.info("Inizio ciclo operativo")
         self._review_runner.maybe_run_today()
+        if self._news_review_runner is not None:
+            self._news_review_runner.maybe_run()
         try:
             market_data = self._exchange_client.get_market_snapshot(self._symbol)
             portfolio = self._exchange_client.get_portfolio_state(self._symbol)
