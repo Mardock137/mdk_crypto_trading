@@ -177,6 +177,15 @@ model: gemini-3.1-pro-preview
 max_tokens: 4096
 ```
 
+**`news_reviewer.yaml`** (provider: Anthropic):
+
+```yaml
+provider: anthropic
+model: claude-sonnet-4-6
+temperature: 0.3
+max_tokens: 4096
+```
+
 **`performance_reviewer.yaml`** (provider: Anthropic):
 
 ```yaml
@@ -201,6 +210,7 @@ Prompt runtime caricati dal codice durante l'esecuzione. Ogni agente ha il suo f
 - `decision_maker.md` — Prompt operativo del Decision Maker
 - `risk_manager.md` — Prompt operativo del Risk Manager
 - `performance_reviewer.md` — Prompt operativo del Performance Reviewer
+- `news_reviewer.md` — Prompt operativo del News Reviewer
 
 I file in `dev_support/prompts/` sono la versione di progettazione e riferimento umano. Quelli in `config/prompts/` sono la versione usata dal codice.
 

@@ -69,6 +69,15 @@ flowchart TD
 - Se l'exchange lancia un'eccezione → `FAILED`.
 - Non rivaluta strategia o rischio.
 
+### News Reviewer
+
+- Agente consultivo, **fuori dalla catena decisionale**: non valuta né approva i trade del momento.
+- In questa fase (Fase 2) esiste e si testa in isolamento ma non è ancora invocato dal runner né collegato al Decision Maker (lo sarà nelle Fasi 3 e 4).
+- Riceve un `NewsReviewerInput` (simbolo, lista di `NewsArticle`, finestra temporale in ore) prodotto dall'`AlphaVantageClient`.
+- Invia i dati a Claude Sonnet 4.6 che produce un `NewsDigest` strutturato (overall_sentiment `BULLISH`/`BEARISH`/`NEUTRAL`, summary, key_events, risk_flags).
+- Modello LLM e parametri configurati in `config/llm_models/news_reviewer.yaml`.
+- Prompt operativo in `config/prompts/news_reviewer.md`.
+
 ### Performance Reviewer
 
 - Agente consultivo, **fuori dalla catena decisionale**: non valuta né approva i trade del momento.
@@ -93,13 +102,14 @@ Contiene i 5 agenti del sistema su una gerarchia a due livelli:
 
 Ogni agente espone un input strutturato e un output strutturato.
 
-I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent`, `ExecutionTraderAgent`) formano la catena decisionale lineare. `PerformanceReviewerAgent` sta fuori dalla catena e viene invocato solo una volta al giorno dal runner.
+I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent`, `ExecutionTraderAgent`) formano la catena decisionale lineare. `PerformanceReviewerAgent` sta fuori dalla catena e viene invocato solo una volta al giorno dal runner. `NewsReviewerAgent` è anch'esso fuori dalla catena; nella Fase 2 esiste in isolamento e verrà collegato al runner nelle Fasi successive.
 
 `MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent` e `PerformanceReviewerAgent` estendono `BaseLlmAgent` e ricevono un `BaseLlmInterface`. Il `run` ereditato dalla base legge il prompt da disco, costruisce il payload tramite `_build_user_payload`, invia i dati al modello e fa retry sul parsing tramite `_call_llm_with_retry` (backoff esponenziale), poi normalizza la risposta tramite `unwrap_llm_response()` e la parsa nei rispettivi contratti (`MarketAnalysis`, `TradeProposal`, `RiskAssessment`, `PerformanceReview`). `ExecutionTraderAgent` non usa LLM: riceve un `BaseExchangeClient` e piazza gli ordini direttamente sull'exchange.
 
 ### `src/core/`
 
 - `contracts.py`: strutture dati condivise tra agenti (input, output, enum)
+- `contracts.py`: strutture dati condivise tra agenti (input, output, enum). Include ora `NewsSentiment` (enum BULLISH/BEARISH/NEUTRAL disaccoppiato da `MarketBias`), `NewsDigest` (output del News Reviewer) e `NewsReviewerInput` (input del News Reviewer).
 - `exceptions.py`: gerarchia di eccezioni operative del sistema. `MdkTradingError` è la base per tutti gli errori attesi; `ExchangeError(MdkTradingError)` per errori provenienti dall'exchange; `LlmError(MdkTradingError, RuntimeError)` per errori provenienti da un provider LLM; `NewsError(MdkTradingError)` per errori provenienti dalla fonte news. L'ereditarietà multipla di `LlmError` garantisce backward-compatibility con il codice che cattura `RuntimeError`.
 - `workflow.py`: catena lineare Market Analyst → Decision Maker → Risk Manager → Execution Trader
 - `runner.py`: `TradingRunner`, direttore d'orchestra del loop operativo (loop, segnali, orchestrazione del singolo ciclo). Delega le decisioni specialistiche a 4 collaboratori dedicati:
@@ -159,6 +169,7 @@ I contratti principali sono:
 - `RiskAssessment`: output del `Risk Manager`
 - `ExecutionReport`: output del `Execution Trader`
 - `PerformanceStats` / `PerformanceReview`: input/output del `Performance Reviewer`. `PerformanceStats` include ora `sells_in_profit` e `sells_in_loss`: contatori delle ultime 10 SELL FIFO chiuse in profitto/perdita, usati dal Reviewer per valutare la qualità delle uscite.
+- `NewsReviewerInput` / `NewsDigest`: input e output del `News Reviewer`. `NewsDigest` contiene `overall_sentiment` (`NewsSentiment`: BULLISH/BEARISH/NEUTRAL), `summary`, `key_events` e `risk_flags`.
 - `InvestmentMandate`: mandato operativo (caricato da `trading.yaml`)
 - `TradingCycleInput` / `TradingCycleResult`: input e output del ciclo completo
 

@@ -11,6 +11,12 @@ class MarketBias(str, Enum):
     NEUTRAL = "NEUTRAL"
 
 
+class NewsSentiment(str, Enum):
+    BULLISH = "BULLISH"
+    BEARISH = "BEARISH"
+    NEUTRAL = "NEUTRAL"
+
+
 class SuggestedAction(str, Enum):
     LONG_BIAS = "LONG_BIAS"
     SHORT_BIAS = "SHORT_BIAS"
@@ -79,6 +85,16 @@ class NewsArticle:
     overall_sentiment_label: str | None = None
     btc_sentiment_score: float | None = None
     btc_relevance: float | None = None
+
+
+@dataclass(slots=True)
+class NewsDigest:
+    """Output del News Reviewer: sintesi strutturata del flusso notizie recenti."""
+
+    overall_sentiment: NewsSentiment
+    summary: str
+    key_events: list[str] = field(default_factory=list)
+    risk_flags: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -306,6 +322,15 @@ class CycleSkipConfig:
     macd_sign_must_match: bool
     require_no_order_events: bool
     require_previous_action_hold: bool
+
+
+@dataclass(slots=True)
+class NewsReviewerInput:
+    """Input del News Reviewer: articoli scaricati dall'AlphaVantageClient."""
+
+    symbol: str
+    articles: list[NewsArticle] = field(default_factory=list)
+    hours_analyzed: int = 12
 
 
 @dataclass(slots=True)

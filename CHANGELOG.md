@@ -1,6 +1,28 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.29.0 — 2026-06-15
+
+### Aggiunto
+
+- `src/core/contracts.py` — nuovo enum `NewsSentiment(str, Enum)` con `BULLISH`/`BEARISH`/`NEUTRAL` (disaccoppiato da `MarketBias`, stesso pattern del progetto); nuovo dataclass `NewsDigest` (overall_sentiment, summary, key_events, risk_flags) output del News Reviewer; nuovo dataclass `NewsReviewerInput` (symbol, articles, hours_analyzed) input del News Reviewer.
+- `src/agents/news_reviewer.py` — `NewsReviewerAgent(BaseLlmAgent)` sul pattern del Performance Reviewer. `_build_user_payload` serializza gli articoli con `dataclasses.asdict`. Funzione di modulo `_parse_news_digest`: valida i campi obbligatori, converte `NewsSentiment`, normalizza `key_events`/`risk_flags` con `ensure_list_of_str`.
+- `config/prompts/news_reviewer.md` — prompt operativo in italiano (RUOLO / CONTESTO / SCOPO / REGOLE OPERATIVE / DATI DISPONIBILI / SCHEMA RISPOSTA).
+- `config/llm_models/news_reviewer.yaml` — modello Anthropic Claude Sonnet 4.6, temperature 0.3, max_tokens 4096 (identico al Performance Reviewer).
+
+### Modificato
+
+- `README.md` — bump versione `1.28.0` → `1.29.0`.
+- `docs/architecture.md` — aggiunto `NewsReviewerAgent` nella sezione "Ruoli degli agenti"; aggiunti `NewsDigest`/`NewsReviewerInput` in "Contratti condivisi"; aggiornate le sezioni `src/agents/` e `src/core/`.
+- `docs/config.md` — aggiunto `news_reviewer.yaml` in `config/llm_models/`; aggiunto `news_reviewer.md` in `config/prompts/`.
+- `docs/repo_structure.md` — aggiunto `src/agents/news_reviewer.py`, `config/llm_models/news_reviewer.yaml`, `config/prompts/news_reviewer.md`, `tests/agents/test_news_reviewer.py` nell'albero.
+
+### Test
+
+- `tests/agents/test_news_reviewer.py` (nuovo): parsing dei tre valori di `overall_sentiment` (BULLISH/BEARISH/NEUTRAL); campi mancanti → `ValueError`; dict vuoto → `ValueError`; `key_events`/`risk_flags` come stringa singola normalizzati a lista via `ensure_list_of_str`; `test_agent_run` con LLM mockato: verifica che l'LLM venga chiamato una volta e che il payload contenga `symbol`, `hours_analyzed`, `article_count` e `articles` (lista di dict).
+
+---
+
 ## 1.28.0 — 2026-06-14
 
 ### Aggiunto

@@ -17,12 +17,14 @@
  │    ├── 📁 llm_models/                                     # Configurazione dei modelli IA (model, temperature, max token, ecc.).
  │    │    ├── 📄 decision_maker.yaml                        # Configurazione LLM per il Decision Maker (Claude Opus 4.8).
  │    │    ├── 📄 market_analyst.yaml                        # Configurazione LLM per il Market Analyst (GPT-5.4).
- │    │    ├── 📄 performance_reviewer.yaml                  # Configurazione LLM per il Performance Reviewer (Claude Sonnet 4.6).
+ │    │    ├── 📄 news_reviewer.yaml                          # Configurazione LLM per il News Reviewer (Claude Sonnet 4.6).
+ │    │    │    ├── 📄 performance_reviewer.yaml                  # Configurazione LLM per il Performance Reviewer (Claude Sonnet 4.6).
  │    │    └── 📄 risk_manager.yaml                          # Configurazione LLM per il Risk Manager (Gemini 3.1 Pro).
  │    ├── 📁 prompts/                                        # Prompt runtime usati dagli agenti.
  │    │    ├── 📄 decision_maker.md                          # Prompt operativo del Decision Maker.
  │    │    ├── 📄 market_analyst.md                          # Prompt operativo del Market Analyst.
- │    │    ├── 📄 performance_reviewer.md                    # Prompt operativo del Performance Reviewer.
+ │    │    ├── 📄 news_reviewer.md                            # Prompt operativo del News Reviewer.
+ │    │    │    ├── 📄 performance_reviewer.md                    # Prompt operativo del Performance Reviewer.
  │    │    └── 📄 risk_manager.md                            # Prompt operativo del Risk Manager.
  │    ├── 📄 cycle_skip.yaml                                 # Configurazione del pre-check deterministico che salta cicli quando il contesto e' invariato.
  │    ├── 📄 news.yaml                                       # Configurazione della fonte news (source, topics, tickers, lookback_hours, max_articles, sort).
@@ -63,6 +65,7 @@
  │    │    ├── 📄 decision_maker.py                          # Agente che formula la proposta operativa.
  │    │    ├── 📄 execution_trader.py                        # Agente che esegue la proposta approvata.
  │    │    ├── 📄 market_analyst.py                          # Agente di analisi del mercato.
+ │    │    ├── 📄 news_reviewer.py                            # Agente consultivo: digest strutturato del flusso notizie (fuori catena; base del News Reviewer).
  │    │    ├── 📄 performance_reviewer.py                    # Agente consultivo: giudizio giornaliero sulle performance recenti.
  │    │    └── 📄 risk_manager.py                            # Agente di controllo rischio.
  │    ├── 📁 core/                                           # Contratti condivisi e orchestrazione del workflow.
@@ -107,6 +110,7 @@
  │    │    ├── 📄 test_decision_maker.py
  │    │    ├── 📄 test_execution_trader.py
  │    │    ├── 📄 test_market_analyst.py
+ │    │    ├── 📄 test_news_reviewer.py
  │    │    ├── 📄 test_performance_reviewer.py
  │    │    └── 📄 test_risk_manager.py
  │    ├── 📁 core/                                           # Test dei contratti, workflow e runner.
