@@ -200,7 +200,7 @@ max_tokens: 4096
 Note:
 
 - Quando `thinking_effort` è configurato (solo Anthropic, attualmente Decision Maker con Opus 4.8), `temperature` viene ignorata: Opus 4.8 non accetta `temperature` con thinking abilitato. L'interfaccia estrae automaticamente solo i blocchi `text` dalla risposta, scartando i blocchi `thinking`.
-- Per Anthropic senza `thinking_effort` (Performance Reviewer, Sonnet 4.6) il comportamento resta quello classico: `temperature` applicata, niente thinking.
+- Per Anthropic senza `thinking_effort` (Performance Reviewer, Sonnet 4.6) il comportamento resta quello classico: `temperature` applicata (da SDK anthropic >= 1.0.0 viene passata tramite `extra_body`, non più come parametro diretto di `messages.create()`), niente thinking.
 - Per Gemini 3.x (Risk Manager con `gemini-3.1-pro-preview`), `temperature` è volutamente omessa: Google raccomanda esplicitamente di lasciare il parametro al default `1.0` e di non impostarlo a valori bassi sui modelli reasoning, dove può causare comportamenti degradati o loop. L'interfaccia `GeminiInterface` accetta ancora `temperature` come parametro opzionale — se valorizzato, viene inoltrato — ma il file di configurazione non lo imposta.
 - `max_tokens` limita la lunghezza massima della risposta del modello. Per il Decision Maker il valore è alzato a `16384` perché con `thinking_effort` abilitato il budget è condiviso tra thinking interno e output finale: un limite troppo basso satura il budget.
 

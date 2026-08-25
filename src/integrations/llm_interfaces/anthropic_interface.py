@@ -72,14 +72,15 @@ class AnthropicInterface(BaseLlmInterface):
 
         Con thinking_effort: include thinking (adaptive) e output_config (effort),
         esclude temperature.
-        Senza thinking_effort: include temperature, esclude thinking e output_config.
+        Senza thinking_effort: include temperature via extra_body, esclude thinking
+        e output_config.
         """
         kwargs: dict[str, Any] = {}
         if self._thinking_effort is not None:
             kwargs["thinking"] = {"type": "adaptive"}
             kwargs["output_config"] = {"effort": self._thinking_effort}
         else:
-            kwargs["temperature"] = self._temperature
+            kwargs["extra_body"] = {"temperature": self._temperature}
         return kwargs
 
     def _call_provider(

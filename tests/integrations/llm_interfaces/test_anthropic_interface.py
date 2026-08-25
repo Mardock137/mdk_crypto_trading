@@ -148,7 +148,8 @@ def test_custom_temperature_and_max_tokens_are_forwarded(mock_anthropic_cls: Mag
     interface.generate_json("s", {"k": "v"})
 
     call_kwargs = mock_client.messages.create.call_args.kwargs
-    assert call_kwargs["temperature"] == 0.2
+    assert call_kwargs["extra_body"] == {"temperature": 0.2}
+    assert "temperature" not in call_kwargs
     assert call_kwargs["max_tokens"] == 512
 
 
@@ -272,7 +273,7 @@ def test_thinking_effort_enables_thinking_and_removes_temperature(
 def test_without_thinking_effort_keeps_temperature_and_no_thinking(
     mock_anthropic_cls: MagicMock,
 ) -> None:
-    """Senza thinking_effort (default): temperature viene passata, niente thinking."""
+    """Senza thinking_effort (default): temperature via extra_body, niente thinking."""
     mock_client = mock_anthropic_cls.return_value
     mock_text_block = MagicMock()
     mock_text_block.type = "text"
@@ -289,7 +290,8 @@ def test_without_thinking_effort_keeps_temperature_and_no_thinking(
     interface.generate_json("s", {"k": "v"})
 
     call_kwargs = mock_client.messages.create.call_args.kwargs
-    assert call_kwargs["temperature"] == 0.2
+    assert call_kwargs["extra_body"] == {"temperature": 0.2}
+    assert "temperature" not in call_kwargs
     assert "thinking" not in call_kwargs
 
 

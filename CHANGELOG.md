@@ -1,6 +1,24 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.31.1 — 2026-08-25
+
+### Modificato
+
+- `src/integrations/llm_interfaces/anthropic_interface.py` — `_build_kwargs` adattato a anthropic SDK 1.0.0: in assenza di `thinking_effort`, `temperature` è inoltrata tramite `extra_body` e non più come argomento diretto di `messages.create()`.
+- `requirements.txt` — `anthropic` `0.106.0` → `1.0.0`, `openai` `2.41.0` → `3.3.1`, `google-genai` `2.8.0` → `2.19.0`; aggiornamenti patch/minor di `python-dotenv`, `pandas`, `numpy`, `python-binance` e `pytest`. Unico impatto sul codice: l’adattamento Anthropic descritto sopra.
+- `README.md` — bump versione `1.31.0` → `1.31.1`.
+
+### Test
+
+- `tests/integrations/llm_interfaces/test_anthropic_interface.py` — `test_without_thinking_effort_keeps_temperature_and_no_thinking` e `test_custom_temperature_and_max_tokens_are_forwarded` verificano `extra_body` al posto del parametro `temperature`.
+
+### Documentazione
+
+- `docs/config.md` — nota su Anthropic senza `thinking_effort`: da SDK >= 1.0.0 `temperature` transita da `extra_body`.
+
+---
+
 ## 1.31.0 — 2026-06-15
 
 ### Aggiunto
