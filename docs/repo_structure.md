@@ -32,16 +32,7 @@
  │    ├── 📄 symbols.yaml                                    # Simbolo di trading attivo e quote currency (es. BTCUSDC / USDC).
  │    └── 📄 trading.yaml                                    # Regole operative statiche del sistema (min_order_usdc + investment mandate).
  │
- ├── 📁 dev_support/                                         # Materiale di supporto per Chief Mardock e Cursor.
- │    ├── 📁 prompts/                                        # Prompt di progettazione e riferimento.
- │    │    ├── 📄 market_analyst.md
- │    │    ├── 📄 decision_maker.md
- │    │    ├── 📄 risk_manager.md
- │    │    └── 📄 execution_trader.md
- │    ├── 📄 notes.md                                        # Appunti liberi di sviluppo.
- │    ├── 📄 to_do_list.md
- │    ├── 📄 verify_connections.py                           # Script di verifica connessioni API (Binance, OpenAI, Gemini, Claude, Telegram).
- │    └── 📄 whiteboard.md                                   # Lavagna per idee e brainstorming.
+ ├── 📁 dev_support/                                         # Appunti di sviluppo (non versionato).
  │
  ├── 📁 docs/                                                # Documentazione operativa e tecnica.
  │    ├── 📄 api_endpoints.md                                # Contiene l'elenco degli endpoint API utilizzati.
