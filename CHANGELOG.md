@@ -1,6 +1,19 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.32.1 — 2026-08-27
+
+### Modificato
+
+- `src/main.py` — `build_runner()` non passa più `temperature` a Market Analyst, Performance Reviewer e News Reviewer. Il parametro era già ignorato da `OpenAiInterface`/`AnthropicInterface` quando `reasoning_effort`/`thinking_effort` è valorizzato; ora il codice è allineato a quello del Decision Maker.
+
+### Documentazione
+
+- `README.md` — bump versione `1.32.0` → `1.32.1`.
+- `dev_support/notes.md` — rimossa la nota sulla `temperature` morta, ora risolta in `main.py`.
+
+---
+
 ## 1.32.0 — 2026-08-27
 
 ### Modificato

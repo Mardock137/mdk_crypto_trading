@@ -55,10 +55,11 @@ def build_runner(settings: AppSettings) -> TradingRunner:
         )
 
     # Client LLM per il Market Analyst (GPT-5.6 Terra, reasoning_effort)
+    # Nota: `temperature` non e accettata con reasoning abilitato,
+    # quindi non viene passata: l'interfaccia la ignora quando `reasoning_effort` e valorizzato.
     ma_llm = OpenAiInterface(
         api_key=settings.openai_api_key,
         model=ma_config["model"],
-        temperature=float(ma_config.get("temperature", 0.7)),
         reasoning_effort=ma_config.get("reasoning_effort"),
         max_tokens=ma_config.get("max_tokens"),
     )
@@ -83,10 +84,11 @@ def build_runner(settings: AppSettings) -> TradingRunner:
     )
 
     # Client LLM per il Performance Reviewer (Claude Sonnet 5, riutilizza AnthropicInterface)
+    # Nota: `temperature` non e accettata da Sonnet 5 con thinking abilitato,
+    # quindi non viene passata: l'interfaccia la ignora quando `thinking_effort` e valorizzato.
     pr_llm = AnthropicInterface(
         api_key=settings.claude_api_key,
         model=pr_config["model"],
-        temperature=float(pr_config.get("temperature", 0.7)),
         max_tokens=pr_config.get("max_tokens"),
         thinking_effort=pr_config.get("thinking_effort"),
     )
@@ -128,10 +130,11 @@ def build_runner(settings: AppSettings) -> TradingRunner:
         nr_config = load_llm_model_config(
             _PROJECT_ROOT / "config/llm_models/news_reviewer.yaml"
         )
+        # Nota: `temperature` non e accettata da Sonnet 5 con thinking abilitato,
+        # quindi non viene passata: l'interfaccia la ignora quando `thinking_effort` e valorizzato.
         nr_llm = AnthropicInterface(
             api_key=settings.claude_api_key,
             model=nr_config["model"],
-            temperature=float(nr_config.get("temperature", 0.7)),
             max_tokens=nr_config.get("max_tokens"),
             thinking_effort=nr_config.get("thinking_effort"),
         )
