@@ -1,6 +1,23 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.32.2 — 2026-08-27
+
+### Aggiunto
+
+- `src/utils/logging_config.py` — filtro di logging sul logger `google_genai.models` che scarta solo il warning AFC su `Models.generate_content` (rumore da `google-genai` 2.19.0: il bot non usa function calling). Qualunque altro messaggio dello stesso logger continua a passare. Da tenere d'occhio il changelog di `google-genai` in vista della v3.0.0: se `generate_content` diretto venisse deprecato, andrà rivalutata una migrazione a `Chat`.
+
+### Test
+
+- `tests/utils/test_logging_config.py` — copertura del filtro (warning AFC scartato, altri messaggi lasciati passare) e idempotenza dell'installazione.
+
+### Documentazione
+
+- `README.md` — bump versione `1.32.1` → `1.32.2`.
+- `dev_support/notes.md` — rimossa la nota sul warning AFC, ora gestito in `logging_config.py`.
+
+---
+
 ## 1.32.1 — 2026-08-27
 
 ### Modificato

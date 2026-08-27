@@ -4,7 +4,22 @@ import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from src.utils.logging_config import configure_logging
+from src.utils.logging_config import (
+    _SuppressGenaiAfcWarning,
+    configure_logging,
+)
+
+
+def _make_record(message: str) -> logging.LogRecord:
+    return logging.LogRecord(
+        name="google_genai.models",
+        level=logging.WARNING,
+        pathname="",
+        lineno=0,
+        msg=message,
+        args=(),
+        exc_info=None,
+    )
 
 
 def test_configure_logging_returns_named_logger(tmp_path: Path) -> None:
@@ -60,3 +75,39 @@ def test_configure_logging_creates_log_file(tmp_path: Path) -> None:
     log_file = tmp_path / "mdk_crypto_trading.log"
     assert log_file.exists()
     assert "Messaggio di test" in log_file.read_text(encoding="utf-8")
+
+
+def test_afc_warning_filter_drops_exact_message() -> None:
+    filt = _SuppressGenaiAfcWarning()
+    record = _make_record(
+        "Direct use of automatic function calling (AFC) in Models.generate_content "
+        "is not recommended."
+    )
+
+    assert filt.filter(record) is False
+
+
+def test_afc_warning_filter_keeps_other_messages() -> None:
+    filt = _SuppressGenaiAfcWarning()
+    record = _make_record("Unrelated google-genai warning that should still appear.")
+
+    assert filt.filter(record) is True
+
+
+def test_configure_logging_installs_genai_afc_filter_once(tmp_path: Path) -> None:
+    configure_logging(
+        logger_name="mdk_crypto_trading.test_genai_afc_filter",
+        log_dir=tmp_path,
+    )
+    configure_logging(
+        logger_name="mdk_crypto_trading.test_genai_afc_filter",
+        log_dir=tmp_path,
+    )
+
+    genai_logger = logging.getLogger("google_genai.models")
+    afc_filters = [
+        item
+        for item in genai_logger.filters
+        if isinstance(item, _SuppressGenaiAfcWarning)
+    ]
+    assert len(afc_filters) == 1

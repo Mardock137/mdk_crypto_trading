@@ -8,6 +8,22 @@ _LOG_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 _LOG_FILE_NAME = "mdk_crypto_trading.log"
 _MAX_BYTES = 5 * 1024 * 1024  # 5 MB
 _BACKUP_COUNT = 5
+_GENAI_MODELS_LOGGER = "google_genai.models"
+_AFC_WARNING_MARKER = "Direct use of automatic function calling"
+
+
+class _SuppressGenaiAfcWarning(logging.Filter):
+    """Scarta solo il warning AFC di google-genai su Models.generate_content."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return _AFC_WARNING_MARKER not in record.getMessage()
+
+
+def _install_genai_afc_filter() -> None:
+    genai_logger = logging.getLogger(_GENAI_MODELS_LOGGER)
+    if any(isinstance(item, _SuppressGenaiAfcWarning) for item in genai_logger.filters):
+        return
+    genai_logger.addFilter(_SuppressGenaiAfcWarning())
 
 
 def configure_logging(
@@ -17,6 +33,7 @@ def configure_logging(
 ) -> logging.Logger:
     logger = logging.getLogger(logger_name)
     logger.setLevel(level.upper())
+    _install_genai_afc_filter()
 
     if logger.handlers:
         return logger
