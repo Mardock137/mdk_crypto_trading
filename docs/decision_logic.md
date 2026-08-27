@@ -58,7 +58,7 @@ Analizza i dati di mercato e produce un segnale. Non decide operazioni.
 
 ## Decision Maker
 
-Riceve il segnale del Market Analyst e formula una proposta operativa usando come bussola il **mandato di investimento** definito in `config/trading.yaml`. Gira su Claude Opus 4.8 con adaptive thinking (`thinking_effort: medium`): il modello esegue un ragionamento strutturato interno prima di emettere la proposta JSON.
+Riceve il segnale del Market Analyst e formula una proposta operativa usando come bussola il **mandato di investimento** definito in `config/trading.yaml`. Gira su Claude Opus 5 con adaptive thinking (`thinking_effort: medium`): il modello esegue un ragionamento strutturato interno prima di emettere la proposta JSON.
 
 - **Azioni possibili**: `BUY`, `SELL`, `SELL_OCO`, `HOLD`, `CANCEL_AND_REPLACE_ORDER`
 - **Tipi di ordine**: `MARKET`, `LIMIT`, `NONE` (solo per HOLD)
@@ -114,7 +114,7 @@ Agente consultivo fuori dalla catena decisionale. Gira **una volta al giorno**, 
 - Altrimenti:
   1. `load_recent_events` legge i log JSONL degli ultimi 7 giorni filtrati per simbolo.
   2. `build_performance_stats` calcola statistiche **deterministiche** (zero LLM): `total_cycles`, `hold_ratio`, `strong_bullish_ignored`, `sell_failed`, `realized_pnl_usdc`, `days_without_executed_trade`, `sells_in_profit`, `sells_in_loss` (contatori delle ultime 10 SELL FIFO chiuse in profitto/perdita), ecc.
-  3. `PerformanceReviewerAgent` (Claude Sonnet 4.6) riceve stats + mandato e produce un `PerformanceReview`: summary conciso, `mandate_adherence` (`ALIGNED` / `DRIFTING` / `MISALIGNED`) e 1-3 suggerimenti concreti. La definizione di `DRIFTING` è bilanciata su entry e uscite: non basta `strong_bullish_ignored` alto se il sistema ha già una posizione in profitto; vale anche se `sells_in_loss > sells_in_profit` con attività significativa o se ci sono BUY accumulate senza nessuna SELL realizzata. I suggerimenti coprono sia la gestione degli ingressi sia quella delle uscite (take profit, stop loss, uso di `SELL_OCO`).
+  3. `PerformanceReviewerAgent` (Claude Sonnet 5) riceve stats + mandato e produce un `PerformanceReview`: summary conciso, `mandate_adherence` (`ALIGNED` / `DRIFTING` / `MISALIGNED`) e 1-3 suggerimenti concreti. La definizione di `DRIFTING` è bilanciata su entry e uscite: non basta `strong_bullish_ignored` alto se il sistema ha già una posizione in profitto; vale anche se `sells_in_loss > sells_in_profit` con attività significativa o se ci sono BUY accumulate senza nessuna SELL realizzata. I suggerimenti coprono sia la gestione degli ingressi sia quella delle uscite (take profit, stop loss, uso di `SELL_OCO`).
   4. Il risultato viene serializzato in markdown in `data/performance_reports/YYYY-MM-DD.md`.
 - Nei cicli successivi, `PerformanceReviewRunner.load_latest_review()` legge il file più recente e lo passa al Decision Maker come stringa (`latest_performance_review`).
 - **Errori non bloccano il ciclo**: se il Reviewer fallisce (LLM down, stats non calcolabili, ecc.), viene loggato un warning e il DM riceve stringa vuota come fallback.

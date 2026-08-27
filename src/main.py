@@ -54,16 +54,17 @@ def build_runner(settings: AppSettings) -> TradingRunner:
             f"API key obbligatorie non configurate nel .env: {', '.join(missing)}"
         )
 
-    # Client LLM per il Market Analyst (GPT-5.4, senza reasoning: analisi tecnica strutturata)
+    # Client LLM per il Market Analyst (GPT-5.6 Terra, reasoning_effort)
     ma_llm = OpenAiInterface(
         api_key=settings.openai_api_key,
         model=ma_config["model"],
-        temperature=float(ma_config["temperature"]),
+        temperature=float(ma_config.get("temperature", 0.7)),
+        reasoning_effort=ma_config.get("reasoning_effort"),
         max_tokens=ma_config.get("max_tokens"),
     )
 
-    # Client LLM per il Decision Maker (Claude Opus 4.8 con adaptive thinking)
-    # Nota: `temperature` non e accettata da Opus 4.8 con thinking abilitato,
+    # Client LLM per il Decision Maker (Claude Opus 5 con adaptive thinking)
+    # Nota: `temperature` non e accettata da Opus 5 con thinking abilitato,
     # quindi non viene passata: l'interfaccia la ignora quando `thinking_effort` e valorizzato.
     dm_llm = AnthropicInterface(
         api_key=settings.claude_api_key,
@@ -81,12 +82,13 @@ def build_runner(settings: AppSettings) -> TradingRunner:
         max_tokens=rm_config.get("max_tokens"),
     )
 
-    # Client LLM per il Performance Reviewer (riutilizza AnthropicInterface)
+    # Client LLM per il Performance Reviewer (Claude Sonnet 5, riutilizza AnthropicInterface)
     pr_llm = AnthropicInterface(
         api_key=settings.claude_api_key,
         model=pr_config["model"],
-        temperature=float(pr_config["temperature"]),
+        temperature=float(pr_config.get("temperature", 0.7)),
         max_tokens=pr_config.get("max_tokens"),
+        thinking_effort=pr_config.get("thinking_effort"),
     )
 
     # Client exchange
@@ -129,8 +131,9 @@ def build_runner(settings: AppSettings) -> TradingRunner:
         nr_llm = AnthropicInterface(
             api_key=settings.claude_api_key,
             model=nr_config["model"],
-            temperature=float(nr_config["temperature"]),
+            temperature=float(nr_config.get("temperature", 0.7)),
             max_tokens=nr_config.get("max_tokens"),
+            thinking_effort=nr_config.get("thinking_effort"),
         )
         news_reviewer_agent = NewsReviewerAgent(llm=nr_llm)
     else:

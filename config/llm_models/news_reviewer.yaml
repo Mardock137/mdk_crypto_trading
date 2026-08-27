@@ -1,4 +1,4 @@
 provider: anthropic
-model: claude-sonnet-4-6
-temperature: 0.3
+model: claude-sonnet-5
+thinking_effort: medium
 max_tokens: 4096

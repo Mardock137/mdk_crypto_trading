@@ -3,7 +3,7 @@
 [![CI](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml/badge.svg)](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml)
 
 - **Versione Python**: `3.14.5`
-- **Versione MDK Crypto Trading**: `1.31.1`
+- **Versione MDK Crypto Trading**: `1.32.0`
 
 ## 📋 Indice
 
@@ -24,12 +24,12 @@ MDK Crypto Trading è un sistema autonomo di trading spot su criptovalute, strut
 
 | Agente                   | Ruolo                                                                                                      | Modello                    |
 |--------------------------|------------------------------------------------------------------------------------------------------------|----------------------------|
-| **Market Analyst**       | Analizza indicatori tecnici e genera un segnale di mercato                                                 | GPT-5.4                    |
-| **Decision Maker**       | Valuta il segnale e formula una proposta operativa (BUY, SELL, SELL_OCO, HOLD, CANCEL_AND_REPLACE_ORDER)   | Claude Opus 4.8 (thinking) |
-| **Risk Manager**         | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche                                      | Gemini 3.1 Pro             |
+| **Market Analyst**       | Analizza indicatori tecnici e genera un segnale di mercato                                                 | GPT-5.6 Terra              |
+| **Decision Maker**       | Valuta il segnale e formula una proposta operativa (BUY, SELL, SELL_OCO, HOLD, CANCEL_AND_REPLACE_ORDER)   | Claude Opus 5 (thinking)   |
+| **Risk Manager**         | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche                                      | Gemini 3.7 Flash           |
 | **Execution Trader**     | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)                                             | —                          |
-| **Performance Reviewer** | Ruolo consultivo, fuori catena: genera un report giornaliero letto dal DM                                  | Claude Sonnet 4.6          |
-| **News Reviewer**        | Ruolo consultivo, fuori catena: genera un digest news ogni 12h (sentiment, eventi, risk flag) letto dal DM | Claude Sonnet 4.6          |
+| **Performance Reviewer** | Ruolo consultivo, fuori catena: genera un report giornaliero letto dal DM                                  | Claude Sonnet 5            |
+| **News Reviewer**        | Ruolo consultivo, fuori catena: genera un digest news ogni 12h (sentiment, eventi, risk flag) letto dal DM | Claude Sonnet 5            |
 
 ## 🔄 Come funziona
 
@@ -66,9 +66,9 @@ python dev_support/verify_connections.py
 
 ## 🤖 API integrate
 
-- **Anthropic API**: Decision Maker (`Claude Opus 4.8` con adaptive thinking) e Performance Reviewer (`Claude Sonnet 4.6`)
-- **OpenAI API** (`GPT-5.4`): Market Analyst
-- **Gemini API** (`Gemini 3.1 Pro`): Risk Manager
+- **Anthropic API**: Decision Maker (`Claude Opus 5` con adaptive thinking), Performance Reviewer e News Reviewer (`Claude Sonnet 5`)
+- **OpenAI API** (`GPT-5.6 Terra`): Market Analyst
+- **Gemini API** (`Gemini 3.7 Flash`): Risk Manager
 - **Binance API**: dati di mercato, portafoglio, ordini aperti, esecuzione ordini (DEMO e REAL)
 - **Alpha Vantage API**: notizie crypto con sentiment score (News Reviewer, opzionale)
 - **Telegram Bot API** (opzionale): notifiche in tempo reale su ordini eseguiti, errori e avvio/stop del bot

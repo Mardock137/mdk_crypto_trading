@@ -16,16 +16,16 @@
  │
  ├── 📁 config/                                              # Configurazioni statiche del sistema.
  │    ├── 📁 llm_models/                                     # Configurazione dei modelli IA (model, temperature, max token, ecc.).
- │    │    ├── 📄 decision_maker.yaml                        # Configurazione LLM per il Decision Maker (Claude Opus 4.8).
- │    │    ├── 📄 market_analyst.yaml                        # Configurazione LLM per il Market Analyst (GPT-5.4).
- │    │    ├── 📄 news_reviewer.yaml                          # Configurazione LLM per il News Reviewer (Claude Sonnet 4.6).
- │    │    │    ├── 📄 performance_reviewer.yaml                  # Configurazione LLM per il Performance Reviewer (Claude Sonnet 4.6).
- │    │    └── 📄 risk_manager.yaml                          # Configurazione LLM per il Risk Manager (Gemini 3.1 Pro).
+ │    │    ├── 📄 decision_maker.yaml                        # Configurazione LLM per il Decision Maker (Claude Opus 5).
+ │    │    ├── 📄 market_analyst.yaml                        # Configurazione LLM per il Market Analyst (GPT-5.6 Terra).
+ │    │    ├── 📄 news_reviewer.yaml                         # Configurazione LLM per il News Reviewer (Claude Sonnet 5).
+ │    │    │    ├── 📄 performance_reviewer.yaml             # Configurazione LLM per il Performance Reviewer (Claude Sonnet 5).
+ │    │    └── 📄 risk_manager.yaml                          # Configurazione LLM per il Risk Manager (Gemini 3.7 Flash).
  │    ├── 📁 prompts/                                        # Prompt runtime usati dagli agenti.
  │    │    ├── 📄 decision_maker.md                          # Prompt operativo del Decision Maker.
  │    │    ├── 📄 market_analyst.md                          # Prompt operativo del Market Analyst.
- │    │    ├── 📄 news_reviewer.md                            # Prompt operativo del News Reviewer.
- │    │    │    ├── 📄 performance_reviewer.md                    # Prompt operativo del Performance Reviewer.
+ │    │    ├── 📄 news_reviewer.md                           # Prompt operativo del News Reviewer.
+ │    │    │    ├── 📄 performance_reviewer.md               # Prompt operativo del Performance Reviewer.
  │    │    └── 📄 risk_manager.md                            # Prompt operativo del Risk Manager.
  │    ├── 📄 cycle_skip.yaml                                 # Configurazione del pre-check deterministico che salta cicli quando il contesto e' invariato.
  │    ├── 📄 news.yaml                                       # Configurazione della fonte news (source, topics, tickers, lookback_hours, max_articles, sort).
@@ -57,7 +57,7 @@
  │    │    ├── 📄 decision_maker.py                          # Agente che formula la proposta operativa.
  │    │    ├── 📄 execution_trader.py                        # Agente che esegue la proposta approvata.
  │    │    ├── 📄 market_analyst.py                          # Agente di analisi del mercato.
- │    │    ├── 📄 news_reviewer.py                            # Agente consultivo: digest strutturato del flusso notizie (fuori catena; invocato dal NewsReviewRunner ogni 12h).
+ │    │    ├── 📄 news_reviewer.py                           # Agente consultivo: digest strutturato del flusso notizie (fuori catena; invocato dal NewsReviewRunner ogni 12h).
  │    │    ├── 📄 performance_reviewer.py                    # Agente consultivo: giudizio giornaliero sulle performance recenti.
  │    │    └── 📄 risk_manager.py                            # Agente di controllo rischio.
  │    ├── 📁 core/                                           # Contratti condivisi e orchestrazione del workflow.
@@ -93,7 +93,7 @@
  │    │    ├── 📄 log_utils.py                               # Helper `truncate_for_log`: tronca blob di risposta LLM nei messaggi di WARNING.
  │    │    ├── 📄 logging_config.py                          # Configurazione centralizzata del logging (console + file).
  │    │    ├── 📄 memory_manager.py                          # Persistenza e recupero delle decisioni passate (JSONL) per la memoria del Decision Maker. Cache per-ciclo su letture e calcoli FIFO, invalidata a ogni save_cycle.
- │    │    ├── 📄 news_report.py                              # write_news_report: serializza NewsDigest in markdown (YYYY-MM-DD_HH-MM.md) e lo salva in data/news_reports/.
+ │    │    ├── 📄 news_report.py                             # write_news_report: serializza NewsDigest in markdown (YYYY-MM-DD_HH-MM.md) e lo salva in data/news_reports/.
  │    │    ├── 📄 performance_stats.py                       # build_performance_stats deterministica + writer del report markdown.
  │    │    └── 📄 telegram_notifier.py                       # Notifiche Telegram opzionali (avvio/stop, ordini eseguiti, errori).
  │    └── 📄 main.py                                         # Entry point del sistema: bootstrap e avvio del runner.

@@ -1,6 +1,25 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+## 1.32.0 — 2026-08-27
+
+### Modificato
+
+- `config/llm_models/market_analyst.yaml` — modello `gpt-5.4` → `gpt-5.6-terra`; `temperature: 0.2` → `reasoning_effort: medium` (GPT-5.6 Terra è un modello di reasoning e rifiuta `temperature` non-default con errore 400).
+- `config/llm_models/decision_maker.yaml` — modello `claude-opus-4-8` → `claude-opus-5` (drop-in replacement, stessi parametri: `thinking_effort: medium`, `max_tokens: 16384`).
+- `config/llm_models/risk_manager.yaml` — modello `gemini-3.1-pro-preview` → `gemini-3.7-flash` (nessun parametro impattato).
+- `config/llm_models/performance_reviewer.yaml` e `config/llm_models/news_reviewer.yaml` — modello `claude-sonnet-4-6` → `claude-sonnet-5`; `temperature: 0.3` → `thinking_effort: medium` (stesso motivo del Market Analyst: Sonnet 5 ha adaptive thinking attivo di default e rifiuta `temperature` non-default).
+- `src/main.py` — `build_runner()` passa ora `reasoning_effort`/`thinking_effort` da YAML a `OpenAiInterface`/`AnthropicInterface` per Market Analyst, Performance Reviewer e News Reviewer. **Bug fix**: prima di questa modifica, `build_runner()` leggeva `temperature` in modo obbligatorio (`config["temperature"]`) per questi 3 agenti; con i nuovi YAML (senza più `temperature`) l'avvio sarebbe andato in `KeyError`. Ora tutti i campi sono letti con `.get(..., default)` sicuro.
+
+### Documentazione
+
+- `README.md` — bump versione `1.31.1` → `1.32.0`; tabella agenti/modelli e sezione "API integrate" aggiornate con i nuovi nomi modello.
+- `docs/architecture.md`, `docs/decision_logic.md`, `docs/repo_structure.md` — riferimenti ai modelli aggiornati (Opus 5, Sonnet 5, GPT-5.6 Terra, Gemini 3.7 Flash).
+- `docs/config.md` — snippet YAML di `config/llm_models/` risincronizzati con i file reali; note riscritte per spiegare che `reasoning_effort`/`thinking_effort` ha ora priorità su `temperature` per 4 dei 5 agenti (tutti tranne il Risk Manager su Gemini).
+- `dev_support/notes.md` — nota su perché il valore di `temperature` letto in `main.py` per Market Analyst/Performance Reviewer/News Reviewer non viene mai inviato all'API.
+
+---
+
 ## 1.31.1 — 2026-08-25
 
 ### Modificato

@@ -157,8 +157,8 @@ Configurazione dei modelli LLM usati dagli agenti. Un file YAML per agente.
 
 ```yaml
 provider: openai
-model: gpt-5.4
-temperature: 0.2
+model: gpt-5.6-terra
+reasoning_effort: medium
 max_tokens: 4096
 ```
 
@@ -166,7 +166,7 @@ max_tokens: 4096
 
 ```yaml
 provider: anthropic
-model: claude-opus-4-8
+model: claude-opus-5
 thinking_effort: medium
 max_tokens: 16384
 ```
@@ -175,7 +175,7 @@ max_tokens: 16384
 
 ```yaml
 provider: gemini
-model: gemini-3.1-pro-preview
+model: gemini-3.7-flash
 max_tokens: 4096
 ```
 
@@ -183,8 +183,8 @@ max_tokens: 4096
 
 ```yaml
 provider: anthropic
-model: claude-sonnet-4-6
-temperature: 0.3
+model: claude-sonnet-5
+thinking_effort: medium
 max_tokens: 4096
 ```
 
@@ -192,16 +192,16 @@ max_tokens: 4096
 
 ```yaml
 provider: anthropic
-model: claude-sonnet-4-6
-temperature: 0.3
+model: claude-sonnet-5
+thinking_effort: medium
 max_tokens: 4096
 ```
 
 Note:
 
-- Quando `thinking_effort` è configurato (solo Anthropic, attualmente Decision Maker con Opus 4.8), `temperature` viene ignorata: Opus 4.8 non accetta `temperature` con thinking abilitato. L'interfaccia estrae automaticamente solo i blocchi `text` dalla risposta, scartando i blocchi `thinking`.
-- Per Anthropic senza `thinking_effort` (Performance Reviewer, Sonnet 4.6) il comportamento resta quello classico: `temperature` applicata (da SDK anthropic >= 1.0.0 viene passata tramite `extra_body`, non più come parametro diretto di `messages.create()`), niente thinking.
-- Per Gemini 3.x (Risk Manager con `gemini-3.1-pro-preview`), `temperature` è volutamente omessa: Google raccomanda esplicitamente di lasciare il parametro al default `1.0` e di non impostarlo a valori bassi sui modelli reasoning, dove può causare comportamenti degradati o loop. L'interfaccia `GeminiInterface` accetta ancora `temperature` come parametro opzionale — se valorizzato, viene inoltrato — ma il file di configurazione non lo imposta.
+- GPT-5.6 Terra e Claude Sonnet 5 sono modelli con adaptive thinking/reasoning attivo di default: rifiutano `temperature` con un valore diverso dal default (errore 400 dall'API). Per questo motivo Market Analyst, Decision Maker, Performance Reviewer e News Reviewer usano tutti `reasoning_effort` (OpenAI) o `thinking_effort` (Anthropic) invece di `temperature`. L'interfaccia Anthropic estrae automaticamente solo i blocchi `text` dalla risposta, scartando i blocchi `thinking`.
+- La logica è generica e vale per qualsiasi agente su questi due provider: se `reasoning_effort`/`thinking_effort` è impostato nel YAML, `temperature` viene ignorata a prescindere dal suo valore (anche se presente nel file, non verrebbe mai inviata all'API). Il comportamento "classico" con `temperature` inviata resta disponibile per Anthropic/OpenAI solo per un agente il cui YAML non imposta `reasoning_effort`/`thinking_effort` (nessuno, oggi, in questo progetto).
+- Per Gemini 3.x (Risk Manager con `gemini-3.7-flash`), `temperature` è volutamente omessa: Google raccomanda esplicitamente di lasciare il parametro al default e di non impostarlo a valori bassi sui modelli reasoning, dove può causare comportamenti degradati o loop. L'interfaccia `GeminiInterface` accetta ancora `temperature` come parametro opzionale — se valorizzato, viene inoltrato — ma il file di configurazione non lo imposta.
 - `max_tokens` limita la lunghezza massima della risposta del modello. Per il Decision Maker il valore è alzato a `16384` perché con `thinking_effort` abilitato il budget è condiviso tra thinking interno e output finale: un limite troppo basso satura il budget.
 
 ### `config/prompts/`
@@ -287,7 +287,7 @@ python dev_support/verify_connections.py
 ### Problema: `KeyError: 'model'` all'avvio
 
 **Causa**: uno dei file YAML in `config/llm_models/` non contiene il campo `model`.
-**Soluzione**: verificare che ogni file YAML abbia almeno il campo `model` con il nome del modello (es. `model: claude-sonnet-4-6`).
+**Soluzione**: verificare che ogni file YAML abbia almeno il campo `model` con il nome del modello (es. `model: claude-sonnet-5`).
 
 ---
 

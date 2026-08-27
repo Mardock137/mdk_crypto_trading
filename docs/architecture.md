@@ -37,7 +37,7 @@ flowchart TD
 ### Market Analyst
 
 - Riceve lo snapshot di mercato completo (prezzo, volume, order book, candele, indicatori tecnici).
-- Invia i dati a GPT-5.4 che produce un'analisi strutturata (`MarketAnalysis`).
+- Invia i dati a GPT-5.6 Terra che produce un'analisi strutturata (`MarketAnalysis`).
 - Non decide direttamente l'operazione.
 - Modello LLM e parametri configurati in `config/llm_models/market_analyst.yaml`.
 - Prompt operativo in `config/prompts/market_analyst.md`.
@@ -45,7 +45,7 @@ flowchart TD
 ### Decision Maker
 
 - Riceve l'analisi del `Market Analyst`, il portafoglio, i vincoli operativi, la memoria IA, le performance recenti e il report del `Performance Reviewer`.
-- Invia i dati a Claude Opus 4.8 con adaptive thinking (`thinking_effort: medium`) che produce una proposta operativa strutturata (`TradeProposal`).
+- Invia i dati a Claude Opus 5 con adaptive thinking (`thinking_effort: medium`) che produce una proposta operativa strutturata (`TradeProposal`).
 - Azioni possibili: `BUY`, `SELL`, `HOLD`, `CANCEL_AND_REPLACE_ORDER`.
 - Non esegue ordini reali.
 - Modello LLM e parametri configurati in `config/llm_models/decision_maker.yaml`.
@@ -54,7 +54,7 @@ flowchart TD
 ### Risk Manager
 
 - Riceve la proposta del `Decision Maker`, il portafoglio, un sottoinsieme dell'analisi di mercato (`market_bias`, `summary`, `risk_notes`), i vincoli operativi e il prezzo corrente.
-- Invia i dati a Gemini 3.1 Pro che produce una valutazione strutturata (`RiskAssessment`).
+- Invia i dati a Gemini 3.7 Flash che produce una valutazione strutturata (`RiskAssessment`).
 - Decisioni possibili: `APPROVE`, `BLOCK`, `REQUEST_ADJUSTMENT`.
 - Non decide la strategia e non esegue ordini.
 - Modello LLM e parametri configurati in `config/llm_models/risk_manager.yaml`.
@@ -75,7 +75,7 @@ flowchart TD
 - Agente consultivo, **fuori dalla catena decisionale**: non valuta né approva i trade del momento.
 - Invocato dal runner ogni 12 ore tramite `NewsReviewRunner.maybe_run()` (gate basato sull'ultimo file di report in `data/news_reports/`): se non sono trascorse 12 ore dall'ultimo report, il ciclo prosegue senza chiamarlo.
 - Riceve un `NewsReviewerInput` (simbolo, lista di `NewsArticle`, finestra temporale in ore) prodotto dall'`AlphaVantageClient`.
-- Invia i dati a Claude Sonnet 4.6 che produce un `NewsDigest` strutturato (overall_sentiment `BULLISH`/`BEARISH`/`NEUTRAL`, summary, key_events, risk_flags).
+- Invia i dati a Claude Sonnet 5 che produce un `NewsDigest` strutturato (overall_sentiment `BULLISH`/`BEARISH`/`NEUTRAL`, summary, key_events, risk_flags).
 - Il digest viene serializzato in markdown in `data/news_reports/YYYY-MM-DD_HH-MM.md`.
 - Se non ci sono articoli → scrive un report `NEUTRAL` senza chiamare il LLM.
 - Errori del client o del LLM sono non-bloccanti: il ciclo prosegue normalmente.
@@ -88,7 +88,7 @@ flowchart TD
 - Agente consultivo, **fuori dalla catena decisionale**: non valuta né approva i trade del momento.
 - Gira una volta al giorno: all'inizio del primo ciclo della giornata, se non esiste già un report per oggi in `data/performance_reports/`.
 - Riceve statistiche deterministiche pre-calcolate in Python (`build_performance_stats` su 7 giorni di eventi) + il mandato operativo.
-- Invia i dati a Claude Sonnet 4.6 che produce un `PerformanceReview` strutturato (summary, aderenza al mandato `ALIGNED`/`DRIFTING`/`MISALIGNED`, 1-3 suggerimenti concreti).
+- Invia i dati a Claude Sonnet 5 che produce un `PerformanceReview` strutturato (summary, aderenza al mandato `ALIGNED`/`DRIFTING`/`MISALIGNED`, 1-3 suggerimenti concreti).
 - Il risultato viene serializzato in markdown in `data/performance_reports/YYYY-MM-DD.md` e letto dal Decision Maker nei cicli successivi (campo `latest_performance_review`).
 - Errori del Reviewer sono non-bloccanti: se fallisce, il ciclo prosegue normalmente e il DM riceve stringa vuota.
 - Modello LLM e parametri configurati in `config/llm_models/performance_reviewer.yaml`.
@@ -226,7 +226,7 @@ I file `data/memory/` sono esclusi da git (vedi `.gitignore`) e vengono creati a
 
 - I prompt di lavoro degli agenti vivono in `config/prompts/`.
 - I file in `dev_support/prompts/` restano la base di progettazione e riferimento umano.
-- Le configurazioni dei modelli LLM (provider, model, temperature, max_tokens) vivono in `config/llm_models/`.
+- Le configurazioni dei modelli LLM (provider, model, temperature/reasoning_effort/thinking_effort, max_tokens) vivono in `config/llm_models/`.
 - Il simbolo di trading attivo e la quote currency sono in `config/symbols.yaml`.
 - Le regole operative (es. `min_order_usdc`) vivono in `config/trading.yaml`.
 - I segreti (API key, URL, modalità) vivono nel `.env`. Le chiavi attive sono `CLAUDE_API_KEY` (Decision Maker + Performance Reviewer), `OPENAI_API_KEY` (Market Analyst) e `GEMINI_API_KEY` (Risk Manager).
