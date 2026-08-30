@@ -1,86 +1,129 @@
 # MDK Crypto Trading
 
 [![CI](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml/badge.svg)](https://github.com/Mardock137/mdk_crypto_trading/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-- **Versione Python**: `3.14.5`
-- **Versione MDK Crypto Trading**: `1.32.2`
+- **MDK Crypto Trading version**: `1.32.2`
+- **License**: [MIT](LICENSE)
 
-## 📋 Indice
+## 📋 Table of Contents
 
-- [📄 Descrizione](#-descrizione)
-- [👥 Agenti e modelli](#-agenti-e-modelli)
-- [🔄 Come funziona](#-come-funziona)
-- [🚀 Come si lancia](#-come-si-lancia)
-- [🤖 API integrate](#-api-integrate)
-- [ℹ️ Documentazione](#ℹ️-documentazione)
+- [📄 Description](#-description)
+- [👥 Agents and models](#-agents-and-models)
+- [🔄 How it works](#-how-it-works)
+- [🧰 Tech stack](#-tech-stack)
+- [🚀 Setup and run](#-setup-and-run)
+- [🤖 Integrated APIs](#-integrated-apis)
+- [⚠️ Notes and disclaimer](#️-notes-and-disclaimer)
+- [ℹ️ Documentation](#ℹ️-documentation)
 
-## 📄 Descrizione
+## 📄 Description
 
-MDK Crypto Trading è un sistema autonomo di trading spot su criptovalute, strutturato come una società di investimenti gestita interamente da agenti IA.
+MDK Crypto Trading is an autonomous spot trading system for cryptocurrencies, structured as an investment firm run entirely by AI agents.
 
-4 agenti operativi collaborano in sequenza (uno analizza il mercato, uno decide l'operazione, uno controlla il rischio e l'ultimo esegue l'ordine su Binance), mentre due agenti consultivi fuori catena alimentano il Decision Maker: uno con un report giornaliero sulle performance, l'altro con un digest news ogni 12 ore. Il sistema gira in loop continuo a intervalli configurabili, opera in modalità DEMO (Binance Demo Trading) o REAL, e registra ogni decisione in log strutturati JSON.
+4 operational agents collaborate in sequence (one analyzes the market, one decides the trade, one checks the risk, and the last one executes the order on Binance), while two advisory agents outside the main chain feed the Decision Maker: one with a daily performance report, the other with a news digest every 12 hours. The system runs in a continuous loop at configurable intervals, operates in DEMO mode (Binance Demo Trading) or REAL mode, and logs every decision in structured JSON logs.
 
-## 👥 Agenti e modelli
+## 👥 Agents and models
 
-| Agente                   | Ruolo                                                                                                      | Modello                    |
-|--------------------------|------------------------------------------------------------------------------------------------------------|----------------------------|
-| **Market Analyst**       | Analizza indicatori tecnici e genera un segnale di mercato                                                 | GPT-5.6 Terra              |
-| **Decision Maker**       | Valuta il segnale e formula una proposta operativa (BUY, SELL, SELL_OCO, HOLD, CANCEL_AND_REPLACE_ORDER)   | Claude Opus 5 (thinking)   |
-| **Risk Manager**         | Controlla la proposta, può approvarla, bloccarla o chiedere modifiche                                      | Gemini 3.7 Flash           |
-| **Execution Trader**     | Esegue l'ordine approvato su Binance (nessun LLM, puro codice)                                             | —                          |
-| **Performance Reviewer** | Ruolo consultivo, fuori catena: genera un report giornaliero letto dal DM                                  | Claude Sonnet 5            |
-| **News Reviewer**        | Ruolo consultivo, fuori catena: genera un digest news ogni 12h (sentiment, eventi, risk flag) letto dal DM | Claude Sonnet 5            |
+| Agent                    | Role                                                                                                                        | Model                    |
+|--------------------------|-----------------------------------------------------------------------------------------------------------------------------|--------------------------|
+| **Market Analyst**       | Analyzes technical indicators and generates a market signal                                                                 | GPT-5.6 Terra            |
+| **Decision Maker**       | Evaluates the signal and formulates a trade proposal (BUY, SELL, SELL_OCO, HOLD, CANCEL_AND_REPLACE_ORDER)                  | Claude Opus 5 (thinking) |
+| **Risk Manager**         | Reviews the proposal, can approve it, block it, or request changes                                                          | Gemini 3.7 Flash         |
+| **Execution Trader**     | Executes the approved order on Binance (no LLM, pure code)                                                                  | —                        |
+| **Performance Reviewer** | Advisory role, outside the main chain: generates a daily report read by the DM                                              | Claude Sonnet 5          |
+| **News Reviewer**        | Advisory role, outside the main chain: generates a news digest every 12h (sentiment, key events, risk flags) read by the DM | Claude Sonnet 5          |
 
-## 🔄 Come funziona
+## 🔄 How it works
 
-Ogni ciclo operativo segue questa sequenza:
+Every operational cycle follows this sequence:
 
-1. Una volta al giorno: il `Performance Reviewer` analizza gli ultimi 7 giorni e genera un report letto dal `Decision Maker` nei cicli successivi
-2. Ogni 12 ore: il `News Reviewer` scarica le notizie crypto, ne produce un digest (sentiment BULLISH/BEARISH/NEUTRAL, eventi chiave, risk flag) e lo salva in `data/news_reports/`. Il `Decision Maker` lo legge come contesto nei cicli successivi
-3. Raccolta dati di mercato e portafoglio da Binance
-4. `Market Analyst` → analisi e segnale
-5. `Decision Maker` → proposta operativa (legge il report del Performance Reviewer e il digest news)
-6. `Risk Manager` → approvazione o blocco
-7. `Execution Trader` → esecuzione su Binance (solo se approvata)
-8. Log del ciclo completo in `logs/events/`
+1. Once a day: the `Performance Reviewer` analyzes the last 7 days and generates a report read by the `Decision Maker` in the following cycles
+2. Every 12 hours: the `News Reviewer` fetches crypto news, produces a digest (sentiment BULLISH/BEARISH/NEUTRAL, key events, risk flags) and saves it in `data/news_reports/`. The `Decision Maker` reads it as context in the following cycles
+3. Market and portfolio data collection from Binance
+4. `Market Analyst` → analysis and signal
+5. `Decision Maker` → trade proposal (reads the Performance Reviewer's report and the news digest)
+6. `Risk Manager` → approval or block
+7. `Execution Trader` → execution on Binance (only if approved)
+8. Full cycle logging in `logs/events/`
 
-L'intervallo tra i cicli è configurabile da `.env` (`CYCLE_INTERVAL_SECONDS`).
+The interval between cycles is configurable via `.env` (`CYCLE_INTERVAL_SECONDS`).
 
-Il sistema include tre meccanismi deterministici trasversali al ciclo:
+The system includes three deterministic mechanisms that run across every cycle:
 
-- **Breakeven automatico**: se il P&L non realizzato supera la soglia configurata, lo Stop Loss dell'OCO attivo viene spostato automaticamente al prezzo di ingresso, prima della catena LLM.
-- **Cycle-skip**: se prezzo, RSI, segno MACD e ordini aperti sono rimasti invariati rispetto al ciclo precedente (e l'ultima azione era `HOLD`), il ciclo viene saltato senza chiamare alcun agente LLM. Configurabile in `config/cycle_skip.yaml`.
-- **Circuit breaker**: dopo 3 errori identici consecutivi il sistema si mette in pausa e invia un alert Telegram, richiedendo riavvio manuale.
+- **Automatic breakeven**: if the unrealized P&L exceeds the configured threshold, the Stop Loss of the active OCO order is automatically moved to the entry price, before the LLM chain runs.
+- **Cycle-skip**: if price, RSI, MACD sign and open orders are unchanged from the previous cycle (and the last action was `HOLD`), the cycle is skipped without calling any LLM agent. Configurable in `config/cycle_skip.yaml`.
+- **Circuit breaker**: after 3 identical consecutive errors, the system pauses and sends a Telegram alert, requiring a manual restart.
 
-## 🚀 Come si lancia
+## 🧰 Tech stack
+
+- **Language**: Python 3.14
+- **LLM providers**: Anthropic (Claude), OpenAI (GPT), Google (Gemini)
+- **Exchange**: Binance (`python-binance`)
+- **Data and configuration**: pandas, numpy, PyYAML, python-dotenv
+- **Resilience and networking**: tenacity (automatic retry), requests
+- **Testing**: pytest
+- **CI/CD**: GitHub Actions (lint, `pip-audit` for CVE checks, automated tests)
+- **Containerization**: Docker, Docker Compose
+- **Deployment**: Google Compute Engine
+
+## 🚀 Setup and run
+
+### Requirements
+
+- Python 3.14+
+- Active API keys for: Binance (or Binance Demo Trading), Anthropic, OpenAI, Google Gemini
+- Optional API keys for: Alpha Vantage (news), Telegram Bot (notifications)
+
+### Installation
+
+```bash
+git clone https://github.com/Mardock137/mdk_crypto_trading.git
+cd mdk_crypto_trading
+pip install -r requirements.txt
+```
+
+### Configuration
+
+Copy the example file and fill in your API keys:
+
+```bash
+cp .env.example .env
+```
+
+### Run
 
 ```bash
 python -m src.main
 ```
 
-Per verificare le connessioni API prima di lanciare:
+To verify API connections before launching:
 
 ```bash
-python dev_support/verify_connections.py
+python verify_connections.py
 ```
 
-## 🤖 API integrate
+## 🤖 Integrated APIs
 
-- **Anthropic API**: Decision Maker (`Claude Opus 5` con adaptive thinking), Performance Reviewer e News Reviewer (`Claude Sonnet 5`)
+- **Anthropic API**: Decision Maker (`Claude Opus 5` with adaptive thinking), Performance Reviewer and News Reviewer (`Claude Sonnet 5`)
 - **OpenAI API** (`GPT-5.6 Terra`): Market Analyst
 - **Gemini API** (`Gemini 3.7 Flash`): Risk Manager
-- **Binance API**: dati di mercato, portafoglio, ordini aperti, esecuzione ordini (DEMO e REAL)
-- **Alpha Vantage API**: notizie crypto con sentiment score (News Reviewer, opzionale)
-- **Telegram Bot API** (opzionale): notifiche in tempo reale su ordini eseguiti, errori e avvio/stop del bot
+- **Binance API**: market data, portfolio, open orders, order execution (DEMO and REAL)
+- **Alpha Vantage API**: crypto news with sentiment score (News Reviewer, optional)
+- **Telegram Bot API** (optional): real-time notifications on executed orders, errors, and bot start/stop
 
-## ℹ️ Documentazione
+## ⚠️ Notes and disclaimer
 
-- [Struttura della repo](docs/repo_structure.md)
-- [Architettura](docs/architecture.md)
-- [Configurazione](docs/config.md)
-- [Sistema di logging](docs/observability.md)
-- [KPI e performance](docs/kpi.md)
-- [Endpoints API](docs/api_endpoints.md)
-- [Gerarchia e ruoli](docs/hierarchy_and_roles.md)
-- [Logica decisionale](docs/decision_logic.md)
-- [Deploy su Google Compute Engine](docs/deploy.md)
+This project was built for educational and demonstration purposes, to explore AI agent orchestration applied to a real-world use case: algorithmic trading. It does not constitute financial advice. Running it in `REAL` mode executes orders with real funds and carries the risk of capital loss: it is used entirely at the operator's own risk.
+
+## ℹ️ Documentation
+
+- [Repo structure](docs/repo_structure.md)
+- [Architecture](docs/architecture.md)
+- [Configuration](docs/config.md)
+- [Logging system](docs/observability.md)
+- [KPIs and performance](docs/kpi.md)
+- [API endpoints](docs/api_endpoints.md)
+- [Hierarchy and roles](docs/hierarchy_and_roles.md)
+- [Decision logic](docs/decision_logic.md)
+- [Deploy on Google Compute Engine](docs/deploy.md)

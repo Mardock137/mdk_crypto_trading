@@ -1,6 +1,8 @@
 <!-- markdownlint-disable -->
 # 📋 Changelog
 
+> *This changelog is maintained in Italian. For a project overview in English, see the [README](README.md).*
+
 ## 1.32.2 — 2026-08-27
 
 ### Aggiunto

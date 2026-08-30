@@ -1,141 +1,141 @@
-# KPI — Indicatori chiave di performance
+# KPIs — Key Performance Indicators
 
-MDK Crypto Trading misura le proprie performance con **6 KPI ufficiali**. Questo documento definisce cosa misura ciascun KPI, chi lo decide, chi lo calcola e da quando è disponibile.
+MDK Crypto Trading measures its performance with **6 official KPIs**. This document defines what each KPI measures, who decides it, who computes it, and since when it is available.
 
 ---
 
-## 📋 Indice
+## 📋 Table of Contents
 
-- [Chi decide e chi misura](#chi-decide-e-chi-misura)
-- [I 6 KPI](#i-6-kpi)
-  - [1. P&L cumulato](#1-pl-cumulato)
+- [Who decides and who measures](#who-decides-and-who-measures)
+- [The 6 KPIs](#the-6-kpis)
+  - [1. Cumulative P&L](#1-cumulative-pl)
   - [2. Win rate](#2-win-rate)
-  - [3. Rapporto vincita media / perdita media](#3-rapporto-vincita-media--perdita-media)
-  - [4. Numero di trade](#4-numero-di-trade)
-  - [5. Rendimento vs buy-and-hold BTC](#5-rendimento-vs-buy-and-hold-btc)
+  - [3. Average win / average loss ratio](#3-average-win--average-loss-ratio)
+  - [4. Number of trades](#4-number-of-trades)
+  - [5. Return vs BTC buy-and-hold](#5-return-vs-btc-buy-and-hold)
   - [6. Max drawdown](#6-max-drawdown)
-- [Benchmark e limiti](#benchmark-e-limiti)
-- [Da quando sono disponibili](#da-quando-sono-disponibili)
+- [Benchmarks and limits](#benchmarks-and-limits)
+- [Availability since](#availability-since)
 
 ---
 
-## Chi decide e chi misura
+## Who decides and who measures
 
-| Ruolo            | Chi                                  |
-|------------------|--------------------------------------|
-| Definisce i KPI  | Il proprietario del sistema (Chief)  |
-| Misura i KPI     | Il sistema (calcolo deterministico)  |
-| Valuta i KPI     | Il Performance Reviewer (agente LLM) |
+| Role              | Who                                    |
+|-------------------|----------------------------------------|
+| Defines the KPIs  | The system owner                       |
+| Measures the KPIs | The system (deterministic computation) |
+| Evaluates the KPIs| The Performance Reviewer (LLM agent)   |
 
-Il Performance Reviewer legge i KPI già calcolati dal sistema e li usa per valutare se il comportamento degli agenti è allineato al mandato. Non ricalcola nulla da solo.
+The Performance Reviewer reads the KPIs already computed by the system and uses them to assess whether the agents' behavior is aligned with the mandate. It does not recompute anything on its own.
 
 ---
 
-## I 6 KPI
+## The 6 KPIs
 
-### 1. P&L cumulato
+### 1. Cumulative P&L
 
-**Cosa misura**: il guadagno o la perdita totale realizzati su tutti i trade chiusi dall'inizio dello storico disponibile, espresso in USDC e in percentuale media.
+**What it measures**: the total profit or loss realized across all trades closed since the beginning of the available history, expressed in USDC and as an average percentage.
 
-**Come si calcola**: somma del P&L realizzato di ogni vendita, calcolato con il metodo FIFO (First In, First Out). Ogni vendita viene confrontata con il prezzo medio ponderato dei lotti di acquisto corrispondenti.
+**How it's computed**: sum of the realized P&L of each sale, computed with the FIFO (First In, First Out) method. Each sale is compared against the weighted average price of the corresponding purchase lots.
 
-**Disponibile**: subito, anche sui dati storici già presenti.
+**Available**: immediately, even on already existing historical data.
 
 ---
 
 ### 2. Win rate
 
-**Cosa misura**: la percentuale di trade chiusi in profitto sul totale dei trade chiusi.
+**What it measures**: the percentage of trades closed in profit out of all closed trades.
 
-**Come si calcola**: `(numero di SELL in profitto) / (totale SELL chiuse) × 100`. Una SELL al pareggio conta come profitto.
+**How it's computed**: `(number of profitable SELLs) / (total closed SELLs) × 100`. A breakeven SELL counts as a profit.
 
-**Disponibile**: subito, anche sui dati storici già presenti.
-
----
-
-### 3. Rapporto vincita media / perdita media
-
-**Cosa misura**: quanto guadagna in media un trade vincente rispetto a quanto perde in media un trade perdente.
-
-**Come si calcola**:
-
-- `avg_win_pct`: media percentuale dei trade chiusi in profitto.
-- `avg_loss_pct`: media del valore assoluto percentuale dei trade chiusi in perdita.
-
-Un sistema sano ha `avg_win_pct` > `avg_loss_pct`, anche con un win rate inferiore al 50%.
-
-**Disponibile**: subito, anche sui dati storici già presenti.
+**Available**: immediately, even on already existing historical data.
 
 ---
 
-### 4. Numero di trade
+### 3. Average win / average loss ratio
 
-**Cosa misura**: quante operazioni di acquisto e vendita sono state eseguite nel periodo analizzato.
+**What it measures**: how much a winning trade earns on average compared to how much a losing trade loses on average.
 
-**Come si calcola**: conteggio diretto dei cicli con `execution_status = EXECUTED` per BUY e SELL nel periodo.
+**How it's computed**:
 
-**Disponibile**: subito, anche sui dati storici già presenti.
+- `avg_win_pct`: average percentage of trades closed in profit.
+- `avg_loss_pct`: average absolute percentage value of trades closed in loss.
+
+A healthy system has `avg_win_pct` > `avg_loss_pct`, even with a win rate below 50%.
+
+**Available**: immediately, even on already existing historical data.
 
 ---
 
-### 5. Rendimento vs buy-and-hold BTC
+### 4. Number of trades
 
-**Cosa misura**: se il sistema ha fatto meglio o peggio di tenere semplicemente il BTC fermo dall'inizio al termine del periodo analizzato.
+**What it measures**: how many buy and sell operations were executed in the analyzed period.
 
-**Come si calcola**:
+**How it's computed**: direct count of cycles with `execution_status = EXECUTED` for BUY and SELL in the period.
 
-- `buy_and_hold_return_pct`: variazione percentuale del prezzo BTC dal primo all'ultimo record del periodo.
-- `strategy_return_pct`: variazione percentuale del valore totale del portafoglio (cash USDC + valore delle crypto al prezzo corrente) dal primo all'ultimo record del periodo.
+**Available**: immediately, even on already existing historical data.
 
-**Disponibile**: solo dalla versione 1.27.0 in avanti. Richiede che il sistema abbia già accumulato almeno due record con il campo `equity_usdc` nel periodo analizzato.
+---
+
+### 5. Return vs BTC buy-and-hold
+
+**What it measures**: whether the system performed better or worse than simply holding BTC from the start to the end of the analyzed period.
+
+**How it's computed**:
+
+- `buy_and_hold_return_pct`: percentage change in the BTC price from the first to the last record of the period.
+- `strategy_return_pct`: percentage change in the total portfolio value (USDC cash + crypto value at the current price) from the first to the last record of the period.
+
+**Available**: only from version 1.27.0 onward. Requires the system to have already accumulated at least two records with the `equity_usdc` field in the analyzed period.
 
 ---
 
 ### 6. Max drawdown
 
-**Cosa misura**: la perdita massima dal picco più alto raggiunto dal portafoglio all'interno del periodo analizzato. Indica il rischio reale sopportato durante il periodo.
+**What it measures**: the maximum loss from the highest peak reached by the portfolio within the analyzed period. Indicates the actual risk incurred during the period.
 
-**Come si calcola**: per ogni punto della serie storica del valore del portafoglio (`equity_usdc`), si calcola la discesa percentuale dal picco precedente più alto. Il max drawdown è il valore più alto osservato.
+**How it's computed**: for every point in the portfolio value's historical series (`equity_usdc`), the percentage decline from the highest previous peak is computed. The max drawdown is the highest value observed.
 
-**Limite operativo**: **15%**. Se il drawdown supera questo limite, il sistema è fuori mandato.
+**Operational limit**: **15%**. If the drawdown exceeds this limit, the system is out of mandate.
 
-**Disponibile**: solo dalla versione 1.27.0 in avanti. Richiede che il sistema abbia già accumulato almeno due record con il campo `equity_usdc` nel periodo analizzato.
-
----
-
-## Benchmark e limiti
-
-| KPI               | Obiettivo                                    | Limite         |
-|-------------------|----------------------------------------------|----------------|
-| P&L cumulato      | Positivo e crescente                         | —              |
-| Win rate          | > 50% come riferimento                       | —              |
-| Vincita / perdita | `avg_win_pct` > `avg_loss_pct`               | —              |
-| Numero di trade   | Nessun obiettivo numerico fisso              | —              |
-| vs buy-and-hold   | Battere il rendimento passivo del BTC        | Benchmark      |
-| Max drawdown      | Il più basso possibile                       | **max 15%**    |
-
-Il benchmark principale è **battere il buy-and-hold**: se tenere il BTC fermo avrebbe reso di più, il sistema non sta aggiungendo valore.
+**Available**: only from version 1.27.0 onward. Requires the system to have already accumulated at least two records with the `equity_usdc` field in the analyzed period.
 
 ---
 
-## Da quando sono disponibili
+## Benchmarks and limits
 
-| KPI                           | Storico pre-1.27.0 | Dalla v1.27.0 in poi |
-|-------------------------------|:------------------:|:--------------------:|
-| P&L cumulato                  | ✅                 | ✅                   |
-| Win rate                      | ✅                 | ✅                   |
-| Vincita media / perdita media | ✅                 | ✅                   |
-| Numero di trade               | ✅                 | ✅                   |
-| Rendimento vs buy-and-hold    | ❌                 | ✅ (dopo 2+ record)  |
-| Max drawdown                  | ❌                 | ✅ (dopo 2+ record)  |
+| KPI                | Target                         | Limit          |
+|--------------------|--------------------------------|----------------|
+| Cumulative P&L     | Positive and growing           | —              |
+| Win rate           | > 50% as a reference           | —              |
+| Win / loss ratio   | `avg_win_pct` > `avg_loss_pct` | —              |
+| Number of trades   | No fixed numerical target      | —              |
+| vs buy-and-hold    | Beat BTC's passive return      | Benchmark      |
+| Max drawdown       | As low as possible             | **max 15%**    |
 
-I KPI contrassegnati con ❌ per lo storico pre-1.27.0 richiedono la serie temporale del valore totale del portafoglio (`equity_usdc`), che non era registrata prima di questa versione. I dati passati non possono essere recuperati retroattivamente.
+The main benchmark is **beating buy-and-hold**: if simply holding BTC would have returned more, the system is not adding value.
 
 ---
 
-## 📚 Riferimenti
+## Availability since
 
-- **Codice di calcolo**: `src/utils/performance_stats.py`
-- **Memoria del sistema**: `src/utils/memory_manager.py` (campo `equity_usdc`)
-- **Prompt del Reviewer**: `config/prompts/performance_reviewer.md`
-- **Osservabilità**: `docs/observability.md`
+| KPI                        | Pre-1.27.0 history | From v1.27.0 onward    |
+|----------------------------|--------------------|------------------------|
+| Cumulative P&L             | ✅                 | ✅                     |
+| Win rate                   | ✅                 | ✅                     |
+| Average win / average loss | ✅                 | ✅                     |
+| Number of trades           | ✅                 | ✅                     |
+| Return vs buy-and-hold     | ❌                 | ✅ (after 2+ records)  |
+| Max drawdown               | ❌                 | ✅ (after 2+ records)  |
+
+KPIs marked with ❌ for pre-1.27.0 history require the total portfolio value time series (`equity_usdc`), which was not recorded before this version. Past data cannot be retroactively recovered.
+
+---
+
+## 📚 References
+
+- **Computation code**: `src/utils/performance_stats.py`
+- **System memory**: `src/utils/memory_manager.py` (`equity_usdc` field)
+- **Reviewer prompt**: `config/prompts/performance_reviewer.md`
+- **Observability**: `docs/observability.md`

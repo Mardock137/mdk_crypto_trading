@@ -1,55 +1,55 @@
-# Gerarchia e ruoli
+# Hierarchy and Roles
 
-MDK Crypto Trading è strutturato come una società di investimenti. Ogni agente ha un livello di autorità e un ruolo preciso nella catena decisionale.
-
----
-
-## 📋 Indice
-
-- [Gerarchia di autorità](#gerarchia-di-autorità)
-- [Regola fondamentale](#regola-fondamentale)
-- [📚 Riferimenti](#-riferimenti)
+MDK Crypto Trading is structured like an investment firm. Each agent has a level of authority and a precise role in the decision chain.
 
 ---
 
-## Gerarchia di autorità
+## 📋 Table of Contents
+
+- [Authority hierarchy](#authority-hierarchy)
+- [Fundamental rule](#fundamental-rule)
+- [📚 References](#-references)
+
+---
+
+## Authority hierarchy
 
 ```mermaid
 flowchart TD
-    riskManager["Risk Manager\n(Controllo rischio)"]
-    decisionMaker["Decision Maker\n(Strategia)"]
-    marketAnalyst["Market Analyst\n(Analisi)"]
-    executionTrader["Execution Trader\n(Esecuzione)"]
-    reviewer["Performance Reviewer\n(Consulente, fuori catena)"]
-    newsReviewer["News Reviewer\n(Consulente, fuori catena)"]
+    riskManager["Risk Manager\n(Risk control)"]
+    decisionMaker["Decision Maker\n(Strategy)"]
+    marketAnalyst["Market Analyst\n(Analysis)"]
+    executionTrader["Execution Trader\n(Execution)"]
+    reviewer["Performance Reviewer\n(Advisor, outside the chain)"]
+    newsReviewer["News Reviewer\n(Advisor, outside the chain)"]
 
-    riskManager -->|"può bloccare"| decisionMaker
-    decisionMaker -->|"si basa su"| marketAnalyst
-    riskManager -->|"autorizza"| executionTrader
-    reviewer -.->|"report giornaliero"| decisionMaker
-    newsReviewer -.->|"digest news ogni 12h"| decisionMaker
+    riskManager -->|"can block"| decisionMaker
+    decisionMaker -->|"relies on"| marketAnalyst
+    riskManager -->|"authorizes"| executionTrader
+    reviewer -.->|"daily report"| decisionMaker
+    newsReviewer -.->|"news digest every 12h"| decisionMaker
 ```
 
-| Livello | Agente                   | Ruolo                          | Autorità                                                                                                                                                                                                                                 |
-|---------|--------------------------|--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1       | **Risk Manager**         | Chief Risk Officer             | Ha potere di veto: può approvare, bloccare o chiedere modifiche a qualsiasi proposta. Nessun ordine passa senza la sua autorizzazione.                                                                                                   |
-| 2       | **Decision Maker**       | Portfolio Manager              | Decide la strategia operativa (BUY, SELL, SELL_OCO, HOLD, CANCEL_AND_REPLACE_ORDER), ma le sue proposte sono sempre soggette al giudizio del Risk Manager.                                                                               |
-| 3       | **Market Analyst**       | Research Analyst               | Fornisce analisi e segnali di mercato. Non ha potere decisionale: il suo output è un input per il Decision Maker.                                                                                                                        |
-| 4       | **Execution Trader**     | Broker                         | Esegue ordini su Binance, ma solo se autorizzati dal Risk Manager. Non prende decisioni autonome.                                                                                                                                        |
-| —       | **Performance Reviewer** | Performance Auditor consulente | Ruolo consultivo, fuori dalla catena decisionale. Produce un giudizio giornaliero sulle performance recenti letto dal Decision Maker nei cicli successivi. Non partecipa alla decisione del singolo trade e non ha potere di veto.       |
-| —       | **News Reviewer**        | Market Intelligence consulente | Ruolo consultivo, fuori dalla catena decisionale. Produce un digest news ogni 12h (sentiment, eventi, risk flag) letto dal Decision Maker come contesto macro. Non partecipa alla decisione del singolo trade e non ha potere di veto. |
+| Level | Agent                    | Role                          | Authority                                                                                                                                                                                                                        |
+|-------|--------------------------|-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1     | **Risk Manager**         | Chief Risk Officer            | Has veto power: can approve, block or request changes to any proposal. No order goes through without its authorization.                                                                                                          |
+| 2     | **Decision Maker**       | Portfolio Manager             | Decides the operational strategy (BUY, SELL, SELL_OCO, HOLD, CANCEL_AND_REPLACE_ORDER), but its proposals are always subject to the Risk Manager's judgment.                                                                     |
+| 3     | **Market Analyst**       | Research Analyst              | Provides market analysis and signals. Has no decision-making power: its output is an input for the Decision Maker.                                                                                                               |
+| 4     | **Execution Trader**     | Broker                        | Executes orders on Binance, but only if authorized by the Risk Manager. Makes no autonomous decisions.                                                                                                                           |
+| —     | **Performance Reviewer** | Advisory Performance Auditor  | Advisory role, outside the decision chain. Produces a daily assessment of recent performance read by the Decision Maker in subsequent cycles. Does not take part in individual trade decisions and has no veto power.            |
+| —     | **News Reviewer**        | Advisory Market Intelligence  | Advisory role, outside the decision chain. Produces a news digest every 12h (sentiment, events, risk flags) read by the Decision Maker as macro context. Does not take part in individual trade decisions and has no veto power. |
 
 ---
 
-## Regola fondamentale
+## Fundamental rule
 
-Nessun ordine viene eseguito senza l'approvazione esplicita del Risk Manager (`APPROVE`). Anche se il Decision Maker propone un'operazione con alta confidenza, il Risk Manager può bloccarla in qualsiasi momento.
+No order is executed without the Risk Manager's explicit approval (`APPROVE`). Even if the Decision Maker proposes a trade with high confidence, the Risk Manager can block it at any time.
 
-Il `Performance Reviewer` e il `News Reviewer` stanno deliberatamente **fuori** da questa gerarchia: sono consulenti che producono report periodici senza toccare la catena decisionale in tempo reale. I loro output sono input informativi per il Decision Maker, non vincoli operativi. Entrambi sono non-bloccanti: se falliscono, il ciclo prosegue normalmente.
+The `Performance Reviewer` and the `News Reviewer` are deliberately **outside** this hierarchy: they are advisors that produce periodic reports without touching the real-time decision chain. Their outputs are informational inputs for the Decision Maker, not operational constraints. Both are non-blocking: if they fail, the cycle proceeds normally.
 
 ---
 
-## 📚 Riferimenti
+## 📚 References
 
-- **Codice**: `src/agents/` — implementazione dei 5 agenti
-- **Doc correlati**: `docs/architecture.md`, `docs/decision_logic.md`
+- **Code**: `src/agents/` — implementation of the 5 agents
+- **Related docs**: `docs/architecture.md`, `docs/decision_logic.md`

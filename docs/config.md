@@ -1,51 +1,51 @@
-# Configurazione
+# Configuration
 
-Il sistema usa due fonti di configurazione separate: il file `.env` per i segreti e la cartella `config/` per le configurazioni applicative.
+The system uses two separate configuration sources: the `.env` file for secrets and the `config/` folder for application configuration.
 
 ---
 
-## 📋 Indice
+## 📋 Table of Contents
 
-- [`.env` — Segreti e variabili d'ambiente](#env--segreti-e-variabili-dambiente)
-- [`config/` — Configurazioni applicative](#config--configurazioni-applicative)
-- [Distinzione tra `config/` e `.env`](#distinzione-tra-config-e-env)
+- [`.env` — Secrets and environment variables](#env--secrets-and-environment-variables)
+- [`config/` — Application configuration](#config--application-configuration)
+- [Distinction between `config/` and `.env`](#distinction-between-config-and-env)
 - [🧪 Testing](#-testing)
 - [🔍 Troubleshooting](#-troubleshooting)
-- [📚 Riferimenti](#-riferimenti)
+- [📚 References](#-references)
 
 ---
 
-## `.env` — Segreti e variabili d'ambiente
+## `.env` — Secrets and environment variables
 
-Contiene chiavi API, modalità di esecuzione e variabili riservate. Mai committato su git.
+Contains API keys, execution mode and confidential variables. Never committed to git.
 
-| Variabile                 | Obbligatoria | Default  | Descrizione                                       |
-|---------------------------|--------------|----------|---------------------------------------------------|
-| `TRADING_MODE`            | sì           | —        | `DEMO` o `REAL`                                   |
-| `KILL_SWITCH`             | no           | `1`      | Se `1`, forza tutte le operazioni a HOLD          |
-| `CYCLE_INTERVAL_SECONDS`  | sì           | —        | Secondi tra un ciclo e l'altro                    |
-| `LOG_LEVEL`               | no           | `INFO`   | `DEBUG`, `INFO`, `WARNING`, `ERROR`               |
-| `CLAUDE_API_KEY`          | sì           | —        | Chiave API Anthropic (Claude)                     |
-| `OPENAI_API_KEY`          | sì           | —        | Chiave API OpenAI                                 |
-| `GEMINI_API_KEY`          | sì           | —        | Chiave API Google Gemini                          |
-| `BINANCE_API_KEY`         | in REAL      | —        | Chiave API Binance produzione                     |
-| `BINANCE_SECRET_KEY`      | in REAL      | —        | Secret Binance produzione                         |
-| `BINANCE_DEMO_API_KEY`    | in DEMO      | —        | Chiave API Binance Demo Trading                   |
-| `BINANCE_DEMO_SECRET_KEY` | in DEMO      | —        | Secret Binance Demo Trading                       |
-| `BINANCE_DEMO_BASE_URL`   | in DEMO      | —        | URL Binance Demo (`https://demo-api.binance.com`) |
-| `TELEGRAM_BOT_TOKEN`      | no           | —        | Token del bot Telegram (notifiche opzionali)      |
-| `TELEGRAM_CHAT_ID`        | no           | —        | ID della chat Telegram di destinazione            |
-| `ALPHA_VANTAGE_API_KEY`   | no           | —        | Chiave API Alpha Vantage (notizie crypto)         |
+| Variable                  | Required | Default  | Description                                       |
+|---------------------------|----------|----------|---------------------------------------------------|
+| `TRADING_MODE`            | yes      | —        | `DEMO` or `REAL`                                  |
+| `KILL_SWITCH`             | no       | `1`      | If `1`, forces all operations to HOLD             |
+| `CYCLE_INTERVAL_SECONDS`  | yes      | —        | Seconds between one cycle and the next            |
+| `LOG_LEVEL`               | no       | `INFO`   | `DEBUG`, `INFO`, `WARNING`, `ERROR`               |
+| `CLAUDE_API_KEY`          | yes      | —        | Anthropic (Claude) API key                        |
+| `OPENAI_API_KEY`          | yes      | —        | OpenAI API key                                    |
+| `GEMINI_API_KEY`          | yes      | —        | Google Gemini API key                             |
+| `BINANCE_API_KEY`         | in REAL  | —        | Binance production API key                        |
+| `BINANCE_SECRET_KEY`      | in REAL  | —        | Binance production secret                         |
+| `BINANCE_DEMO_API_KEY`    | in DEMO  | —        | Binance Demo Trading API key                      |
+| `BINANCE_DEMO_SECRET_KEY` | in DEMO  | —        | Binance Demo Trading secret                       |
+| `BINANCE_DEMO_BASE_URL`   | in DEMO  | —        | Binance Demo URL (`https://demo-api.binance.com`) |
+| `TELEGRAM_BOT_TOKEN`      | no       | —        | Telegram bot token (optional notifications)       |
+| `TELEGRAM_CHAT_ID`        | no       | —        | Target Telegram chat ID                           |
+| `ALPHA_VANTAGE_API_KEY`   | no       | —        | Alpha Vantage API key (crypto news)               |
 
-Vedi `.env.example` per un template completo.
+See `.env.example` for a complete template.
 
 ---
 
-## `config/` — Configurazioni applicative
+## `config/` — Application configuration
 
 ### `config/trading.yaml`
 
-Regole operative statiche del sistema e mandato di investimento.
+Static operational rules of the system and the investment mandate.
 
 ```yaml
 min_order_usdc: 10.0
@@ -55,7 +55,7 @@ oco_review_interval_hours: 24.0
 
 mandate:
   max_drawdown_pct: 15.0
-  horizon: "Intraday to swing (ore → giorni)"
+  horizon: "Intraday to swing (hours → days)"
   max_position_pct: 70.0
 
 circuit_breaker:
@@ -67,25 +67,25 @@ memory_compaction:
   keep_last_n: 100
 ```
 
-Campi:
+Fields:
 
-- `min_order_usdc`: soglia minima del notional (quantità × prezzo) consentita per un singolo ordine, in USDC. Il guardrail nell'`ExecutionTraderAgent` blocca qualsiasi ordine il cui notional sia inferiore a questo valore, restituendo `NOT_EXECUTED` con reason tracciata negli event log — a specchio del guardrail massimo (`max_order_notional_usdc`). Difesa in profondità: affianca (non sostituisce) il filtro `minNotional` di Binance.
-- `max_order_notional_usdc`: valore massimo del notional (quantità × prezzo) consentito per un singolo ordine, in USDC. Il guardrail nell'`ExecutionTraderAgent` blocca qualsiasi ordine il cui notional superi questo limite, restituendo `NOT_EXECUTED` con reason tracciata negli event log. Il fallback software (se il campo manca dal file) è `500.0`.
-- `breakeven_trigger_pct`: soglia di profitto non realizzato (in percentuale) oltre la quale il runner sposta automaticamente lo Stop Loss dell'OCO attivo al prezzo di ingresso (breakeven). Il meccanismo è deterministico, viene eseguito prima della catena LLM e non coinvolge il Decision Maker. Non viene eseguito se il kill switch è attivo (`KILL_SWITCH=1`). Il fallback software è `2.0`.
-- `oco_review_interval_hours`: ore trascorse dall'apertura di un OCO oltre le quali il runner imposta `oco_review_required = True` nel ciclo corrente. Quando il flag è `True`, il prompt del Decision Maker rende obbligatoria la valutazione esplicita dei livelli TP/SL. Il fallback software è `24.0`.
-- `mandate.max_drawdown_pct`: drawdown massimo tollerato in percentuale.
-- `mandate.horizon`: orizzonte temporale tipico delle operazioni (es. intraday, swing).
-- `mandate.max_position_pct`: percentuale massima del capitale allocabile sulla singola posizione. Il guardrail nell'`ExecutionTraderAgent` calcola la percentuale rispetto al **valore totale del portafoglio** (USDC totali, liberi + bloccati in ordini aperti, più il controvalore totale delle monete). Il campo esiste già in vista del multi-simbolo.
-- `circuit_breaker.threshold`: numero di errori identici consecutivi dopo cui il sistema si blocca e invia l'alert Telegram. Il fallback software (se il campo manca) è `3`.
-- `circuit_breaker.log_interval_seconds`: ogni quanti secondi viene scritto nei log il reminder "sistema bloccato, riavvia manualmente" mentre il circuit breaker è scattato. Il fallback software è `3600`.
-- `memory_compaction.threshold`: numero di record nel file JSONL della memoria oltre cui la compattazione viene eseguita automaticamente all'avvio del runner. A cicli di 5 minuti corrisponde a circa 17 giorni di storico. Il fallback software è `5000`.
-- `memory_compaction.keep_last_n`: quanti record reali conservare dopo la compattazione. I lotti BUY ancora aperti nella finestra rimossa vengono preservati come record sintetici per mantenere la correttezza del calcolo FIFO. Deve essere >= 10 (minimo usato da `get_memory`). Il fallback software è `100`.
+- `min_order_usdc`: minimum notional threshold (quantity × price) allowed for a single order, in USDC. The guardrail in `ExecutionTraderAgent` blocks any order whose notional is below this value, returning `NOT_EXECUTED` with a reason tracked in the event logs — mirroring the maximum guardrail (`max_order_notional_usdc`). Defense in depth: it complements (does not replace) Binance's `minNotional` filter.
+- `max_order_notional_usdc`: maximum notional value (quantity × price) allowed for a single order, in USDC. The guardrail in `ExecutionTraderAgent` blocks any order whose notional exceeds this limit, returning `NOT_EXECUTED` with a reason tracked in the event logs. The software fallback (if the field is missing from the file) is `500.0`.
+- `breakeven_trigger_pct`: unrealized profit threshold (in percentage) above which the runner automatically moves the Stop Loss of the active OCO to the entry price (breakeven). The mechanism is deterministic, runs before the LLM chain and does not involve the Decision Maker. It does not run if the kill switch is active (`KILL_SWITCH=1`). The software fallback is `2.0`.
+- `oco_review_interval_hours`: hours elapsed since an OCO was opened beyond which the runner sets `oco_review_required = True` in the current cycle. When the flag is `True`, the Decision Maker's prompt makes explicit evaluation of the TP/SL levels mandatory. The software fallback is `24.0`.
+- `mandate.max_drawdown_pct`: maximum tolerated drawdown, in percentage.
+- `mandate.horizon`: typical time horizon of the trades (e.g. intraday, swing).
+- `mandate.max_position_pct`: maximum percentage of capital allocatable to a single position. The guardrail in `ExecutionTraderAgent` computes the percentage against the **total portfolio value** (total USDC, free + locked in open orders, plus the total value of the coins). The field already exists in anticipation of multi-symbol support.
+- `circuit_breaker.threshold`: number of identical consecutive errors after which the system stops and sends the Telegram alert. The software fallback (if the field is missing) is `3`.
+- `circuit_breaker.log_interval_seconds`: how often, in seconds, the "system stopped, restart manually" reminder is written to the logs while the circuit breaker is tripped. The software fallback is `3600`.
+- `memory_compaction.threshold`: number of records in the memory's JSONL file beyond which compaction is automatically run at runner startup. With 5-minute cycles, this corresponds to roughly 17 days of history. The software fallback is `5000`.
+- `memory_compaction.keep_last_n`: how many real records to keep after compaction. BUY lots still open within the removed window are preserved as synthetic records to keep the FIFO calculation correct. Must be >= 10 (the minimum used by `get_memory`). The software fallback is `100`.
 
-Il mandate viene caricato all'avvio del runner tramite `load_mandate(trading_config)` in `src/utils/config.py` e propagato a ogni ciclo dentro `TradingCycleInput`. Se la sezione `mandate` manca o ha campi incompleti, il runner fallisce in fase di boot con un `ValueError` esplicito.
+The mandate is loaded at runner startup via `load_mandate(trading_config)` in `src/utils/config.py` and propagated on every cycle inside `TradingCycleInput`. If the `mandate` section is missing or has incomplete fields, the runner fails at boot with an explicit `ValueError`.
 
 ### `config/cycle_skip.yaml`
 
-Configurazione del **pre-check deterministico** che decide se saltare un ciclo operativo quando il contesto di mercato e' rimasto sostanzialmente identico rispetto al precedente. Obiettivo: evitare di chiamare Analyst + Decision Maker (Opus con thinking) + Risk Manager quando non ci sono variazioni significative, risparmiando token e latenza.
+Configuration of the **deterministic pre-check** that decides whether to skip an operational cycle when the market context has remained substantially identical to the previous one. Goal: avoid calling Analyst + Decision Maker (Opus with thinking) + Risk Manager when there are no significant changes, saving tokens and latency.
 
 ```yaml
 enabled: true
@@ -98,60 +98,60 @@ thresholds:
   require_previous_action_hold: true
 ```
 
-Campi:
+Fields:
 
-- `enabled`: se `false`, il pre-check e' disattivato e ogni ciclo esegue l'intera catena di agenti (comportamento pre-feature).
-- `max_consecutive_skips`: dopo N skip consecutivi, il ciclo successivo viene sempre eseguito per intero (anche se il contesto e' invariato). Evita di restare "bloccati" in skip infinito.
-- `thresholds.price_delta_pct`: variazione percentuale massima del prezzo tra ciclo precedente e corrente (oltre → no skip).
-- `thresholds.rsi_delta`: variazione assoluta massima dell'RSI (oltre → no skip).
-- `thresholds.macd_sign_must_match`: se `true`, il segno di `macd - macd_signal` deve essere uguale al ciclo precedente; un flip impedisce lo skip.
-- `thresholds.require_no_order_events`: se `true`, qualsiasi cambiamento nel set di ordini aperti (nuovo ordine, fill, cancellazione) impedisce lo skip.
-- `thresholds.require_previous_action_hold`: se `true`, lo skip e' consentito solo se l'azione del ciclo precedente era `HOLD`.
+- `enabled`: if `false`, the pre-check is disabled and every cycle runs the full agent chain (pre-feature behavior).
+- `max_consecutive_skips`: after N consecutive skips, the next cycle always runs in full (even if the context is unchanged). Prevents getting "stuck" in an infinite skip.
+- `thresholds.price_delta_pct`: maximum percentage price change between the previous and current cycle (beyond it → no skip).
+- `thresholds.rsi_delta`: maximum absolute RSI change (beyond it → no skip).
+- `thresholds.macd_sign_must_match`: if `true`, the sign of `macd - macd_signal` must match the previous cycle; a flip prevents the skip.
+- `thresholds.require_no_order_events`: if `true`, any change in the set of open orders (new order, fill, cancellation) prevents the skip.
+- `thresholds.require_previous_action_hold`: if `true`, skipping is only allowed if the previous cycle's action was `HOLD`.
 
-Se il file manca, il sistema applica fallback safe con `enabled=false` (nessun ciclo viene saltato). Lo snapshot del contesto precedente vive solo in memoria del runner: dopo ogni restart il primo ciclo e' sempre full.
+If the file is missing, the system applies a safe fallback with `enabled=false` (no cycle is skipped). The previous context's snapshot lives only in the runner's memory: after every restart, the first cycle is always full.
 
 ### `config/symbols.yaml`
 
-Simbolo di trading attivo e quote currency.
+Active trading symbol and quote currency.
 
 ```yaml
 symbol: BTCUSDC
 quote_currency: USDC
 ```
 
-- `symbol`: coppia di trading attiva (es. `BTCUSDC`, `ETHUSDC`)
-- `quote_currency`: valuta di riferimento usata per calcolare saldi e controvalore. Deve corrispondere al suffisso del simbolo
+- `symbol`: active trading pair (e.g. `BTCUSDC`, `ETHUSDC`)
+- `quote_currency`: reference currency used to compute balances and value. Must match the symbol's suffix
 
 ### `config/news.yaml`
 
-Configurazione della fonte news crypto.
+Crypto news source configuration.
 
 ```yaml
 source: alpha_vantage
-interval_hours: 12        # cadenza del NewsReviewRunner (gate sul file di report)
+interval_hours: 12        # NewsReviewRunner cadence (gate on the report file)
 query:
-  topics: blockchain      # copertura crypto generale
-  tickers: ""             # vuoto: nessun filtro stretto, cattura anche news sistemiche
+  topics: blockchain      # general crypto coverage
+  tickers: ""             # empty: no strict filter, also captures systemic news
   lookback_hours: 12
   max_articles: 50
   sort: LATEST
 ```
 
-Campi:
+Fields:
 
-- `source`: identificatore della fonte news attiva (attualmente solo `alpha_vantage`).
-- `interval_hours`: ogni quante ore il `NewsReviewRunner` deve eseguire una nuova review. Il gate è basato sul file di report più recente in `data/news_reports/`: se è più recente di `interval_hours`, il ciclo prosegue senza chiamare il client. Default software: `12`.
-- `query.topics`: categoria di notizie da richiedere ad Alpha Vantage (es. `blockchain`). Copre le news crypto in generale senza limitarsi a BTC.
-- `query.tickers`: filtro per ticker specifici (es. `CRYPTO:BTC`). Se vuoto, nessun filtro stretto: si ricevono anche news sistemiche.
-- `query.lookback_hours`: finestra temporale in ore per la chiamata (calcola `time_from = ora UTC - lookback_hours`). Usata anche come `hours_analyzed` nel report markdown.
-- `query.max_articles`: numero massimo di articoli da richiedere ad Alpha Vantage (parametro `limit`).
-- `query.sort`: ordinamento degli articoli (`LATEST`, `EARLIEST`, `RELEVANCE`).
+- `source`: identifier of the active news source (currently only `alpha_vantage`).
+- `interval_hours`: how often, in hours, the `NewsReviewRunner` should run a new review. The gate is based on the most recent report file in `data/news_reports/`: if it is more recent than `interval_hours`, the cycle proceeds without calling the client. Software default: `12`.
+- `query.topics`: news category to request from Alpha Vantage (e.g. `blockchain`). Covers crypto news in general, not limited to BTC.
+- `query.tickers`: filter for specific tickers (e.g. `CRYPTO:BTC`). If empty, no strict filter: systemic news is also received.
+- `query.lookback_hours`: time window in hours for the call (computes `time_from = UTC now - lookback_hours`). Also used as `hours_analyzed` in the markdown report.
+- `query.max_articles`: maximum number of articles to request from Alpha Vantage (`limit` parameter).
+- `query.sort`: article sort order (`LATEST`, `EARLIEST`, `RELEVANCE`).
 
-Il file viene letto da `load_news_config()` in `src/utils/config.py`. Se il file manca, la funzione ritorna un dict vuoto senza errori (fallback safe).
+The file is read by `load_news_config()` in `src/utils/config.py`. If the file is missing, the function returns an empty dict with no errors (safe fallback).
 
 ### `config/llm_models/`
 
-Configurazione dei modelli LLM usati dagli agenti. Un file YAML per agente.
+Configuration of the LLM models used by the agents. One YAML file per agent.
 
 **`market_analyst.yaml`** (provider: OpenAI):
 
@@ -162,7 +162,7 @@ reasoning_effort: medium
 max_tokens: 4096
 ```
 
-**`decision_maker.yaml`** (provider: Anthropic, con adaptive thinking):
+**`decision_maker.yaml`** (provider: Anthropic, with adaptive thinking):
 
 ```yaml
 provider: anthropic
@@ -197,104 +197,102 @@ thinking_effort: medium
 max_tokens: 4096
 ```
 
-Note:
+Notes:
 
-- GPT-5.6 Terra e Claude Sonnet 5 sono modelli con adaptive thinking/reasoning attivo di default: rifiutano `temperature` con un valore diverso dal default (errore 400 dall'API). Per questo motivo Market Analyst, Decision Maker, Performance Reviewer e News Reviewer usano tutti `reasoning_effort` (OpenAI) o `thinking_effort` (Anthropic) invece di `temperature`. L'interfaccia Anthropic estrae automaticamente solo i blocchi `text` dalla risposta, scartando i blocchi `thinking`.
-- La logica è generica e vale per qualsiasi agente su questi due provider: se `reasoning_effort`/`thinking_effort` è impostato nel YAML, `temperature` viene ignorata a prescindere dal suo valore (anche se presente nel file, non verrebbe mai inviata all'API). Il comportamento "classico" con `temperature` inviata resta disponibile per Anthropic/OpenAI solo per un agente il cui YAML non imposta `reasoning_effort`/`thinking_effort` (nessuno, oggi, in questo progetto).
-- Per Gemini 3.x (Risk Manager con `gemini-3.7-flash`), `temperature` è volutamente omessa: Google raccomanda esplicitamente di lasciare il parametro al default e di non impostarlo a valori bassi sui modelli reasoning, dove può causare comportamenti degradati o loop. L'interfaccia `GeminiInterface` accetta ancora `temperature` come parametro opzionale — se valorizzato, viene inoltrato — ma il file di configurazione non lo imposta.
-- `max_tokens` limita la lunghezza massima della risposta del modello. Per il Decision Maker il valore è alzato a `16384` perché con `thinking_effort` abilitato il budget è condiviso tra thinking interno e output finale: un limite troppo basso satura il budget.
+- GPT-5.6 Terra and Claude Sonnet 5 are models with adaptive thinking/reasoning enabled by default: they reject `temperature` with any value other than the default (400 error from the API). For this reason, Market Analyst, Decision Maker, Performance Reviewer and News Reviewer all use `reasoning_effort` (OpenAI) or `thinking_effort` (Anthropic) instead of `temperature`. The Anthropic interface automatically extracts only the `text` blocks from the response, discarding the `thinking` blocks.
+- The logic is generic and applies to any agent on these two providers: if `reasoning_effort`/`thinking_effort` is set in the YAML, `temperature` is ignored regardless of its value (even if present in the file, it would never be sent to the API). The "classic" behavior with `temperature` sent still applies to Anthropic/OpenAI only for an agent whose YAML does not set `reasoning_effort`/`thinking_effort` (none, currently, in this project).
+- For Gemini 3.x (Risk Manager with `gemini-3.7-flash`), `temperature` is deliberately omitted: Google explicitly recommends leaving the parameter at its default and not setting it to low values on reasoning models, where it can cause degraded behavior or loops. The `GeminiInterface` still accepts `temperature` as an optional parameter — if set, it is forwarded — but the configuration file does not set it.
+- `max_tokens` limits the maximum length of the model's response. For the Decision Maker, the value is raised to `16384` because with `thinking_effort` enabled, the budget is shared between internal thinking and the final output: a limit that is too low saturates the budget.
 
 ### `config/prompts/`
 
-Prompt runtime caricati dal codice durante l'esecuzione. Ogni agente ha il suo file markdown.
+Runtime prompts loaded by the code during execution. Each agent has its own markdown file.
 
-- `market_analyst.md` — Prompt operativo del Market Analyst
-- `decision_maker.md` — Prompt operativo del Decision Maker
-- `risk_manager.md` — Prompt operativo del Risk Manager
-- `performance_reviewer.md` — Prompt operativo del Performance Reviewer
-- `news_reviewer.md` — Prompt operativo del News Reviewer
-
-I file in `dev_support/prompts/` sono la versione di progettazione e riferimento umano. Quelli in `config/prompts/` sono la versione usata dal codice.
+- `market_analyst.md` — Market Analyst operational prompt
+- `decision_maker.md` — Decision Maker operational prompt
+- `risk_manager.md` — Risk Manager operational prompt
+- `performance_reviewer.md` — Performance Reviewer operational prompt
+- `news_reviewer.md` — News Reviewer operational prompt
 
 ---
 
-## Distinzione tra `config/` e `.env`
+## Distinction between `config/` and `.env`
 
-| Cosa                          | Dove        |
-|-------------------------------|-------------|
-| Chiavi API, URL, segreti      | `.env`      |
-| Modalità di esecuzione        | `.env`      |
-| Modello LLM, temperature      | `config/`   |
-| Prompt degli agenti           | `config/`   |
-| Regole operative (min order)  | `config/`   |
-| Simbolo di trading            | `config/`   |
+| What                           | Where       |
+|--------------------------------|-------------|
+| API keys, URLs, secrets        | `.env`      |
+| Execution mode                 | `.env`      |
+| LLM model, temperature         | `config/`   |
+| Agent prompts                  | `config/`   |
+| Operational rules (min order)  | `config/`   |
+| Trading symbol                 | `config/`   |
 
 ---
 
 ## 🧪 Testing
 
-Test automatici per il caricamento della configurazione:
+Automated tests for configuration loading:
 
 ```bash
 pytest tests/utils/test_config.py -v
 ```
 
-Verifica manuale delle connessioni API (Binance, OpenAI, Gemini, Claude, Telegram, Alpha Vantage):
+Manual verification of API connections (Binance, OpenAI, Gemini, Claude, Telegram, Alpha Vantage):
 
 ```bash
-python dev_support/verify_connections.py
+python verify_connections.py
 ```
 
 ---
 
 ## 🔍 Troubleshooting
 
-### Problema: `ValueError: Missing required environment variable: TRADING_MODE`
+### Problem: `ValueError: Missing required environment variable: TRADING_MODE`
 
-**Causa**: la variabile `TRADING_MODE` non è presente nel `.env` (oppure è vuota).
-**Soluzione**: aggiungere `TRADING_MODE=DEMO` o `TRADING_MODE=REAL` nel file `.env`.
+**Cause**: the `TRADING_MODE` variable is not present in `.env` (or is empty).
+**Solution**: add `TRADING_MODE=DEMO` or `TRADING_MODE=REAL` to the `.env` file.
 
-### Problema: `ValueError: Missing required environment variable: CYCLE_INTERVAL_SECONDS`
+### Problem: `ValueError: Missing required environment variable: CYCLE_INTERVAL_SECONDS`
 
-**Causa**: la variabile `CYCLE_INTERVAL_SECONDS` non è presente nel `.env` (oppure è vuota).
-**Soluzione**: aggiungere `CYCLE_INTERVAL_SECONDS=300` (o l'intervallo desiderato in secondi) nel file `.env`.
+**Cause**: the `CYCLE_INTERVAL_SECONDS` variable is not present in `.env` (or is empty).
+**Solution**: add `CYCLE_INTERVAL_SECONDS=300` (or the desired interval in seconds) to the `.env` file.
 
-### Problema: `ValueError` su `TRADING_MODE` con valore non valido
+### Problem: `ValueError` on `TRADING_MODE` with an invalid value
 
-**Causa**: `TRADING_MODE` ha un valore diverso da `DEMO` o `REAL` (es. `demo`, `test`, `live`). Il valore è case-sensitive.
-**Soluzione**: usare esattamente `DEMO` o `REAL` in maiuscolo.
+**Cause**: `TRADING_MODE` has a value other than `DEMO` or `REAL` (e.g. `demo`, `test`, `live`). The value is case-sensitive.
+**Solution**: use exactly `DEMO` or `REAL` in uppercase.
 
-### Problema: `ValueError: Invalid boolean value` su `KILL_SWITCH`
+### Problem: `ValueError: Invalid boolean value` on `KILL_SWITCH`
 
-**Causa**: `KILL_SWITCH` ha un valore non riconosciuto. Valori accettati: `1`, `true`, `yes`, `on`, `0`, `false`, `no`, `off`.
-**Soluzione**: usare uno dei valori accettati (es. `KILL_SWITCH=1`).
+**Cause**: `KILL_SWITCH` has an unrecognized value. Accepted values: `1`, `true`, `yes`, `on`, `0`, `false`, `no`, `off`.
+**Solution**: use one of the accepted values (e.g. `KILL_SWITCH=1`).
 
-### Problema: `FileNotFoundError: File di configurazione non trovato`
+### Problem: `FileNotFoundError: Configuration file not found`
 
-**Causa**: manca uno dei file YAML nella cartella `config/` (`trading.yaml`, `symbols.yaml`, o uno dei file in `llm_models/`).
-**Soluzione**: verificare che tutti i file YAML siano presenti nella cartella `config/`. Se il progetto è stato clonato di recente, questi file dovrebbero essere già nel repository.
+**Cause**: one of the YAML files in the `config/` folder is missing (`trading.yaml`, `symbols.yaml`, or one of the files in `llm_models/`).
+**Solution**: verify that all YAML files are present in the `config/` folder. If the project was recently cloned, these files should already be in the repository.
 
-### Problema: `ValueError: Campo 'symbol' mancante in symbols.yaml`
+### Problem: `ValueError: Missing 'symbol' field in symbols.yaml`
 
-**Causa**: il file `config/symbols.yaml` esiste ma non contiene il campo `symbol`.
-**Soluzione**: aggiungere `symbol: BTCUSDC` (o il simbolo desiderato) nel file.
+**Cause**: the `config/symbols.yaml` file exists but does not contain the `symbol` field.
+**Solution**: add `symbol: BTCUSDC` (or the desired symbol) to the file.
 
-### Problema: `ValueError: Campo 'quote_currency' mancante in symbols.yaml`
+### Problem: `ValueError: Missing 'quote_currency' field in symbols.yaml`
 
-**Causa**: il file `config/symbols.yaml` esiste ma non contiene il campo `quote_currency`.
-**Soluzione**: aggiungere `quote_currency: USDC` (o la quote currency corrispondente al simbolo).
+**Cause**: the `config/symbols.yaml` file exists but does not contain the `quote_currency` field.
+**Solution**: add `quote_currency: USDC` (or the quote currency matching the symbol).
 
-### Problema: `KeyError: 'model'` all'avvio
+### Problem: `KeyError: 'model'` at startup
 
-**Causa**: uno dei file YAML in `config/llm_models/` non contiene il campo `model`.
-**Soluzione**: verificare che ogni file YAML abbia almeno il campo `model` con il nome del modello (es. `model: claude-sonnet-5`).
+**Cause**: one of the YAML files in `config/llm_models/` does not contain the `model` field.
+**Solution**: verify that every YAML file has at least the `model` field with the model name (e.g. `model: claude-sonnet-5`).
 
 ---
 
-## 📚 Riferimenti
+## 📚 References
 
-- **Codice**: `src/utils/config.py`
-- **Test**: `tests/utils/test_config.py`
-- **Verifica connessioni**: `dev_support/verify_connections.py`
-- **File di esempio**: `.env.example`
-- **Doc correlati**: `docs/architecture.md`
+- **Code**: `src/utils/config.py`
+- **Tests**: `tests/utils/test_config.py`
+- **Connection check**: `verify_connections.py`
+- **Example file**: `.env.example`
+- **Related docs**: `docs/architecture.md`

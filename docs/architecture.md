@@ -1,29 +1,29 @@
-# Architettura
+# Architecture
 
-MDK Crypto Trading è progettato come un sistema multi-agente per il trading crypto spot.
-L'MVP separa chiaramente analisi, decisione, controllo del rischio ed esecuzione, in modo da evitare che un singolo componente faccia tutto da solo. Un quinto agente consultivo (`Performance Reviewer`) sta fuori dalla catena decisionale e alimenta il Decision Maker con un giudizio giornaliero sulle performance recenti.
-
----
-
-## 📋 Indice
-
-- [Flusso operativo MVP](#flusso-operativo-mvp)
-- [Ruoli degli agenti](#ruoli-degli-agenti)
-- [Strati principali](#strati-principali)
-- [Contratti condivisi](#contratti-condivisi)
-- [Orchestrazione](#orchestrazione)
-- [Memoria operativa (MemoryManager)](#memoria-operativa-memorymanager)
-- [🔧 Configurazione e prompt](#-configurazione-e-prompt)
-- [📚 Riferimenti](#-riferimenti)
+MDK Crypto Trading is designed as a multi-agent system for crypto spot trading.
+The MVP clearly separates analysis, decision, risk control and execution, so that no single component does everything on its own. A fifth advisory agent (`Performance Reviewer`) sits outside the decision chain and feeds the Decision Maker with a daily assessment of recent performance.
 
 ---
 
-## Flusso operativo MVP
+## 📋 Table of Contents
+
+- [MVP operational flow](#mvp-operational-flow)
+- [Agent roles](#agent-roles)
+- [Main layers](#main-layers)
+- [Shared contracts](#shared-contracts)
+- [Orchestration](#orchestration)
+- [Operational memory (MemoryManager)](#operational-memory-memorymanager)
+- [🔧 Configuration and prompts](#-configuration-and-prompts)
+- [📚 References](#-references)
+
+---
+
+## MVP operational flow
 
 ```mermaid
 flowchart TD
-    reviewer["Performance Reviewer<br/>(1/day, fuori catena)"] -.->|report markdown| decisionMaker
-    newsReviewer["News Reviewer<br/>(ogni 12h, fuori catena)"] -.->|digest news| decisionMaker
+    reviewer["Performance Reviewer<br/>(1/day, outside the chain)"] -.->|markdown report| decisionMaker
+    newsReviewer["News Reviewer<br/>(every 12h, outside the chain)"] -.->|news digest| decisionMaker
     marketAnalyst["Market Analyst"] --> decisionMaker["Decision Maker"]
     decisionMaker --> riskManager["Risk Manager"]
     riskManager --> executionTrader["Execution Trader"]
@@ -32,218 +32,217 @@ flowchart TD
 
 ---
 
-## Ruoli degli agenti
+## Agent roles
 
 ### Market Analyst
 
-- Riceve lo snapshot di mercato completo (prezzo, volume, order book, candele, indicatori tecnici).
-- Invia i dati a GPT-5.6 Terra che produce un'analisi strutturata (`MarketAnalysis`).
-- Non decide direttamente l'operazione.
-- Modello LLM e parametri configurati in `config/llm_models/market_analyst.yaml`.
-- Prompt operativo in `config/prompts/market_analyst.md`.
+- Receives the full market snapshot (price, volume, order book, candles, technical indicators).
+- Sends the data to GPT-5.6 Terra, which produces a structured analysis (`MarketAnalysis`).
+- Does not decide the trade directly.
+- LLM model and parameters configured in `config/llm_models/market_analyst.yaml`.
+- Operational prompt in `config/prompts/market_analyst.md`.
 
 ### Decision Maker
 
-- Riceve l'analisi del `Market Analyst`, il portafoglio, i vincoli operativi, la memoria IA, le performance recenti e il report del `Performance Reviewer`.
-- Invia i dati a Claude Opus 5 con adaptive thinking (`thinking_effort: medium`) che produce una proposta operativa strutturata (`TradeProposal`).
-- Azioni possibili: `BUY`, `SELL`, `HOLD`, `CANCEL_AND_REPLACE_ORDER`.
-- Non esegue ordini reali.
-- Modello LLM e parametri configurati in `config/llm_models/decision_maker.yaml`.
-- Prompt operativo in `config/prompts/decision_maker.md`.
+- Receives the `Market Analyst`'s analysis, the portfolio, the operational constraints, the AI memory, recent performance and the `Performance Reviewer`'s report.
+- Sends the data to Claude Opus 5 with adaptive thinking (`thinking_effort: medium`), which produces a structured trade proposal (`TradeProposal`).
+- Possible actions: `BUY`, `SELL`, `HOLD`, `CANCEL_AND_REPLACE_ORDER`.
+- Does not execute real orders.
+- LLM model and parameters configured in `config/llm_models/decision_maker.yaml`.
+- Operational prompt in `config/prompts/decision_maker.md`.
 
 ### Risk Manager
 
-- Riceve la proposta del `Decision Maker`, il portafoglio, un sottoinsieme dell'analisi di mercato (`market_bias`, `summary`, `risk_notes`), i vincoli operativi e il prezzo corrente.
-- Invia i dati a Gemini 3.7 Flash che produce una valutazione strutturata (`RiskAssessment`).
-- Decisioni possibili: `APPROVE`, `BLOCK`, `REQUEST_ADJUSTMENT`.
-- Non decide la strategia e non esegue ordini.
-- Modello LLM e parametri configurati in `config/llm_models/risk_manager.yaml`.
-- Prompt operativo in `config/prompts/risk_manager.md`.
+- Receives the `Decision Maker`'s proposal, the portfolio, a subset of the market analysis (`market_bias`, `summary`, `risk_notes`), the operational constraints and the current price.
+- Sends the data to Gemini 3.7 Flash, which produces a structured assessment (`RiskAssessment`).
+- Possible decisions: `APPROVE`, `BLOCK`, `REQUEST_ADJUSTMENT`.
+- Does not decide the strategy and does not execute orders.
+- LLM model and parameters configured in `config/llm_models/risk_manager.yaml`.
+- Operational prompt in `config/prompts/risk_manager.md`.
 
 ### Execution Trader
 
-- Riceve la proposta del `Decision Maker` e l'esito del `Risk Manager`.
-- Non usa LLM: esegue ordini direttamente su Binance tramite `BaseExchangeClient`.
-- Se la proposta non è approvata o è `HOLD` → `NOT_EXECUTED`.
-- Per `BUY`/`SELL` → chiama `place_market_order` o `place_limit_order`.
-- Per `CANCEL_AND_REPLACE_ORDER` → chiama `cancel_order` + `place_limit_order`.
-- Se l'exchange lancia un'eccezione → `FAILED`.
-- Non rivaluta strategia o rischio.
+- Receives the `Decision Maker`'s proposal and the `Risk Manager`'s outcome.
+- Does not use an LLM: executes orders directly on Binance via `BaseExchangeClient`.
+- If the proposal is not approved or is `HOLD` → `NOT_EXECUTED`.
+- For `BUY`/`SELL` → calls `place_market_order` or `place_limit_order`.
+- For `CANCEL_AND_REPLACE_ORDER` → calls `cancel_order` + `place_limit_order`.
+- If the exchange raises an exception → `FAILED`.
+- Does not re-evaluate strategy or risk.
 
 ### News Reviewer
 
-- Agente consultivo, **fuori dalla catena decisionale**: non valuta né approva i trade del momento.
-- Invocato dal runner ogni 12 ore tramite `NewsReviewRunner.maybe_run()` (gate basato sull'ultimo file di report in `data/news_reports/`): se non sono trascorse 12 ore dall'ultimo report, il ciclo prosegue senza chiamarlo.
-- Riceve un `NewsReviewerInput` (simbolo, lista di `NewsArticle`, finestra temporale in ore) prodotto dall'`AlphaVantageClient`.
-- Invia i dati a Claude Sonnet 5 che produce un `NewsDigest` strutturato (overall_sentiment `BULLISH`/`BEARISH`/`NEUTRAL`, summary, key_events, risk_flags).
-- Il digest viene serializzato in markdown in `data/news_reports/YYYY-MM-DD_HH-MM.md`.
-- Se non ci sono articoli → scrive un report `NEUTRAL` senza chiamare il LLM.
-- Errori del client o del LLM sono non-bloccanti: il ciclo prosegue normalmente.
-- Il digest viene letto dal Decision Maker ad ogni ciclo tramite il campo `latest_news_review` nel `DecisionMakerInput`: il cerchio è chiuso.
-- Modello LLM e parametri configurati in `config/llm_models/news_reviewer.yaml`.
-- Prompt operativo in `config/prompts/news_reviewer.md`.
+- Advisory agent, **outside the decision chain**: does not evaluate or approve the current trade.
+- Invoked by the runner every 12 hours via `NewsReviewRunner.maybe_run()` (gate based on the latest report file in `data/news_reports/`): if 12 hours have not yet passed since the last report, the cycle proceeds without calling it.
+- Receives a `NewsReviewerInput` (symbol, list of `NewsArticle`, time window in hours) produced by `AlphaVantageClient`.
+- Sends the data to Claude Sonnet 5, which produces a structured `NewsDigest` (overall_sentiment `BULLISH`/`BEARISH`/`NEUTRAL`, summary, key_events, risk_flags).
+- The digest is serialized to markdown in `data/news_reports/YYYY-MM-DD_HH-MM.md`.
+- If there are no articles → writes a `NEUTRAL` report without calling the LLM.
+- Client or LLM errors are non-blocking: the cycle proceeds normally.
+- The digest is read by the Decision Maker on every cycle via the `latest_news_review` field in `DecisionMakerInput`: the loop is closed.
+- LLM model and parameters configured in `config/llm_models/news_reviewer.yaml`.
+- Operational prompt in `config/prompts/news_reviewer.md`.
 
 ### Performance Reviewer
 
-- Agente consultivo, **fuori dalla catena decisionale**: non valuta né approva i trade del momento.
-- Gira una volta al giorno: all'inizio del primo ciclo della giornata, se non esiste già un report per oggi in `data/performance_reports/`.
-- Riceve statistiche deterministiche pre-calcolate in Python (`build_performance_stats` su 7 giorni di eventi) + il mandato operativo.
-- Invia i dati a Claude Sonnet 5 che produce un `PerformanceReview` strutturato (summary, aderenza al mandato `ALIGNED`/`DRIFTING`/`MISALIGNED`, 1-3 suggerimenti concreti).
-- Il risultato viene serializzato in markdown in `data/performance_reports/YYYY-MM-DD.md` e letto dal Decision Maker nei cicli successivi (campo `latest_performance_review`).
-- Errori del Reviewer sono non-bloccanti: se fallisce, il ciclo prosegue normalmente e il DM riceve stringa vuota.
-- Modello LLM e parametri configurati in `config/llm_models/performance_reviewer.yaml`.
-- Prompt operativo in `config/prompts/performance_reviewer.md`.
+- Advisory agent, **outside the decision chain**: does not evaluate or approve the current trade.
+- Runs once a day: at the start of the first cycle of the day, if a report for today does not already exist in `data/performance_reports/`.
+- Receives deterministic statistics pre-computed in Python (`build_performance_stats` over 7 days of events) + the operational mandate.
+- Sends the data to Claude Sonnet 5, which produces a structured `PerformanceReview` (summary, mandate adherence `ALIGNED`/`DRIFTING`/`MISALIGNED`, 1-3 concrete suggestions).
+- The result is serialized to markdown in `data/performance_reports/YYYY-MM-DD.md` and read by the Decision Maker in the following cycles (`latest_performance_review` field).
+- Reviewer errors are non-blocking: if it fails, the cycle proceeds normally and the DM receives an empty string.
+- LLM model and parameters configured in `config/llm_models/performance_reviewer.yaml`.
+- Operational prompt in `config/prompts/performance_reviewer.md`.
 
 ---
 
-## Strati principali
+## Main layers
 
 ### `src/agents/`
 
-Contiene i 5 agenti del sistema su una gerarchia a due livelli:
+Contains the system's 5 agents in a two-level hierarchy:
 
-- `BaseAgent` (minimale): nome, prompt opzionale, logger, firma astratta di `run`. È estesa direttamente da `ExecutionTraderAgent` (l'unico agente non-LLM).
-- `BaseLlmAgent(BaseAgent)` (Template Method): aggiunge `__init__(name, prompt_name, llm)`, un `run` concreto che orchestra il flusso comune (verifica prompt → lettura prompt → costruzione payload → chiamata LLM con retry sul parsing) e `_call_llm_with_retry`. Le sottoclassi LLM implementano solo i metodi astratti `_build_user_payload` (cosa mandare all'LLM) e `_parse_response` (come interpretare la risposta).
+- `BaseAgent` (minimal): name, optional prompt, logger, abstract `run` signature. Extended directly by `ExecutionTraderAgent` (the only non-LLM agent).
+- `BaseLlmAgent(BaseAgent)` (Template Method): adds `__init__(name, prompt_name, llm)`, a concrete `run` that orchestrates the common flow (prompt check → prompt reading → payload construction → LLM call with retry on parsing) and `_call_llm_with_retry`. LLM subclasses only implement the abstract methods `_build_user_payload` (what to send to the LLM) and `_parse_response` (how to interpret the response).
 
-Ogni agente espone un input strutturato e un output strutturato.
+Each agent exposes a structured input and a structured output.
 
-I 4 agenti operativi (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent`, `ExecutionTraderAgent`) formano la catena decisionale lineare. `PerformanceReviewerAgent` sta fuori dalla catena e viene invocato solo una volta al giorno dal runner. `NewsReviewerAgent` è anch'esso fuori dalla catena e viene invocato ogni 12 ore dal runner tramite `NewsReviewRunner`; i suoi report vengono letti dal Decision Maker nei cicli successivi (campo `latest_news_review`).
+The 4 operational agents (`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent`, `ExecutionTraderAgent`) form the linear decision chain. `PerformanceReviewerAgent` sits outside the chain and is invoked only once a day by the runner. `NewsReviewerAgent` is also outside the chain and is invoked every 12 hours by the runner via `NewsReviewRunner`; its reports are read by the Decision Maker in the following cycles (`latest_news_review` field).
 
-`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent` e `PerformanceReviewerAgent` estendono `BaseLlmAgent` e ricevono un `BaseLlmInterface`. Il `run` ereditato dalla base legge il prompt da disco, costruisce il payload tramite `_build_user_payload`, invia i dati al modello e fa retry sul parsing tramite `_call_llm_with_retry` (backoff esponenziale), poi normalizza la risposta tramite `unwrap_llm_response()` e la parsa nei rispettivi contratti (`MarketAnalysis`, `TradeProposal`, `RiskAssessment`, `PerformanceReview`). `ExecutionTraderAgent` non usa LLM: riceve un `BaseExchangeClient` e piazza gli ordini direttamente sull'exchange.
+`MarketAnalystAgent`, `DecisionMakerAgent`, `RiskManagerAgent` and `PerformanceReviewerAgent` extend `BaseLlmAgent` and receive a `BaseLlmInterface`. The `run` method inherited from the base reads the prompt from disk, builds the payload via `_build_user_payload`, sends the data to the model and retries on parsing via `_call_llm_with_retry` (exponential backoff), then normalizes the response via `unwrap_llm_response()` and parses it into the respective contracts (`MarketAnalysis`, `TradeProposal`, `RiskAssessment`, `PerformanceReview`). `ExecutionTraderAgent` does not use an LLM: it receives a `BaseExchangeClient` and places orders directly on the exchange.
 
 ### `src/core/`
 
-- `contracts.py`: strutture dati condivise tra agenti (input, output, enum). Include ora `NewsSentiment` (enum BULLISH/BEARISH/NEUTRAL disaccoppiato da `MarketBias`), `NewsDigest` (output del News Reviewer) e `NewsReviewerInput` (input del News Reviewer).
-- `exceptions.py`: gerarchia di eccezioni operative del sistema. `MdkTradingError` è la base per tutti gli errori attesi; `ExchangeError(MdkTradingError)` per errori provenienti dall'exchange; `LlmError(MdkTradingError, RuntimeError)` per errori provenienti da un provider LLM; `NewsError(MdkTradingError)` per errori provenienti dalla fonte news. L'ereditarietà multipla di `LlmError` garantisce backward-compatibility con il codice che cattura `RuntimeError`.
-- `workflow.py`: catena lineare Market Analyst → Decision Maker → Risk Manager → Execution Trader
-- `runner.py`: `TradingRunner`, direttore d'orchestra del loop operativo (loop, segnali, orchestrazione del singolo ciclo). Delega le decisioni specialistiche a 4 collaboratori dedicati:
-  - `cycle_skip_handler.py`: `CycleSkipHandler` — possiede lo snapshot del ciclo precedente e il counter dei salti consecutivi, decide se saltare il ciclo (pre-check deterministico)
-  - `performance_review_runner.py`: `PerformanceReviewRunner` — esegue il review giornaliero (al massimo una volta al giorno) e legge l'ultimo report markdown
-  - `news_review_runner.py`: `NewsReviewRunner` — esegue la review news ogni 12 ore (gate sui file `YYYY-MM-DD_HH-MM.md` in `data/news_reports/`), scrive il digest, gestisce il caso "no articoli" → `NEUTRAL` senza LLM, è non-bloccante; espone `load_latest_review()` letto dal Decision Maker (`latest_news_review`)
-  - `position_manager.py`: `PositionManager` — calcola il P&L non realizzato via FIFO (`augment_portfolio_with_open_position`), sposta automaticamente lo SL al breakeven se le condizioni sono soddisfatte (`maybe_apply_breakeven`) e segnala se un OCO attivo richiede revisione (`is_oco_review_required`)
-  - `notifications.py`: funzioni pure che costruiscono i messaggi Telegram (start/stop/error/order), inclusi i dettagli Binance-specific (`cummulativeQuoteQty`/`executedQty`) per il prezzo medio dei MARKET order
+- `contracts.py`: data structures shared between agents (input, output, enums). Now includes `NewsSentiment` (enum BULLISH/BEARISH/NEUTRAL, decoupled from `MarketBias`), `NewsDigest` (News Reviewer output) and `NewsReviewerInput` (News Reviewer input).
+- `exceptions.py`: the system's operational exception hierarchy. `MdkTradingError` is the base for all expected errors; `ExchangeError(MdkTradingError)` for errors coming from the exchange; `LlmError(MdkTradingError, RuntimeError)` for errors coming from an LLM provider; `NewsError(MdkTradingError)` for errors coming from the news source. `LlmError`'s multiple inheritance ensures backward compatibility with code that catches `RuntimeError`.
+- `workflow.py`: linear chain Market Analyst → Decision Maker → Risk Manager → Execution Trader
+- `runner.py`: `TradingRunner`, the conductor of the operational loop (loop, signals, single-cycle orchestration). Delegates specialized decisions to 4 dedicated collaborators:
+  - `cycle_skip_handler.py`: `CycleSkipHandler` — holds the previous cycle's snapshot and the consecutive-skip counter, decides whether to skip the cycle (deterministic pre-check)
+  - `performance_review_runner.py`: `PerformanceReviewRunner` — runs the daily review (at most once a day) and reads the latest markdown report
+  - `news_review_runner.py`: `NewsReviewRunner` — runs the news review every 12 hours (gate on `YYYY-MM-DD_HH-MM.md` files in `data/news_reports/`), writes the digest, handles the "no articles" case → `NEUTRAL` without an LLM, is non-blocking; exposes `load_latest_review()` read by the Decision Maker (`latest_news_review`)
+  - `position_manager.py`: `PositionManager` — computes unrealized P&L via FIFO (`augment_portfolio_with_open_position`), automatically moves the SL to breakeven when conditions are met (`maybe_apply_breakeven`) and flags whether an active OCO requires review (`is_oco_review_required`)
+  - `notifications.py`: pure functions that build Telegram messages (start/stop/error/order), including Binance-specific details (`cummulativeQuoteQty`/`executedQty`) for the average price of MARKET orders
 
 ### `src/integrations/`
 
-- `llm_interfaces/`: interfaccia astratta (`BaseLlmInterface`) e implementazioni per Anthropic (`AnthropicInterface`), OpenAI (`OpenAiInterface`) e Gemini (`GeminiInterface`), con retry automatico via `tenacity`. Supportano `temperature` e `max_tokens` configurabili. La base usa il pattern **Template Method**: `generate_json` è concreto nella classe base e centralizza retry, controllo risposta vuota, parsing JSON e gestione errori; le sottoclassi implementano solo i metodi astratti specifici del provider (`_call_provider`, `_extract_text`, `_log_empty_response`) e possono fare override dell'hook `_strip_response` (Anthropic lo usa per togliere wrapping markdown). Tutti gli errori sollevati da `generate_json` sono `LlmError` (definito in `src/core/exceptions.py`).
-- `exchange/`: interfaccia astratta (`BaseExchangeClient`), implementazione per Binance (`BinanceClient`) con supporto modalità DEMO e REAL, e `order_fields.py` come fonte unica dei nomi-campo degli ordini Binance (usato da `BinanceClient`, `PositionManager`, `ExecutionTrader` e `CycleSkipHandler`).
-- `news/`: interfaccia astratta (`BaseNewsClient`) con un solo metodo `get_recent_news() -> list[NewsArticle]` e implementazione `AlphaVantageClient`. Scarica notizie crypto con sentiment da Alpha Vantage (`NEWS_SENTIMENT`), gestisce il quirk della risposta `200` con payload di errore, fa retry su errori transienti via `tenacity`. È usato dal `NewsReviewRunner` ad ogni ciclo (ogni 12h): `build_runner` lo costruisce se `ALPHA_VANTAGE_API_KEY` è presente e lo passa a `TradingRunner`.
+- `llm_interfaces/`: abstract interface (`BaseLlmInterface`) and implementations for Anthropic (`AnthropicInterface`), OpenAI (`OpenAiInterface`) and Gemini (`GeminiInterface`), with automatic retry via `tenacity`. They support configurable `temperature` and `max_tokens`. The base uses the **Template Method** pattern: `generate_json` is concrete in the base class and centralizes retry, empty-response checking, JSON parsing and error handling; subclasses only implement the provider-specific abstract methods (`_call_provider`, `_extract_text`, `_log_empty_response`) and can override the `_strip_response` hook (Anthropic uses it to strip markdown wrapping). All errors raised by `generate_json` are `LlmError` (defined in `src/core/exceptions.py`).
+- `exchange/`: abstract interface (`BaseExchangeClient`), Binance implementation (`BinanceClient`) with DEMO and REAL mode support, and `order_fields.py` as the single source of truth for Binance order field names (used by `BinanceClient`, `PositionManager`, `ExecutionTrader` and `CycleSkipHandler`).
+- `news/`: abstract interface (`BaseNewsClient`) with a single method `get_recent_news() -> list[NewsArticle]` and the `AlphaVantageClient` implementation. Downloads crypto news with sentiment from Alpha Vantage (`NEWS_SENTIMENT`), handles the `200` response with an error payload quirk, retries on transient errors via `tenacity`. Used by `NewsReviewRunner` on every cycle (every 12h): `build_runner` constructs it if `ALPHA_VANTAGE_API_KEY` is present and passes it to `TradingRunner`.
 
-`BinanceClient` espone:
+`BinanceClient` exposes:
 
-- `ping()` / `get_account_info()`: verifica connessione e autenticazione
-- `get_market_snapshot(symbol)`: raccoglie prezzo, volume, order book, candele multi-timeframe e fetcha OHLC 1h (60 candele) via `_get_hourly_ohlc`. Il calcolo degli indicatori tecnici (RSI, EMA, SMA, MACD, ATR su serie corrente e precedente) è delegato a `utils/indicators.py::compute_indicators_bundle`, che riceve highs/lows/closes. Gli errori Binance vengono wrappati in `ExchangeError`.
-- `get_portfolio_state(symbol)`: raccoglie saldi quote currency e coin, ordini aperti (arricchiti con `age_hours` calcolato dall'helper di modulo `_add_age_to_orders`), ultimi trade. La quote currency (es. USDC) è configurabile in `symbols.yaml` e passata al costruttore. Gli errori Binance vengono wrappati in `ExchangeError`.
-- `place_market_order(symbol, side, quantity)`: piazza un ordine a mercato (solo BUY/SELL, altrimenti `ValueError`)
-- `place_limit_order(symbol, side, quantity, price)`: piazza un ordine limit GTC (solo BUY/SELL, altrimenti `ValueError`)
-- `cancel_order(symbol, order_id)`: cancella un ordine aperto
+- `ping()` / `get_account_info()`: connection and authentication check
+- `get_market_snapshot(symbol)`: collects price, volume, order book, multi-timeframe candles and fetches 1h OHLC (60 candles) via `_get_hourly_ohlc`. The computation of technical indicators (RSI, EMA, SMA, MACD, ATR on the current and previous series) is delegated to `utils/indicators.py::compute_indicators_bundle`, which receives highs/lows/closes. Binance errors are wrapped in `ExchangeError`.
+- `get_portfolio_state(symbol)`: collects quote-currency and coin balances, open orders (enriched with `age_hours` computed by the module helper `_add_age_to_orders`), latest trades. The quote currency (e.g. USDC) is configurable in `symbols.yaml` and passed to the constructor. Binance errors are wrapped in `ExchangeError`.
+- `place_market_order(symbol, side, quantity)`: places a market order (BUY/SELL only, otherwise `ValueError`)
+- `place_limit_order(symbol, side, quantity, price)`: places a GTC limit order (BUY/SELL only, otherwise `ValueError`)
+- `cancel_order(symbol, order_id)`: cancels an open order
 
-**Retry policy**: tutti i metodi di `BinanceClient` hanno retry automatico con backoff esponenziale tramite `tenacity` (max 3 tentativi, solo su errori retriabili: `BinanceRequestException`, codici 429/418/5xx).
+**Retry policy**: all `BinanceClient` methods have automatic retry with exponential backoff via `tenacity` (max 3 attempts, only on retryable errors: `BinanceRequestException`, codes 429/418/5xx).
 
-- I 4 metodi di sola lettura (`ping`, `get_account_info`, `get_market_snapshot`, `get_portfolio_state`) sono retry-safe per natura.
-- `cancel_order` è retry-safe perché Binance lo gestisce in modo idempotente: cancellare due volte un ordine già cancellato è innocuo.
-- `place_market_order`, `place_limit_order` e `place_oco_sell` generano un UUID (`newClientOrderId` / `listClientOrderId`) prima di chiamare Binance e lo passano all'exchange. Il UUID viene generato nel metodo pubblico (una sola volta) e passato al metodo privato interno che porta il decorator `@_binance_retry`: così tutti i tentativi usano lo stesso identificativo e Binance riconosce la richiesta come duplicato, senza creare un secondo ordine.
-- `get_market_snapshot` e `get_portfolio_state` seguono lo stesso pattern a due livelli: il metodo pubblico è un wrapper che cattura le eccezioni Binance e le rilancia come `ExchangeError`; il metodo privato `_*_with_retry` porta il decorator `@_binance_retry` ed esegue la logica effettiva.
+- The 4 read-only methods (`ping`, `get_account_info`, `get_market_snapshot`, `get_portfolio_state`) are retry-safe by nature.
+- `cancel_order` is retry-safe because Binance handles it idempotently: cancelling an already-cancelled order twice is harmless.
+- `place_market_order`, `place_limit_order` and `place_oco_sell` generate a UUID (`newClientOrderId` / `listClientOrderId`) before calling Binance and pass it to the exchange. The UUID is generated in the public method (only once) and passed to the internal private method carrying the `@_binance_retry` decorator: this way all attempts use the same identifier and Binance recognizes the request as a duplicate, without creating a second order.
+- `get_market_snapshot` and `get_portfolio_state` follow the same two-level pattern: the public method is a wrapper that catches Binance exceptions and re-raises them as `ExchangeError`; the private `_*_with_retry` method carries the `@_binance_retry` decorator and executes the actual logic.
 
 ### `src/utils/`
 
-- `config.py`: caricamento variabili d'ambiente (`.env`) e file YAML (`trading.yaml`, `symbols.yaml`, configurazioni LLM); include `load_mandate` per parsare l'investment mandate
-- `indicators.py`: funzioni pure per RSI, EMA, SMA, MACD e ATR(14) da serie OHLC. `compute_indicators_bundle(closes, *, highs, lows)` produce in un'unica chiamata il dict di 14 chiavi (valore corrente + precedente per ogni indicatore) consumato da `MarketDataSnapshot.indicators`. `highs` e `lows` sono opzionali: se omessi, `atr` e `atr_prev` valgono `None`.
-- `logging_config.py`: logging su console (Rich) e su file con rotazione automatica (5 MB, 5 backup)
-- `event_logger.py`: log JSON strutturato per le decisioni di ogni ciclo operativo
-- `event_log_reader.py`: `load_recent_events` legge i file JSONL degli ultimi N giorni filtrati per simbolo (usato dal Performance Reviewer)
-- `memory_manager.py`: persistenza e recupero della memoria operativa del sistema (vedi sotto)
-- `performance_stats.py`: `build_performance_stats` calcola in modo deterministico (zero LLM) le statistiche operative degli ultimi N giorni, inclusi `sells_in_profit` e `sells_in_loss` (dalle ultime 10 trade FIFO); `write_performance_report` serializza il giudizio del Reviewer in markdown
-- `news_report.py`: `write_news_report` serializza un `NewsDigest` in markdown (`YYYY-MM-DD_HH-MM.md`, Windows-safe) e lo salva in `data/news_reports/`
-- `telegram_notifier.py`: notifiche Telegram opzionali via Bot API — avvio/stop del bot, ordini eseguiti, errori nei cicli
+- `config.py`: loading of environment variables (`.env`) and YAML files (`trading.yaml`, `symbols.yaml`, LLM configurations); includes `load_mandate` for parsing the investment mandate
+- `indicators.py`: pure functions for RSI, EMA, SMA, MACD and ATR(14) from OHLC series. `compute_indicators_bundle(closes, *, highs, lows)` produces in a single call the 14-key dict (current + previous value for each indicator) consumed by `MarketDataSnapshot.indicators`. `highs` and `lows` are optional: if omitted, `atr` and `atr_prev` are `None`.
+- `logging_config.py`: logging to console (Rich) and to file with automatic rotation (5 MB, 5 backups)
+- `event_logger.py`: structured JSON logging for each operational cycle's decisions
+- `event_log_reader.py`: `load_recent_events` reads the JSONL files of the last N days filtered by symbol (used by the Performance Reviewer)
+- `memory_manager.py`: persistence and retrieval of the system's operational memory (see below)
+- `performance_stats.py`: `build_performance_stats` deterministically computes (zero LLM) the operational statistics of the last N days, including `sells_in_profit` and `sells_in_loss` (from the last 10 FIFO trades); `write_performance_report` serializes the Reviewer's assessment to markdown
+- `news_report.py`: `write_news_report` serializes a `NewsDigest` to markdown (`YYYY-MM-DD_HH-MM.md`, Windows-safe) and saves it in `data/news_reports/`
+- `telegram_notifier.py`: optional Telegram notifications via the Bot API — bot start/stop, executed orders, cycle errors
 
-Per i dettagli completi sul sistema di logging, vedi `docs/observability.md`.
-
----
-
-## Contratti condivisi
-
-Per l'MVP ogni passaggio tra agenti usa strutture dati esplicite.
-Questo evita JSON incoerenti sparsi nel codice e rende più facili test, logging e manutenzione.
-
-I contratti principali sono:
-
-- `MarketDataSnapshot`: dati di mercato (prezzo, volume, order book, candele, indicatori)
-- `PortfolioState`: saldi, ordini aperti, ultimi trade. Contiene anche tre campi opzionali calcolati a runtime dal runner: `avg_entry_price` (prezzo medio di carico FIFO della posizione aperta), `unrealized_pnl_pct` (P&L non realizzato % al prezzo corrente) e `unrealized_pnl_usdc` (P&L in valore assoluto USDC, calcolato sulla quantità tracciata dal FIFO `open_qty` — non sul saldo totale dell'exchange). Tutti e tre sono `None` se non c'è posizione aperta.
-- `MarketAnalysis`: output del `Market Analyst`
-- `TradeProposal`: output del `Decision Maker`
-- `RiskAssessment`: output del `Risk Manager`
-- `ExecutionReport`: output del `Execution Trader`
-- `PerformanceStats` / `PerformanceReview`: input/output del `Performance Reviewer`. `PerformanceStats` include ora `sells_in_profit` e `sells_in_loss`: contatori delle ultime 10 SELL FIFO chiuse in profitto/perdita, usati dal Reviewer per valutare la qualità delle uscite.
-- `NewsReviewerInput` / `NewsDigest`: input e output del `News Reviewer`. `NewsDigest` contiene `overall_sentiment` (`NewsSentiment`: BULLISH/BEARISH/NEUTRAL), `summary`, `key_events` e `risk_flags`. Il digest serializzato viene letto dal runner come `latest_news_review` e passato al `DecisionMakerInput`.
-- `InvestmentMandate`: mandato operativo (caricato da `trading.yaml`)
-- `TradingCycleInput` / `TradingCycleResult`: input e output del ciclo completo
+For full details on the logging system, see `docs/observability.md`.
 
 ---
 
-## Orchestrazione
+## Shared contracts
 
-Il ciclo operativo è gestito da due componenti complementari:
+For the MVP, every handoff between agents uses explicit data structures.
+This avoids inconsistent JSON scattered across the code and makes testing, logging and maintenance easier.
 
-- **`TradingWorkflow`** (`workflow.py`): esegue la catena di agenti in sequenza
-- **`TradingRunner`** (`runner.py`): loop infinito che ad ogni iterazione raccoglie dati dall'exchange, esegue il workflow e logga il risultato
+The main contracts are:
 
-Il runner:
-
-1. Logga l'avvio e lo stato del kill switch
-2. Ad ogni iterazione: eventualmente genera il report giornaliero (`PerformanceReviewRunner.maybe_run_today`) → eventualmente genera il digest news (`NewsReviewRunner.maybe_run`, gate ogni 12h) → raccoglie dati da Binance → **arricchisce il portafoglio** con `avg_entry_price` e `unrealized_pnl_pct` via `PositionManager.augment_portfolio_with_open_position` → eventualmente applica il breakeven automatico via `PositionManager.maybe_apply_breakeven` → eventualmente salta il ciclo via `CycleSkipHandler.try_skip` → legge la memoria storica e l'ultimo report → costruisce `TradingCycleInput` (con `oco_review_required` da `PositionManager.is_oco_review_required`) → esegue il workflow → logga il risultato → salva il ciclo in memoria → registra lo snapshot via `CycleSkipHandler.record_completed_cycle`
-3. In caso di errore: il runner distingue due categorie. Errori operativi attesi (`MdkTradingError`, `OSError` — es. exchange offline, LLM sovraccarico): logga, notifica Telegram e **continua il loop**. Bug imprevisti (qualsiasi altra eccezione — es. `AttributeError`, `NameError`): logga, notifica Telegram e **propaga l'eccezione**. `run()` intercetta il bug critico, logga come `CRITICAL`, notifica e termina il processo pulitamente (Docker lo riavvierà).
-4. Su `Ctrl+C`: termina in modo pulito
-
-Il punto di ingresso è `src/main.py`: `main()` carica le settings con `load_settings()`, delega il bootstrap a `build_runner(settings)` (che assembla LLM client, exchange client, agenti, workflow, memory manager e runner) e chiama `runner.run()`.
-
----
-
-## Memoria operativa (MemoryManager)
-
-`MemoryManager` (`src/utils/memory_manager.py`) permette al sistema di ricordare le decisioni passate e passarle al `Decision Maker` ad ogni ciclo.
-
-### Come funziona
-
-- Dopo ogni ciclo completato con successo, il runner salva un record JSONL in `data/memory/{symbol}.jsonl` con: timestamp, azione, tipo ordine, confidenza, motivazione, quantità, prezzo, stato esecuzione, decisione rischio, bias di mercato.
-- Prima di ogni ciclo, il runner legge gli ultimi record e popola tre campi di `TradingCycleInput`:
-  - `decision_memory`: ultime 10 decisioni complete
-  - `performance_summary`: riassunto testuale delle ultime 10 vendite calcolate con metodo FIFO (profitti/perdite, P&L medio % e P&L totale in USDC)
-  - `recent_performance`: ultime 10 decisioni con, per le SELL eseguite, `realized_pnl` (USDC) e `pnl_pct` (%) calcolati con metodo FIFO
-- `compute_open_position(symbol)`: calcola la posizione aperta (lotti BUY non ancora venduti) come `{"open_qty": float, "avg_entry_price": float}` usando la coda FIFO residua. Usato dal runner per popolare `PortfolioState.avg_entry_price`, `unrealized_pnl_pct` e `unrealized_pnl_usdc` prima di ogni ciclo. Il P&L in USDC usa `open_qty` (quantità tracciata dal bot) e non il saldo totale dell'exchange, per garantire coerenza: le monete non tracciate dalla memoria FIFO hanno costo di carico ignoto. Se `open_qty` e il saldo exchange divergono oltre l'1%, il runner emette un WARNING diagnostico.
-
-### Cache per-ciclo
-
-Dentro un ciclo il file JSONL è statico (l'unico writer è `save_cycle`, chiamato dopo tutte le letture). `MemoryManager` mantiene due cache interne indicizzate per simbolo: `_records_cache` per i record grezzi (`_read_all`) e `_fifo_cache` per i risultati della camminata FIFO (`_walk_fifo`). Entrambe vengono popolate al primo accesso del ciclo e invalidate da `save_cycle` alla scrittura. Questo riduce le letture da disco e i ricalcoli FIFO da ~5-6 a 1 per ciclo, senza alcun cambio di comportamento osservabile.
-
-### Persistenza
-
-I file `data/memory/` sono esclusi da git (vedi `.gitignore`) e vengono creati automaticamente a runtime. Il `Decision Maker` riceve questi dati come contesto aggiuntivo per prendere decisioni più informate.
+- `MarketDataSnapshot`: market data (price, volume, order book, candles, indicators)
+- `PortfolioState`: balances, open orders, latest trades. Also contains three optional fields computed at runtime by the runner: `avg_entry_price` (FIFO average entry price of the open position), `unrealized_pnl_pct` (unrealized P&L % at the current price) and `unrealized_pnl_usdc` (P&L in absolute USDC, computed on the quantity tracked by the FIFO `open_qty` — not on the exchange's total balance). All three are `None` if there is no open position.
+- `MarketAnalysis`: `Market Analyst` output
+- `TradeProposal`: `Decision Maker` output
+- `RiskAssessment`: `Risk Manager` output
+- `ExecutionReport`: `Execution Trader` output
+- `PerformanceStats` / `PerformanceReview`: `Performance Reviewer` input/output. `PerformanceStats` now includes `sells_in_profit` and `sells_in_loss`: counters of the last 10 FIFO SELLs closed in profit/loss, used by the Reviewer to assess exit quality.
+- `NewsReviewerInput` / `NewsDigest`: `News Reviewer` input and output. `NewsDigest` contains `overall_sentiment` (`NewsSentiment`: BULLISH/BEARISH/NEUTRAL), `summary`, `key_events` and `risk_flags`. The serialized digest is read by the runner as `latest_news_review` and passed to `DecisionMakerInput`.
+- `InvestmentMandate`: operational mandate (loaded from `trading.yaml`)
+- `TradingCycleInput` / `TradingCycleResult`: input and output of the full cycle
 
 ---
 
-## 🔧 Configurazione e prompt
+## Orchestration
 
-- I prompt di lavoro degli agenti vivono in `config/prompts/`.
-- I file in `dev_support/prompts/` restano la base di progettazione e riferimento umano.
-- Le configurazioni dei modelli LLM (provider, model, temperature/reasoning_effort/thinking_effort, max_tokens) vivono in `config/llm_models/`.
-- Il simbolo di trading attivo e la quote currency sono in `config/symbols.yaml`.
-- Le regole operative (es. `min_order_usdc`) vivono in `config/trading.yaml`.
-- I segreti (API key, URL, modalità) vivono nel `.env`. Le chiavi attive sono `CLAUDE_API_KEY` (Decision Maker + Performance Reviewer), `OPENAI_API_KEY` (Market Analyst) e `GEMINI_API_KEY` (Risk Manager).
+The operational cycle is managed by two complementary components:
 
-Per i dettagli, vedi `docs/config.md`.
+- **`TradingWorkflow`** (`workflow.py`): executes the agent chain in sequence
+- **`TradingRunner`** (`runner.py`): infinite loop that, on every iteration, collects data from the exchange, runs the workflow and logs the result
+
+The runner:
+
+1. Logs the startup and kill switch status
+2. On every iteration: optionally generates the daily report (`PerformanceReviewRunner.maybe_run_today`) → optionally generates the news digest (`NewsReviewRunner.maybe_run`, gated every 12h) → collects data from Binance → **enriches the portfolio** with `avg_entry_price` and `unrealized_pnl_pct` via `PositionManager.augment_portfolio_with_open_position` → optionally applies automatic breakeven via `PositionManager.maybe_apply_breakeven` → optionally skips the cycle via `CycleSkipHandler.try_skip` → reads historical memory and the latest report → builds `TradingCycleInput` (with `oco_review_required` from `PositionManager.is_oco_review_required`) → runs the workflow → logs the result → saves the cycle to memory → records the snapshot via `CycleSkipHandler.record_completed_cycle`
+3. On error: the runner distinguishes two categories. Expected operational errors (`MdkTradingError`, `OSError` — e.g. exchange offline, LLM overloaded): logs, notifies via Telegram and **continues the loop**. Unexpected bugs (any other exception — e.g. `AttributeError`, `NameError`): logs, notifies via Telegram and **propagates the exception**. `run()` catches the critical bug, logs it as `CRITICAL`, notifies and cleanly terminates the process (Docker will restart it).
+4. On `Ctrl+C`: terminates cleanly
+
+The entry point is `src/main.py`: `main()` loads the settings with `load_settings()`, delegates the bootstrap to `build_runner(settings)` (which assembles the LLM client, exchange client, agents, workflow, memory manager and runner) and calls `runner.run()`.
 
 ---
 
-## 📚 Riferimenti
+## Operational memory (MemoryManager)
 
-- **Codice**:
-  - `src/agents/` — agenti (Market Analyst, Decision Maker, Risk Manager, Performance Reviewer, Execution Trader) + `BaseAgent` / `BaseLlmAgent`
-  - `src/core/contracts.py` — contratti condivisi
-  - `src/core/workflow.py` — orchestratore della catena
-  - `src/core/runner.py` — loop operativo ciclico
-  - `src/integrations/llm_interfaces/` — interfacce LLM (Anthropic, OpenAI, Gemini)
-  - `src/integrations/exchange/` — interfaccia exchange (Binance)
-  - `src/utils/memory_manager.py` — memoria operativa
+`MemoryManager` (`src/utils/memory_manager.py`) allows the system to remember past decisions and pass them to the `Decision Maker` on every cycle.
+
+### How it works
+
+- After every successfully completed cycle, the runner saves a JSONL record in `data/memory/{symbol}.jsonl` with: timestamp, action, order type, confidence, reasoning, quantity, price, execution status, risk decision, market bias.
+- Before every cycle, the runner reads the latest records and populates three fields of `TradingCycleInput`:
+  - `decision_memory`: last 10 full decisions
+  - `performance_summary`: textual summary of the last 10 sells computed with the FIFO method (profits/losses, average P&L % and total P&L in USDC)
+  - `recent_performance`: last 10 decisions with, for executed SELLs, `realized_pnl` (USDC) and `pnl_pct` (%) computed with the FIFO method
+- `compute_open_position(symbol)`: computes the open position (BUY lots not yet sold) as `{"open_qty": float, "avg_entry_price": float}` using the remaining FIFO queue. Used by the runner to populate `PortfolioState.avg_entry_price`, `unrealized_pnl_pct` and `unrealized_pnl_usdc` before every cycle. The P&L in USDC uses `open_qty` (the quantity tracked by the bot), not the exchange's total balance, to ensure consistency: coins not tracked by the FIFO memory have an unknown cost basis. If `open_qty` and the exchange balance diverge by more than 1%, the runner emits a diagnostic WARNING.
+
+### Per-cycle cache
+
+Within a cycle, the JSONL file is static (the only writer is `save_cycle`, called after all reads). `MemoryManager` maintains two internal caches indexed by symbol: `_records_cache` for raw records (`_read_all`) and `_fifo_cache` for the results of the FIFO walk (`_walk_fifo`). Both are populated on the first access of the cycle and invalidated by `save_cycle` on write. This reduces disk reads and FIFO recalculations from ~5-6 to 1 per cycle, with no observable change in behavior.
+
+### Persistence
+
+The `data/memory/` files are excluded from git (see `.gitignore`) and are created automatically at runtime. The `Decision Maker` receives this data as additional context for making more informed decisions.
+
+---
+
+## 🔧 Configuration and prompts
+
+- The agents' working prompts live in `config/prompts/`.
+- LLM model configurations (provider, model, temperature/reasoning_effort/thinking_effort, max_tokens) live in `config/llm_models/`.
+- The active trading symbol and quote currency are in `config/symbols.yaml`.
+- Operational rules (e.g. `min_order_usdc`) live in `config/trading.yaml`.
+- Secrets (API keys, URLs, mode) live in `.env`. The active keys are `CLAUDE_API_KEY` (Decision Maker + Performance Reviewer), `OPENAI_API_KEY` (Market Analyst) and `GEMINI_API_KEY` (Risk Manager).
+
+For details, see `docs/config.md`.
+
+---
+
+## 📚 References
+
+- **Code**:
+  - `src/agents/` — agents (Market Analyst, Decision Maker, Risk Manager, Performance Reviewer, Execution Trader) + `BaseAgent` / `BaseLlmAgent`
+  - `src/core/contracts.py` — shared contracts
+  - `src/core/workflow.py` — chain orchestrator
+  - `src/core/runner.py` — cyclical operational loop
+  - `src/integrations/llm_interfaces/` — LLM interfaces (Anthropic, OpenAI, Gemini)
+  - `src/integrations/exchange/` — exchange interface (Binance)
+  - `src/utils/memory_manager.py` — operational memory
   - `src/main.py` — entry point
-- **Doc correlati**: `docs/config.md`, `docs/hierarchy_and_roles.md`, `docs/decision_logic.md`, `docs/observability.md`
+- **Related docs**: `docs/config.md`, `docs/hierarchy_and_roles.md`, `docs/decision_logic.md`, `docs/observability.md`

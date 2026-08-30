@@ -1,47 +1,47 @@
 <!-- markdownlint-disable -->
-# Guida al Deploy su Google Compute Engine
+# Deployment Guide on Google Compute Engine
 
-MDK Crypto Trading gira in loop continuo 24/7. La soluzione scelta è una VM Google Compute Engine con Docker Compose.
+MDK Crypto Trading runs in a continuous 24/7 loop. The chosen solution is a Google Compute Engine VM with Docker Compose.
 
 ---
 
-## 📋 Indice
+## 📋 Table of Contents
 
-- [Prerequisiti](#prerequisiti)
-- [1. Creazione della VM](#1-creazione-della-vm)
-- [2. Accesso SSH alla VM](#2-accesso-ssh-alla-vm)
-- [3. Installazione Docker sulla VM](#3-installazione-docker-sulla-vm)
-- [4. Primo Deploy](#4-primo-deploy)
-- [5. Aggiornamento (nuova versione del codice)](#5-aggiornamento-nuova-versione-del-codice)
-- [6. Comandi utili](#6-comandi-utili)
+- [Prerequisites](#prerequisites)
+- [1. Creating the VM](#1-creating-the-vm)
+- [2. SSH access to the VM](#2-ssh-access-to-the-vm)
+- [3. Installing Docker on the VM](#3-installing-docker-on-the-vm)
+- [4. First deployment](#4-first-deployment)
+- [5. Updating (new code version)](#5-updating-new-code-version)
+- [6. Useful commands](#6-useful-commands)
 - [7. 🔍 Troubleshooting](#7--troubleshooting)
-- [📚 Riferimenti](#-riferimenti)
+- [📚 References](#-references)
 
 ---
 
-## Prerequisiti
+## Prerequisites
 
-- Account Google Cloud Platform con billing attivato
-- `gcloud` CLI installato sul PC locale ([scarica qui](https://cloud.google.com/sdk/docs/install)) — dopo l'installazione, lanciare `gcloud init` per autenticarsi e selezionare il progetto
-- Repo GitHub aggiornata con tutti i file di produzione
-- Chiavi API pronte: Binance, OpenAI, Gemini, Anthropic
+- Google Cloud Platform account with billing enabled
+- `gcloud` CLI installed on your local machine ([download here](https://cloud.google.com/sdk/docs/install)) — after installation, run `gcloud init` to authenticate and select the project
+- GitHub repo up to date with all production files
+- API keys ready: Binance, OpenAI, Gemini, Anthropic
 
 ---
 
-## 1. Creazione della VM
+## 1. Creating the VM
 
-### Opzione A — Google Cloud Console (interfaccia web)
+### Option A — Google Cloud Console (web interface)
 
-1. Vai su [console.cloud.google.com](https://console.cloud.google.com)
-2. Menu → **Compute Engine** → **Istanze VM** → **Crea istanza**
-3. Configura:
-   - Nome: `mdk-crypto-trading`
-   - Regione: `europe-west1`, Zona: `europe-west1-b`
-   - Tipo di macchina: serie **E2**, poi **e2-micro** (0.25 vCPU, 1 GB RAM)
-   - Disco di avvio: clicca **Cambia** → Ubuntu 24.04 LTS, 10 GB, disco permanente standard
-4. Clicca **Crea**
+1. Go to [console.cloud.google.com](https://console.cloud.google.com)
+2. Menu → **Compute Engine** → **VM Instances** → **Create Instance**
+3. Configure:
+   - Name: `mdk-crypto-trading`
+   - Region: `europe-west1`, Zone: `europe-west1-b`
+   - Machine type: **E2** series, then **e2-micro** (0.25 vCPU, 1 GB RAM)
+   - Boot disk: click **Change** → Ubuntu 24.04 LTS, 10 GB, standard persistent disk
+4. Click **Create**
 
-### Opzione B — `gcloud` CLI (da terminale locale)
+### Option B — `gcloud` CLI (from local terminal)
 
 ```bash
 gcloud compute instances create mdk-crypto-trading \
@@ -53,71 +53,71 @@ gcloud compute instances create mdk-crypto-trading \
   --boot-disk-type=pd-standard
 ```
 
-> **Nota regione**: la VM deve essere in Europa (`europe-west1`). Binance blocca le connessioni dagli Stati Uniti, quindi regioni come `us-central1` non funzionano.
-> **Nota firewall**: il bot fa solo chiamate in uscita verso Binance e le API AI. Non serve aprire nessuna porta in entrata.
+> **Region note**: the VM must be in Europe (`europe-west1`). Binance blocks connections from the United States, so regions like `us-central1` will not work.
+> **Firewall note**: the bot only makes outbound calls to Binance and the AI APIs. No inbound port needs to be opened.
 
 ---
 
-## 2. Accesso SSH alla VM
+## 2. SSH access to the VM
 
-### Da `gcloud` CLI (raccomandato — più stabile)
+### From the `gcloud` CLI (recommended — more stable)
 
 ```bash
 gcloud compute ssh mdk-crypto-trading --zone=europe-west1-b
 ```
 
-La prima volta gcloud genera automaticamente le chiavi SSH. Quando chiede una passphrase, **impostane una**: protegge la chiave in caso di furto del file. Per non doverla reinserire ad ogni connessione, usa `ssh-agent`:
+The first time, gcloud automatically generates the SSH keys. When it asks for a passphrase, **set one**: it protects the key in case the file is stolen. To avoid re-entering it on every connection, use `ssh-agent`:
 
 ```bash
 eval "$(ssh-agent -s)"
 ssh-add ~/.ssh/google_compute_engine
 ```
 
-### Da Google Cloud Console (alternativa via browser)
+### From the Google Cloud Console (browser alternative)
 
-1. Menu → **Compute Engine** → **Istanze VM**
-2. Clicca su **SSH** accanto alla VM `mdk-crypto-trading`
-3. Si apre un terminale browser direttamente sulla VM
+1. Menu → **Compute Engine** → **VM Instances**
+2. Click **SSH** next to the `mdk-crypto-trading` VM
+3. A browser terminal opens directly on the VM
 
-> **Nota**: la sessione SSH via browser può essere instabile. Se crasha frequentemente, usare `gcloud` CLI dal terminale locale.
+> **Note**: the browser-based SSH session can be unstable. If it crashes frequently, use the `gcloud` CLI from a local terminal instead.
 
 ---
 
-## 3. Installazione Docker sulla VM
+## 3. Installing Docker on the VM
 
-Una volta dentro la VM via SSH, esegui questi comandi in sequenza:
+Once inside the VM via SSH, run these commands in sequence:
 
 ```bash
-# Aggiorna i pacchetti
+# Update packages
 sudo apt update && sudo apt upgrade -y
 
-# Installa le dipendenze necessarie
+# Install required dependencies
 sudo apt install -y ca-certificates curl gnupg lsb-release
 
-# Aggiungi la chiave GPG ufficiale di Docker
+# Add Docker's official GPG key
 sudo install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-# Aggiungi il repository Docker
+# Add the Docker repository
 echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
   https://download.docker.com/linux/ubuntu \
   $(lsb_release -cs) stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-# Installa Docker Engine e Docker Compose
+# Install Docker Engine and Docker Compose
 sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-# Aggiungi l'utente corrente al gruppo docker (evita di usare sudo ogni volta)
+# Add the current user to the docker group (avoids using sudo every time)
 sudo usermod -aG docker $USER
 
-# Ricarica la sessione per applicare il gruppo
+# Reload the session to apply the group change
 newgrp docker
 ```
 
-Verifica che Docker funzioni:
+Verify that Docker works:
 
 ```bash
 docker --version
@@ -126,31 +126,31 @@ docker compose version
 
 ---
 
-## 4. Primo Deploy
+## 4. First deployment
 
-### 4a. Clona la repo dalla VM
+### 4a. Clone the repo onto the VM
 
-**Metodo raccomandato — Deploy key SSH read-only:**
+**Recommended method — read-only SSH deploy key:**
 
-Una deploy key è una chiave SSH collegata a un singolo repo. Ha scope ristretto (solo quel repo), non lascia token nella shell history e si revoca istantaneamente dalla pagina GitHub.
+A deploy key is an SSH key linked to a single repo. It has a restricted scope (that repo only), leaves no token in the shell history, and can be revoked instantly from the GitHub page.
 
-1. **Sulla VM**, genera la chiave:
+1. **On the VM**, generate the key:
 
 ```bash
 ssh-keygen -t ed25519 -C "mdk-crypto-trading-deploy" -f ~/.ssh/github_mdk_crypto
 ```
 
-> Quando chiede una passphrase, **impostane una**. Per non reinserirla ogni volta: `eval "$(ssh-agent -s)" && ssh-add ~/.ssh/github_mdk_crypto`.
+> When it asks for a passphrase, **set one**. To avoid re-entering it every time: `eval "$(ssh-agent -s)" && ssh-add ~/.ssh/github_mdk_crypto`.
 
-2. Copia la chiave pubblica:
+2. Copy the public key:
 
 ```bash
 cat ~/.ssh/github_mdk_crypto.pub
 ```
 
-3. **Su GitHub**: repo → **Settings** → **Deploy keys** → **Add deploy key**. Incolla la chiave pubblica. Lascia "Allow write access" **disabilitato** (read-only è sufficiente).
+3. **On GitHub**: repo → **Settings** → **Deploy keys** → **Add deploy key**. Paste the public key. Leave "Allow write access" **disabled** (read-only is enough).
 
-4. **Sulla VM**, crea o aggiorna `~/.ssh/config`:
+4. **On the VM**, create or update `~/.ssh/config`:
 
 ```txt
 Host github.com
@@ -160,40 +160,40 @@ Host github.com
   IdentitiesOnly yes
 ```
 
-5. Clona via SSH:
+5. Clone via SSH:
 
 ```bash
-git clone git@github.com:<tuo-utente>/mdk_crypto_trading.git
+git clone git@github.com:<your-username>/mdk_crypto_trading.git
 cd mdk_crypto_trading
 ```
 
-### 4b. Crea il file `.env` sulla VM
+### 4b. Create the `.env` file on the VM
 
-Il file `.env` non viene mai committato su GitHub — va creato manualmente sulla VM:
+The `.env` file is never committed to GitHub — it must be created manually on the VM:
 
 ```bash
 nano .env
 ```
 
-Incolla il contenuto del tuo `.env` locale (le chiavi API, la configurazione, ecc.), poi salva con `Ctrl+O`, `Invio`, `Ctrl+X`.
+Paste the contents of your local `.env` (API keys, configuration, etc.), then save with `Ctrl+O`, `Enter`, `Ctrl+X`.
 
-Consulta [.env.example](../.env.example) per la lista completa delle variabili richieste.
+See [.env.example](../.env.example) for the complete list of required variables.
 
-### 4c. Avvia il container
+### 4c. Start the container
 
 ```bash
 docker compose up -d
 ```
 
-Docker scaricherà Python, installerà le dipendenze e avvierà il bot in background.
+Docker will download Python, install the dependencies and start the bot in the background.
 
-Controlla che stia girando:
+Check that it's running:
 
 ```bash
 docker compose ps
 ```
 
-Leggi i log in tempo reale:
+Read the logs in real time:
 
 ```bash
 docker compose logs -f
@@ -201,88 +201,88 @@ docker compose logs -f
 
 ---
 
-## 5. Aggiornamento (nuova versione del codice)
+## 5. Updating (new code version)
 
-Quando c'è una nuova versione del codice su GitHub:
+When there's a new code version on GitHub:
 
 ```bash
 cd mdk_crypto_trading
 
-# Scarica le ultime modifiche
+# Pull the latest changes
 git pull
 
-# Ricostruisci l'immagine e riavvia il container
+# Rebuild the image and restart the container
 docker compose up -d --build
 ```
 
-Il bot si ferma per pochi secondi durante il rebuild, poi riparte automaticamente.
+The bot stops for a few seconds during the rebuild, then restarts automatically.
 
 ---
 
-## 6. Comandi utili
+## 6. Useful commands
 
-### Stato del container
+### Container status
 
 ```bash
 docker compose ps
 ```
 
-### Log in tempo reale
+### Real-time logs
 
 ```bash
 docker compose logs -f
 ```
 
-### Log degli ultimi 100 eventi
+### Logs of the last 100 events
 
 ```bash
 docker compose logs --tail=100
 ```
 
-### Fermare il bot
+### Stopping the bot
 
 ```bash
 docker compose down
 ```
 
-Docker manda `SIGTERM` al container e attende fino a `stop_grace_period` (configurato a `60s` in `docker-compose.yaml`) prima di forzare `SIGKILL`. Il runner intercetta il segnale, completa il ciclo in corso, scrive il log "Shutdown" e invia la notifica Telegram di stop. I cicli LLM+Binance possono durare 30-40s: i 60s di grace period coprono tranquillamente il caso peggiore.
+Docker sends `SIGTERM` to the container and waits up to `stop_grace_period` (configured as `60s` in `docker-compose.yaml`) before forcing `SIGKILL`. The runner catches the signal, completes the current cycle, writes the "Shutdown" log and sends the stop notification via Telegram. LLM+Binance cycles can take 30-40s: the 60s grace period comfortably covers the worst case.
 
-### Riavviare il bot (senza rebuild)
+### Restarting the bot (without rebuilding)
 
 ```bash
 docker compose restart
 ```
 
-Questo è anche il comando da usare per **ripristinare un circuit breaker scattato**: dopo 3 errori identici consecutivi il `TradingRunner` sospende i cicli e invia la notifica Telegram `[ALARM] CIRCUIT BREAKER TRIPPED`. Il container resta vivo e healthy, ma non opera più finché non viene riavviato manualmente. Vedi `docs/observability.md` per i dettagli.
+This is also the command to use to **reset a tripped circuit breaker**: after 3 identical consecutive errors, `TradingRunner` suspends the cycles and sends the `[ALARM] CIRCUIT BREAKER TRIPPED` Telegram notification. The container stays alive and healthy, but stops operating until it is manually restarted. See `docs/observability.md` for details.
 
-### Controllare le risorse della VM
+### Checking VM resources
 
 ```bash
-# CPU e RAM
+# CPU and RAM
 htop
 
-# Spazio disco
+# Disk space
 df -h
 ```
 
-### Liberare spazio disco (pulizia Docker)
+### Freeing up disk space (Docker cleanup)
 
-Dopo più rebuild, Docker accumula immagini e layer inutilizzati che occupano diversi GB. Per rimuoverli tutti in una volta:
+After multiple rebuilds, Docker accumulates unused images and layers that take up several GB. To remove them all at once:
 
 ```bash
 docker system prune -a
 ```
 
-Chiede conferma prima di procedere. Non tocca il container attivo né i volumi con i dati del bot.
+It asks for confirmation before proceeding. It does not touch the running container or the volumes with the bot's data.
 
-Per vedere quanto spazio occupano log ed eventi del bot prima di decidere se pulirli:
+To see how much space the bot's logs and events take up before deciding whether to clean them:
 
 ```bash
 du -sh ~/mdk_crypto_trading/logs/
 du -sh ~/mdk_crypto_trading/data/
 ```
 
-Per ripartire da zero (cancella log, eventi JSONL, memoria del DM e performance reports):
+To start fresh (deletes logs, JSONL events, DM memory and performance reports):
 
 ```bash
 sudo rm -rf ~/mdk_crypto_trading/logs/events/
@@ -291,11 +291,11 @@ sudo rm -rf ~/mdk_crypto_trading/data/memory/
 sudo rm -f ~/mdk_crypto_trading/data/performance_reports/*.md
 ```
 
-### Scaricare log ed eventi in locale
+### Downloading logs and events locally
 
-I log e gli eventi sono creati da Docker come `root`. Per scaricarli serve creare un tarball con `sudo` dalla VM, poi trasferirlo in locale.
+Logs and events are created by Docker as `root`. To download them you need to create a tarball with `sudo` on the VM, then transfer it locally.
 
-**Dalla VM** (con l'utente che ha il progetto, es. `chief`):
+**On the VM** (with the user that owns the project, e.g. `<project-user>`):
 
 ```bash
 cd ~/mdk_crypto_trading
@@ -304,111 +304,111 @@ sudo chown $USER:$USER ~/logs_export.tar.gz
 exit
 ```
 
-**Se il tarball è stato creato da un utente diverso** (es. `chief`) da quello con cui ci si connette via SSH (es. `mardock`):
+**If the tarball was created by a different user** (e.g. `<project-user>`) than the one you connect with via SSH (e.g. `<ssh-user>`):
 
 ```bash
-sudo cp /home/chief/logs_export.tar.gz ~/
+sudo cp /home/<project-user>/logs_export.tar.gz ~/
 sudo chown $USER:$USER ~/logs_export.tar.gz
 ```
 
-**Dal Mac/PC locale**:
+**From your local Mac/PC**:
 
 ```bash
-gcloud compute scp --zone=europe-west1-b mdk-crypto-trading:/home/chief/logs_export.tar.gz ./
+gcloud compute scp --zone=europe-west1-b mdk-crypto-trading:/home/<project-user>/logs_export.tar.gz ./
 tar xzf logs_export.tar.gz -C logs/
 rm logs_export.tar.gz
 ```
 
-> **Nota**: `gcloud scp` si connette con l'utente di default (`mardock`), ma il tarball è nella home di `chief`. Usare il percorso assoluto `/home/chief/` evita l'errore "No such file or directory".
+> **Note**: `gcloud scp` connects with the default user (`<ssh-user>`), but the tarball is in `<project-user>`'s home directory. Using the absolute path `/home/<project-user>/` avoids the "No such file or directory" error.
 
-**Pulizia sulla VM** (rimuovere i tarball temporanei):
+**Cleanup on the VM** (removing temporary tarballs):
 
 ```bash
 rm ~/logs_export.tar.gz
-sudo rm -f /home/chief/logs_export.tar.gz
+sudo rm -f /home/<project-user>/logs_export.tar.gz
 ```
 
-> **Nota — upgrade da versione precedente**: se hai già file in `logs/` o `data/` creati dal vecchio container (che girava come `root`), esegui questo comando **una sola volta** sulla VM per allineare i permessi:
+> **Note — upgrading from a previous version**: if you already have files in `logs/` or `data/` created by the old container (which ran as `root`), run this command **once** on the VM to align the permissions:
 
   ```bash
   sudo chown -R 1000:1000 ~/mdk_crypto_trading/logs/ ~/mdk_crypto_trading/data/
   ```
 
-> Dopo questo passaggio non sarà più necessario `sudo` per nessuna operazione sui log.
+> After this step, `sudo` will no longer be needed for any log operation.
 
 ---
 
 ## 7. 🔍 Troubleshooting
 
-### Il container si avvia e si chiude subito
+### The container starts and immediately stops
 
-Controlla i log per vedere l'errore:
+Check the logs to see the error:
 
 ```bash
 docker compose logs
 ```
 
-Cause comuni:
+Common causes:
 
-- **Variabile mancante nel `.env`**: controlla che tutte le chiavi siano presenti
-- **Errore di sintassi nel `.env`**: nessun spazio intorno a `=`, nessuna virgolette se non necessarie
+- **Missing variable in `.env`**: check that all keys are present
+- **Syntax error in `.env`**: no spaces around `=`, no quotes unless necessary
 
-### Errore "permission denied" con Docker
+### "Permission denied" error with Docker
 
-Hai bisogno di riaprire la sessione SSH dopo aver aggiunto l'utente al gruppo `docker`:
+You need to reopen the SSH session after adding the user to the `docker` group:
 
 ```bash
 exit
-# riaccedi via SSH
+# log back in via SSH
 ```
 
-### Errore Binance "Service unavailable from a restricted location"
+### Binance error "Service unavailable from a restricted location"
 
-La VM si trova in una regione bloccata da Binance (es. Stati Uniti). Bisogna ricreare la VM in una regione europea come `europe-west1` (Belgio). Vedi sezione 1.
+The VM is in a region blocked by Binance (e.g. the United States). The VM must be recreated in a European region such as `europe-west1` (Belgium). See section 1.
 
-### Il bot non si connette a Binance o alle API AI
+### The bot doesn't connect to Binance or the AI APIs
 
-- Verifica che le chiavi API siano corrette nel `.env` sulla VM
-- Controlla che la VM abbia accesso a internet (test: `curl https://api.binance.com/api/v3/ping`)
-- Verifica che le chiavi Binance abbiano i permessi corretti (lettura + trading)
+- Verify that the API keys in the VM's `.env` are correct
+- Check that the VM has internet access (test: `curl https://api.binance.com/api/v3/ping`)
+- Verify that the Binance keys have the correct permissions (read + trading)
 
-### Il progetto non si trova nella home dell'utente SSH
+### The project is not in the SSH user's home directory
 
-Se il progetto è stato clonato da un utente diverso da quello con cui si accede via SSH, la cartella non sarà visibile nella propria home. Per trovare il progetto e operarci:
+If the project was cloned by a different user than the one used to log in via SSH, the folder will not be visible in your own home directory. To find the project and work with it:
 
 ```bash
-# Cerca la cartella del progetto
+# Search for the project folder
 sudo find /home -name "mdk_crypto_trading" -type d
 
-# Se il progetto è sotto un altro utente (es. chief), entra con quell'utente
-sudo su - chief
+# If the project is under another user (e.g. <project-user>), switch to that user
+sudo su - <project-user>
 cd mdk_crypto_trading
 ```
 
-Da qui si possono eseguire `git pull`, `docker compose up -d --build`, ecc. Per uscire e tornare al proprio utente:
+From here you can run `git pull`, `docker compose up -d --build`, etc. To exit and return to your own user:
 
 ```bash
 exit
 ```
 
-### Spazio disco esaurito
+### Disk space exhausted
 
-I log possono crescere nel tempo. Controlla con:
+Logs can grow over time. Check with:
 
 ```bash
 df -h
 du -sh mdk_crypto_trading/logs/
 ```
 
-Se necessario, svuota i log vecchi:
+If needed, clear old logs:
 
 ```bash
 find mdk_crypto_trading/logs/events/ -name "*.jsonl" -mtime +30 -delete
 ```
 
-### Errore "Permission denied" quando si cancellano log o memory
+### "Permission denied" error when deleting logs or memory
 
-I file in `logs/` e `data/` vengono creati dal container e appartengono all'utente di sistema sotto cui gira Docker sulla VM (tipicamente `ubuntu` su GCE). Il tuo utente SSH (`chief`) non è lo stesso proprietario, quindi serve `sudo` per cancellarli:
+Files in `logs/` and `data/` are created by the container and belong to the system user under which Docker runs on the VM (typically `ubuntu` on GCE). Your SSH user (`<project-user>`) is not the same owner, so `sudo` is needed to delete them:
 
 ```bash
 sudo rm -rf ~/mdk_crypto_trading/logs/events/
@@ -417,7 +417,7 @@ sudo rm -rf ~/mdk_crypto_trading/data/memory/
 sudo rm -f ~/mdk_crypto_trading/data/performance_reports/*.md
 ```
 
-Per verificare chi possiede i file in qualsiasi momento:
+To check who owns the files at any time:
 
 ```bash
 ls -la ~/mdk_crypto_trading/logs/
@@ -426,9 +426,9 @@ ls -la ~/mdk_crypto_trading/data/
 
 ---
 
-### La VM si riavvia e il bot non parte
+### The VM restarts and the bot doesn't start
 
-Con `restart: unless-stopped` in `docker-compose.yaml`, Docker riavvia il container automaticamente al reboot della VM. Se non succede, avvia Docker manualmente:
+With `restart: unless-stopped` in `docker-compose.yaml`, Docker automatically restarts the container when the VM reboots. If that doesn't happen, start Docker manually:
 
 ```bash
 sudo systemctl enable docker
@@ -439,39 +439,39 @@ docker compose up -d
 
 ---
 
-### Espandere il disco della VM
+### Expanding the VM disk
 
-Se il disco si avvicina all'80% di utilizzo, conviene portarlo da 10 GB a 20 GB. L'operazione non richiede di fermare il bot né di riavviare la VM.
+If the disk approaches 80% usage, it's worth growing it from 10 GB to 20 GB. This operation does not require stopping the bot or rebooting the VM.
 
-**1. Dal pannello GCP** (senza spegnere la VM):
+**1. From the GCP console** (without shutting down the VM):
 
-1. Vai su [console.cloud.google.com](https://console.cloud.google.com)
-2. Menu → **Compute Engine** → **Dischi**
-3. Clicca sul disco della VM (`mdk-crypto-trading`)
-4. Clicca **Modifica** → cambia la dimensione a `20` GB → **Salva**
+1. Go to [console.cloud.google.com](https://console.cloud.google.com)
+2. Menu → **Compute Engine** → **Disks**
+3. Click on the VM's disk (`mdk-crypto-trading`)
+4. Click **Edit** → change the size to `20` GB → **Save**
 
-**2. Dalla VM**, espandi la partizione per usare lo spazio aggiunto:
+**2. On the VM**, expand the partition to use the added space:
 
 ```bash
 sudo growpart /dev/sda 1
 sudo resize2fs /dev/sda1
 ```
 
-Verifica il risultato:
+Verify the result:
 
 ```bash
 df -h
 ```
 
-Il disco ora mostra ~20 GB disponibili. Il bot continua a girare senza interruzioni durante tutta la procedura.
+The disk now shows ~20 GB available. The bot keeps running without interruption throughout the whole procedure.
 
 ---
 
-## 📚 Riferimenti
+## 📚 References
 
-- **Codice**: `Dockerfile`, `docker-compose.yaml`
-- **Doc correlati**: `docs/config.md`
-- **Risorse esterne**:
+- **Code**: `Dockerfile`, `docker-compose.yaml`
+- **Related docs**: `docs/config.md`
+- **External resources**:
   - [Google Compute Engine](https://cloud.google.com/compute/docs)
   - [Docker Compose](https://docs.docker.com/compose/)
   - [gcloud CLI](https://cloud.google.com/sdk/docs/install)

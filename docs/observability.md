@@ -1,61 +1,61 @@
-# Observability - Sistema di Logging
+# Observability - Logging System
 
-MDK Crypto Trading produce due tipi di log complementari: un log testuale per il monitoraggio operativo e un log JSON strutturato per l'analisi delle decisioni ciclo per ciclo.
+MDK Crypto Trading produces two complementary types of logs: a text log for operational monitoring and a structured JSON log for cycle-by-cycle decision analysis.
 
 ---
 
-## 📋 Indice
+## 📋 Table of Contents
 
-- [Log testuale (`logs/mdk_crypto_trading.log`)](#log-testuale-logsmdk_crypto_tradinglog)
-- [Log eventi JSON (`logs/events/`)](#log-eventi-json-logsevents)
-- [Report performance (`data/performance_reports/`)](#report-performance-dataperformance_reports)
-- [Report news (`data/news_reports/`)](#report-news-datanews_reports)
-- [Heartbeat Docker (`data/heartbeat`)](#heartbeat-docker-dataheartbeat)
-- [Struttura della cartella `logs/`](#struttura-della-cartella-logs)
-- [🔧 Configurazione](#-configurazione)
-- [📱 Notifiche Telegram](#-notifiche-telegram)
-- [Come leggere i log eventi](#come-leggere-i-log-eventi)
+- [Text log (`logs/mdk_crypto_trading.log`)](#text-log-logsmdk_crypto_tradinglog)
+- [JSON event log (`logs/events/`)](#json-event-log-logsevents)
+- [Performance reports (`data/performance_reports/`)](#performance-reports-dataperformance_reports)
+- [News reports (`data/news_reports/`)](#news-reports-datanews_reports)
+- [Docker heartbeat (`data/heartbeat`)](#docker-heartbeat-dataheartbeat)
+- [`logs/` folder structure](#logs-folder-structure)
+- [🔧 Configuration](#-configuration)
+- [📱 Telegram notifications](#-telegram-notifications)
+- [How to read the event logs](#how-to-read-the-event-logs)
 - [🧪 Testing](#-testing)
-- [📚 Riferimenti](#-riferimenti)
+- [📚 References](#-references)
 
 ---
 
-## Log testuale (`logs/mdk_crypto_trading.log`)
+## Text log (`logs/mdk_crypto_trading.log`)
 
-Output leggibile destinato al monitoraggio in tempo reale e al debug.
+Human-readable output intended for real-time monitoring and debugging.
 
-- **Console**: output colorato tramite Rich (o StreamHandler come fallback). I traceback Rich sono disabilitati (`rich_tracebacks=False`) per mantenere la console Docker compatta; il traceback completo è sempre presente nel file di log.
-- **File**: `logs/mdk_crypto_trading.log` con rotazione automatica
-  - Rotazione al raggiungimento di 5 MB
-  - Vengono mantenuti gli ultimi 5 file storici (`.log.1`, `.log.2`, ecc.)
-  - Encoding UTF-8
+- **Console**: colored output via Rich (or StreamHandler as fallback). Rich tracebacks are disabled (`rich_tracebacks=False`) to keep the Docker console compact; the full traceback is always present in the log file.
+- **File**: `logs/mdk_crypto_trading.log` with automatic rotation
+  - Rotates upon reaching 5 MB
+  - The last 5 historical files are kept (`.log.1`, `.log.2`, etc.)
+  - UTF-8 encoding
 
-**Formato delle righe:**
+**Line format:**
 
 ```log
-2026-03-24 14:30:00,123 | INFO | mdk_crypto_trading | Messaggio di esempio
+2026-03-24 14:30:00,123 | INFO | mdk_crypto_trading | Example message
 ```
 
-**Livelli disponibili** (configurabile via `LOG_LEVEL` nel `.env`):
+**Available levels** (configurable via `LOG_LEVEL` in `.env`):
 
-| Livello   | Quando usarlo                                     |
-|-----------|---------------------------------------------------|
-| `DEBUG`   | Dettagli interni, utile durante lo sviluppo       |
-| `INFO`    | Flusso operativo normale (default)                |
-| `WARNING` | Situazioni anomale ma non bloccanti               |
-| `ERROR`   | Errori che impediscono il completamento del ciclo |
+| Level     | When to use it                                |
+|-----------|-----------------------------------------------|
+| `DEBUG`   | Internal details, useful during development   |
+| `INFO`    | Normal operational flow (default)             |
+| `WARNING` | Anomalous but non-blocking situations         |
+| `ERROR`   | Errors that prevent the cycle from completing |
 
 ---
 
-## Log eventi JSON (`logs/events/`)
+## JSON event log (`logs/events/`)
 
-Log strutturato che registra le decisioni di ogni ciclo operativo in formato machine-readable.
+Structured log that records the decisions of every operational cycle in a machine-readable format.
 
-- Un file `.jsonl` per giorno (es. `2026-03-24.jsonl`)
-- Ogni riga è un oggetto JSON autonomo (formato JSON Lines)
-- La cartella viene creata automaticamente se non esiste
+- One `.jsonl` file per day (e.g. `2026-03-24.jsonl`)
+- Each line is a standalone JSON object (JSON Lines format)
+- The folder is created automatically if it doesn't exist
 
-### Ciclo completato con successo
+### Cycle completed successfully
 
 ```json
 {
@@ -70,7 +70,7 @@ Log strutturato che registra le decisioni di ogni ciclo operativo in formato mac
 }
 ```
 
-### Ciclo fallito con errore
+### Cycle failed with an error
 
 ```json
 {
@@ -81,16 +81,16 @@ Log strutturato che registra le decisioni di ogni ciclo operativo in formato mac
   "trade_proposal": { "action": "BUY", "..." : "..." },
   "risk_assessment": null,
   "execution_report": null,
-  "error": "Risk Manager failed: Risposta vuota dal provider",
+  "error": "Risk Manager failed: Empty response from provider",
   "correlation_id": "a1b2c3d4"
 }
 ```
 
-Il campo `correlation_id` è un token esadecimale di 8 caratteri generato dal runner al momento dell'eccezione. Permette di collegare il record JSONL, la riga `ERROR` nel log testuale (che include il traceback completo) e la notifica Telegram di errore, senza esporre il dettaglio dell'eccezione fuori dai log interni.
+The `correlation_id` field is an 8-character hexadecimal token generated by the runner at the moment of the exception. It allows linking the JSONL record, the `ERROR` line in the text log (which includes the full traceback) and the error Telegram notification, without exposing the exception's detail outside the internal logs.
 
-Se l'errore avviene a metà del workflow (es. Risk Manager fallisce dopo che Market Analyst e Decision Maker hanno già prodotto i loro output), i campi `market_analysis`, `trade_proposal` e/o `risk_assessment` contengono i risultati parziali già ottenuti per consentire il debug post-mortem. Gli step non ancora raggiunti restano a `null`. Per gli errori avvenuti fuori dal workflow (es. fetch market data) tutti e quattro i campi restano a `null`.
+If the error occurs midway through the workflow (e.g. the Risk Manager fails after the Market Analyst and Decision Maker have already produced their outputs), the `market_analysis`, `trade_proposal` and/or `risk_assessment` fields contain the partial results already obtained, to allow for post-mortem debugging. Steps not yet reached remain `null`. For errors occurring outside the workflow (e.g. fetching market data), all four fields remain `null`.
 
-### Ciclo skippato dal pre-check deterministico
+### Cycle skipped by the deterministic pre-check
 
 ```json
 {
@@ -98,7 +98,7 @@ Se l'errore avviene a metà del workflow (es. Risk Manager fallisce dopo che Mar
   "symbol": "BTCUSDC",
   "trading_mode": "DEMO",
   "cycle_type": "skipped",
-  "reason": "Contesto invariato rispetto al ciclo precedente",
+  "reason": "Context unchanged from the previous cycle",
   "snapshot": {
     "price": 84521.30,
     "rsi": 54.2,
@@ -111,54 +111,54 @@ Se l'errore avviene a metà del workflow (es. Risk Manager fallisce dopo che Mar
 }
 ```
 
-I record con `cycle_type: "skipped"` non contengono i payload degli agenti (`market_analysis`, `trade_proposal`, ecc.) perché la catena LLM non è stata eseguita. Vengono generati da `EventLogger.log_skipped_cycle()` quando il `CycleSkipHandler` decide di saltare il ciclo. Configurazione dello skip in `config/cycle_skip.yaml` (vedi `docs/config.md`).
+Records with `cycle_type: "skipped"` do not contain the agent payloads (`market_analysis`, `trade_proposal`, etc.) because the LLM chain was not run. They are generated by `EventLogger.log_skipped_cycle()` when the `CycleSkipHandler` decides to skip the cycle. Skip configuration in `config/cycle_skip.yaml` (see `docs/config.md`).
 
 ---
 
-## Report performance (`data/performance_reports/`)
+## Performance reports (`data/performance_reports/`)
 
-Il `Performance Reviewer` genera **un report markdown al giorno** sintetico e leggibile dal Chief, salvato in `data/performance_reports/YYYY-MM-DD.md`.
+The `Performance Reviewer` generates **one markdown report per day**, concise and readable by the system owner, saved in `data/performance_reports/YYYY-MM-DD.md`.
 
-Ogni report contiene:
+Each report contains:
 
-- Sintesi testuale del Reviewer (giudizio LLM, max 400 caratteri)
-- Aderenza al mandato: `ALIGNED`, `DRIFTING` o `MISALIGNED`
-- Mandato operativo di riferimento (drawdown massimo, orizzonte, posizione massima)
-- **KPI ufficiali** (sezione `## KPI`): P&L cumulato su tutti i trade, win rate, vincita/perdita media, rendimento strategia vs buy-and-hold, max drawdown nel periodo. I KPI basati sull'equity (`strategy_return_pct`, `buy_and_hold_return_pct`, `max_drawdown_pct`) mostrano `n/d` se lo storico `equity_usdc` non è ancora disponibile per il periodo (record precedenti alla v1.27.0).
-- Statistiche deterministiche calcolate in Python (zero LLM): cicli totali, HOLD ratio, BUY/SELL eseguiti, SELL falliti, segnali forti ignorati, giorni senza trade eseguito, **stato posizione aperta** (`has_open_position`), P&L realizzato e medio percentuale degli ultimi 10 trade
-- 1-3 suggerimenti concreti per il Decision Maker
+- The Reviewer's textual summary (LLM assessment, max 400 characters)
+- Mandate adherence: `ALIGNED`, `DRIFTING` or `MISALIGNED`
+- Reference operational mandate (maximum drawdown, horizon, maximum position)
+- **Official KPIs** (`## KPI` section): cumulative P&L across all trades, win rate, average win/loss, strategy return vs buy-and-hold, max drawdown in the period. Equity-based KPIs (`strategy_return_pct`, `buy_and_hold_return_pct`, `max_drawdown_pct`) show `n/a` if the `equity_usdc` history is not yet available for the period (records predating v1.27.0).
+- Deterministic statistics computed in Python (zero LLM): total cycles, HOLD ratio, executed BUY/SELL, failed SELLs, ignored strong signals, days without an executed trade, **open position status** (`has_open_position`), realized P&L and average percentage of the last 10 trades
+- 1-3 concrete suggestions for the Decision Maker
 
-Questo stesso file viene letto dal DM nei cicli successivi (campo `latest_performance_review`). La cartella `data/` è ignorata da git: i report restano locali alla VM.
+This same file is read by the DM in subsequent cycles (`latest_performance_review` field). The `data/` folder is ignored by git: reports remain local to the VM.
 
-Il trigger è giornaliero: se il file del giorno esiste già, il Reviewer non viene chiamato (zero costo LLM).
-
----
-
-## Report news (`data/news_reports/`)
-
-Il `News Reviewer` genera **un report markdown ogni 12 ore** (gate basato sul file più recente), salvato in `data/news_reports/YYYY-MM-DD_HH-MM.md`.
-
-Il formato del nome file usa `_` come separatore tra data e ora (Windows-safe, niente `:`) ed è ordinabile cronologicamente. Esempio: `2026-06-15_13-30.md`.
-
-Ogni report contiene:
-
-- Timestamp UTC, simbolo e finestra analizzata (ultime N ore)
-- **Sentiment complessivo**: `BULLISH`, `BEARISH` o `NEUTRAL`
-- Sintesi testuale del digest (`## Sintesi`)
-- Lista degli eventi chiave rilevanti (`## Eventi chiave`)
-- Lista dei risk flag segnalati (`## Risk flag`)
-
-Se non ci sono articoli disponibili, il runner scrive comunque un report `NEUTRAL` senza chiamare il LLM (evita chiamate inutili e fa avanzare il gate per il ciclo successivo).
-
-Il trigger è basato sull'intervallo: se il file più recente è stato scritto meno di `interval_hours` fa (configurabile in `config/news.yaml`), il runner salta la review senza chiamare il client. La cartella `data/` è ignorata da git: i report restano locali alla VM.
-
-Il contenuto dell'ultimo report viene letto dal runner ad ogni ciclo tramite `NewsReviewRunner.load_latest_review()` e passato al Decision Maker come campo `latest_news_review` nel `DecisionMakerInput`, sul modello di `latest_performance_review`.
+The trigger is daily: if today's file already exists, the Reviewer is not called (zero LLM cost).
 
 ---
 
-## Memoria decisionale (`data/memory/`)
+## News reports (`data/news_reports/`)
 
-La memoria del Decision Maker è un file JSONL per simbolo (es. `BTCUSDC.jsonl`). Ogni riga è un record JSON corrispondente a un ciclo completato. I campi fissi sono:
+The `News Reviewer` generates **one markdown report every 12 hours** (gate based on the most recent file), saved in `data/news_reports/YYYY-MM-DD_HH-MM.md`.
+
+The filename format uses `_` as the separator between date and time (Windows-safe, no `:`) and is chronologically sortable. Example: `2026-06-15_13-30.md`.
+
+Each report contains:
+
+- UTC timestamp, symbol and analyzed window (last N hours)
+- **Overall sentiment**: `BULLISH`, `BEARISH` or `NEUTRAL`
+- Textual summary of the digest (`## Summary`)
+- List of relevant key events (`## Key events`)
+- List of flagged risk flags (`## Risk flags`)
+
+If no articles are available, the runner still writes a `NEUTRAL` report without calling the LLM (avoids unnecessary calls and advances the gate for the next cycle).
+
+The trigger is interval-based: if the most recent file was written less than `interval_hours` ago (configurable in `config/news.yaml`), the runner skips the review without calling the client. The `data/` folder is ignored by git: reports remain local to the VM.
+
+The content of the latest report is read by the runner on every cycle via `NewsReviewRunner.load_latest_review()` and passed to the Decision Maker as the `latest_news_review` field in `DecisionMakerInput`, following the same pattern as `latest_performance_review`.
+
+---
+
+## Decision memory (`data/memory/`)
+
+The Decision Maker's memory is one JSONL file per symbol (e.g. `BTCUSDC.jsonl`). Each line is a JSON record corresponding to a completed cycle. The fixed fields are:
 
 ```json
 {
@@ -175,68 +175,68 @@ La memoria del Decision Maker è un file JSONL per simbolo (es. `BTCUSDC.jsonl`)
 }
 ```
 
-Dalla **v1.27.0** ogni record include anche il campo opzionale:
+Since **v1.27.0**, every record also includes the optional field:
 
-| Campo          | Tipo    | Descrizione                                                                                                                                        |
-|----------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| `equity_usdc`  | `float` | Valore totale del portafoglio al momento del ciclo: cash USDC + valore crypto al prezzo corrente. Assente nei record prodotti prima della v1.27.0. |
+| Field          | Type    | Description                                                                                                                               |
+|----------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| `equity_usdc`  | `float` | Total portfolio value at the time of the cycle: USDC cash + crypto value at the current price. Absent in records produced before v1.27.0. |
 
-Questo campo è usato dal `PerformanceStats` per calcolare i KPI che richiedono una serie storica del valore del portafoglio (`strategy_return_pct`, `buy_and_hold_return_pct`, `max_drawdown_pct`). I record privi di `equity_usdc` vengono semplicemente ignorati nel calcolo di questi KPI.
+This field is used by `PerformanceStats` to compute the KPIs that require a historical series of the portfolio value (`strategy_return_pct`, `buy_and_hold_return_pct`, `max_drawdown_pct`). Records lacking `equity_usdc` are simply ignored when computing these KPIs.
 
 ---
 
-## Heartbeat Docker (`data/heartbeat`)
+## Docker heartbeat (`data/heartbeat`)
 
-Il runner scrive il file `data/heartbeat` come **prima operazione di ogni ciclo** (inclusi i cicli skippati dal `CycleSkipHandler`). Il contenuto è il timestamp UTC ISO 8601 dell'ultimo ciclo avviato, ad esempio:
+The runner writes the `data/heartbeat` file as the **first operation of every cycle** (including cycles skipped by the `CycleSkipHandler`). The content is the ISO 8601 UTC timestamp of the last cycle started, for example:
 
 ```text
 2026-04-29T14:30:00+00:00
 ```
 
-Questo file non ha valore di osservabilità diretta per il Chief, ma è usato dal `HEALTHCHECK` Docker: se il file non viene aggiornato entro 180 minuti, Docker marca il container come `unhealthy` (visibile con `docker compose ps`).
+This file has no direct observability value for the system owner, but is used by the Docker `HEALTHCHECK`: if the file is not updated within 180 minutes, Docker marks the container as `unhealthy` (visible with `docker compose ps`).
 
-> **Nota**: il file viene creato alla prima esecuzione. Se non esiste ancora (container appena avviato), Docker applica il `start-period` di 5 minuti prima di iniziare i controlli.
+> **Note**: the file is created on the first run. If it doesn't exist yet (container just started), Docker applies the 5-minute `start-period` before beginning the checks.
 
 ---
 
-## Struttura della cartella `logs/`
+## `logs/` folder structure
 
 ```text
 logs/
-├── mdk_crypto_trading.log          # Log testuale con rotazione
-├── mdk_crypto_trading.log.1        # Backup rotazione (più recente)
+├── mdk_crypto_trading.log          # Text log with rotation
+├── mdk_crypto_trading.log.1        # Rotation backup (most recent)
 ├── mdk_crypto_trading.log.2        # ...
 └── events/
-    ├── 2026-03-24.jsonl            # Un file al giorno
+    ├── 2026-03-24.jsonl            # One file per day
     └── 2026-03-25.jsonl
 ```
 
 ---
 
-## 🔧 Configurazione
+## 🔧 Configuration
 
-| Variabile   | Dove       | Default  | Descrizione                  |
-|-------------|------------|----------|------------------------------|
-| `LOG_LEVEL` | `.env`     | `INFO`   | Livello minimo dei log       |
+| Variable    | Where  | Default | Description       |
+|-------------|--------|---------|-------------------|
+| `LOG_LEVEL` | `.env` | `INFO`  | Minimum log level |
 
-La cartella `logs/` è già presente nel `.gitignore` e non viene tracciata.
+The `logs/` folder is already in `.gitignore` and is not tracked.
 
 ---
 
-## 📱 Notifiche Telegram
+## 📱 Telegram notifications
 
-Il sistema invia notifiche opzionali via Telegram Bot API. Se `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` non sono configurati nel `.env`, le notifiche sono silenziosamente disabilitate.
+The system sends optional notifications via the Telegram Bot API. If `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are not configured in `.env`, notifications are silently disabled.
 
-| Notifica                          | Quando scatta                                                                                                                                           |
-|-----------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 🚀 **Bot STARTED**                | All'avvio del runner                                                                                                                                    |
-| ✅ **Order EXECUTED**             | Quando un ordine viene eseguito su Binance                                                                                                              |
-| ⚠️ **Cycle ERROR**                | Se un ciclo operativo fallisce con un'eccezione                                                                                                         |
-| 🚨 **CIRCUIT BREAKER TRIPPED**    | Dopo 3 errori identici consecutivi (vedi sezione "Circuit breaker")                                                                                     |
-| 🔴 **[ALARM] POSIZIONE SCOPERTA** | Se un `CANCEL_AND_REPLACE` cancella l'ordine ma la sostituzione fallisce — la posizione rimane senza protezione e richiede intervento manuale immediato |
-| 🛑 **Bot STOPPED**                | Allo stop del sistema (Ctrl+C o `docker stop`)                                                                                                          |
+| Notification                        | When it triggers                                                                                                                                    |
+|-------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| 🚀 **Bot STARTED**                  | When the runner starts                                                                                                                              |
+| ✅ **Order EXECUTED**               | When an order is executed on Binance                                                                                                                |
+| ⚠️ **Cycle ERROR**                  | If an operational cycle fails with an exception                                                                                                     |
+| 🚨 **CIRCUIT BREAKER TRIPPED**      | After 3 identical consecutive errors (see the "Circuit breaker" section)                                                                            |
+| 🔴 **[ALARM] UNPROTECTED POSITION** | If a `CANCEL_AND_REPLACE` cancels the order but the replacement fails — the position is left unprotected and requires immediate manual intervention |
+| 🛑 **Bot STOPPED**                  | When the system stops (Ctrl+C or `docker stop`)                                                                                                     |
 
-**Esempio notifica ordine eseguito (MARKET):**
+**Example executed order notification (MARKET):**
 
 ```text
 ✅ Order EXECUTED
@@ -251,7 +251,7 @@ Symbol: BTCUSDC
 Mode: DEMO
 ```
 
-**Esempio notifica ordine eseguito (SELL_OCO):**
+**Example executed order notification (SELL_OCO):**
 
 ```text
 ✅ Order EXECUTED
@@ -267,59 +267,59 @@ Symbol: BTCUSDC
 Mode: DEMO
 ```
 
-**Esempio notifica posizione scoperta:**
+**Example unprotected position notification:**
 
 ```text
-[ALARM] POSIZIONE SCOPERTA
+[ALARM] UNPROTECTED POSITION
 
 Symbol: BTCUSDC
 Mode: REAL
-Ordine cancellato: 123456789
+Cancelled order: 123456789
 
-Stop loss / take profit non più attivo.
-Intervenire manualmente sull'exchange.
+Stop loss / take profit no longer active.
+Manual intervention required on the exchange.
 ```
 
-**Esempio notifica errore ciclo:**
+**Example cycle error notification:**
 
 ```text
 ⚠️ Cycle ERROR
 
 Symbol: BTCUSDC
-Categoria: API esterna non disponibile
+Category: External API unavailable
 Error ID: a1b2c3d4
 ```
 
-Le categorie possibili sono:
+The possible categories are:
 
-| Categoria                     | Causa tipica                            | Azione                                                   |
-|-------------------------------|-----------------------------------------|----------------------------------------------------------|
-| `API esterna non disponibile` | Binance 502/503, Anthropic 529, timeout | Nessuna — il bot si recupera da solo al ciclo successivo |
-| `Rate limit API`              | Codice 429 da qualsiasi provider        | Nessuna — il bot riprova automaticamente                 |
-| `Risposta LLM non valida`     | JSON malformato o vuoto da un modello   | Monitorare — se ricorrente, indagare                     |
-| `Errore interno`              | Bug nel codice, configurazione errata   | Controllare i log con l'Error ID                         |
+| Category                   | Typical cause                           | Action                                               |
+|----------------------------|-----------------------------------------|------------------------------------------------------|
+| `External API unavailable` | Binance 502/503, Anthropic 529, timeout | None — the bot recovers on its own on the next cycle |
+| `API rate limit`           | Code 429 from any provider              | None — the bot retries automatically                 |
+| `Invalid LLM response`     | Malformed or empty JSON from a model    | Monitor — investigate if recurring                   |
+| `Internal error`           | Bug in the code, misconfiguration       | Check the logs using the Error ID                    |
 
-La notifica non include `str(exc)` per evitare leak di dati sensibili (es. chiavi, URL con token). Il dettaglio completo dell'eccezione — incluso il traceback — è disponibile nel log file locale (`mdk_crypto_trading.log`) cercando la riga con `[cid=a1b2c3d4]`.
+The notification does not include `str(exc)` to avoid leaking sensitive data (e.g. keys, URLs with tokens). The full exception detail — including the traceback — is available in the local log file (`mdk_crypto_trading.log`) by searching for the line with `[cid=a1b2c3d4]`.
 
-**Configurazione** (nel `.env`):
+**Configuration** (in `.env`):
 
-| Variabile            | Descrizione                                        |
-|----------------------|----------------------------------------------------|
-| `TELEGRAM_BOT_TOKEN` | Token del bot Telegram (fornito da @BotFather)     |
-| `TELEGRAM_CHAT_ID`   | ID della chat o del canale che riceve le notifiche |
+| Variable             | Description                                           |
+|----------------------|-------------------------------------------------------|
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token (provided by @BotFather)           |
+| `TELEGRAM_CHAT_ID`   | ID of the chat or channel receiving the notifications |
 
 ---
 
-## Come leggere i log eventi
+## How to read the event logs
 
-Per visualizzare i log JSON in modo leggibile da terminale:
+To view the JSON logs in a readable format from the terminal:
 
 ```bash
-# Ultimo ciclo registrato oggi
+# Last cycle logged today
 python -c "import json; print(json.dumps(json.loads(open('logs/events/2026-03-24.jsonl').readlines()[-1]), indent=2))"
 ```
 
-Per analisi più avanzate, i file `.jsonl` possono essere caricati con `pandas`:
+For more advanced analysis, the `.jsonl` files can be loaded with `pandas`:
 
 ```python
 import pandas as pd
@@ -330,32 +330,32 @@ df = pd.read_json("logs/events/2026-03-24.jsonl", lines=True)
 
 ## 🚨 Circuit breaker
 
-Il `CircuitBreaker` (`src/core/circuit_breaker.py`) protegge il bot da loop di errori sistematici. Quando lo stesso errore (stesso tipo di eccezione + stesso messaggio) si verifica **3 volte di seguito**, il breaker scatta e il `TradingRunner`:
+The `CircuitBreaker` (`src/core/circuit_breaker.py`) protects the bot from loops of systematic errors. When the same error (same exception type + same message) occurs **3 times in a row**, the breaker trips and `TradingRunner`:
 
-- smette di eseguire `_run_single_cycle` (nessuna chiamata LLM, nessun ordine Binance)
-- continua ad aggiornare il file `data/heartbeat` (il container resta "healthy")
-- invia una notifica Telegram **una sola volta**, nel momento in cui scatta
-- logga un reminder nel log testuale **ogni ora** finché resta in pausa
+- stops executing `_run_single_cycle` (no LLM calls, no Binance orders)
+- keeps updating the `data/heartbeat` file (the container stays "healthy")
+- sends a Telegram notification **only once**, at the moment it trips
+- logs a reminder in the text log **every hour** while it remains paused
 
-Il breaker si resetta automaticamente dopo un ciclo riuscito (purché non sia ancora scattato): un errore transitorio non lo fa partire. Una volta scattato però NON si ripristina da solo: è una scelta voluta per forzare l'intervento umano.
+The breaker resets automatically after a successful cycle (as long as it hasn't tripped yet): a transient error does not trip it. Once tripped, however, it does NOT reset on its own: this is a deliberate choice to force human intervention.
 
-**Come ripristinare:** riavvia il container.
+**How to reset it:** restart the container.
 
 ```bash
 docker compose restart trading-bot
 ```
 
-**Signature degli errori:** la signature usata per il confronto è `f"{type(exc).__name__}:{str(exc)}"`. Per le `CycleExecutionError` (errori sollevati da `TradingWorkflow`) la signature usa l'eccezione originale (`exc.original`), non il wrapper.
+**Error signature:** the signature used for comparison is `f"{type(exc).__name__}:{str(exc)}"`. For `CycleExecutionError` (errors raised by `TradingWorkflow`), the signature uses the original exception (`exc.original`), not the wrapper.
 
-**Esempio notifica Telegram:**
+**Example Telegram notification:**
 
 ```text
 [ALARM] CIRCUIT BREAKER TRIPPED
 
 Symbol: BTCUSDC
-Errori consecutivi: 3
-Ultimo errore: LlmError:Risposta vuota dal provider OpenAI
-Bot in pausa: richiede riavvio manuale (docker compose restart trading-bot)
+Consecutive errors: 3
+Last error: LlmError:Empty response from provider OpenAI
+Bot paused: requires manual restart (docker compose restart trading-bot)
 ```
 
 ---
@@ -369,8 +369,8 @@ pytest tests/utils/test_event_logger.py -v
 
 ---
 
-## 📚 Riferimenti
+## 📚 References
 
-- **Codice**: `src/utils/logging_config.py`, `src/utils/event_logger.py`, `src/utils/telegram_notifier.py`, `src/utils/log_utils.py`
-- **Test**: `tests/utils/test_logging_config.py`, `tests/utils/test_event_logger.py`, `tests/utils/test_telegram_notifier.py`
-- **Doc correlati**: `docs/architecture.md`, `docs/config.md`, `docs/kpi.md`
+- **Code**: `src/utils/logging_config.py`, `src/utils/event_logger.py`, `src/utils/telegram_notifier.py`, `src/utils/log_utils.py`
+- **Tests**: `tests/utils/test_logging_config.py`, `tests/utils/test_event_logger.py`, `tests/utils/test_telegram_notifier.py`
+- **Related docs**: `docs/architecture.md`, `docs/config.md`, `docs/kpi.md`

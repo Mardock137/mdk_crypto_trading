@@ -1,77 +1,77 @@
-# Endpoint API
+# API Endpoints
 
-Elenco degli endpoint API esterni utilizzati da MDK Crypto Trading, raggruppati per provider.
+List of external API endpoints used by MDK Crypto Trading, grouped by provider.
 
 ---
 
-## 📋 Indice
+## 📋 Table of Contents
 
 - [Anthropic](#anthropic)
 - [OpenAI](#openai)
 - [Gemini](#gemini)
 - [Binance](#binance)
 - [Alpha Vantage](#alpha-vantage)
-- [📚 Riferimenti](#-riferimenti)
+- [📚 References](#-references)
 
 ---
 
 ## Anthropic
 
-- `POST https://api.anthropic.com/v1/messages` → Genera una risposta testuale o JSON strutturato da Claude (Messages API). Usato da `AnthropicInterface` con parametro `system` top-level e supporto `output_config` per JSON schema.
+- `POST https://api.anthropic.com/v1/messages` → Generates a text response or structured JSON from Claude (Messages API). Used by `AnthropicInterface` with a top-level `system` parameter and `output_config` support for JSON schema.
 
 ---
 
 ## OpenAI
 
-- `POST https://api.openai.com/v1/chat/completions` → Genera una risposta testuale o JSON da GPT (Chat Completions API). Usato da `OpenAiInterface` con supporto per `response_format: json_object`.
+- `POST https://api.openai.com/v1/chat/completions` → Generates a text or JSON response from GPT (Chat Completions API). Used by `OpenAiInterface` with support for `response_format: json_object`.
 
 ---
 
 ## Gemini
 
-- `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` → Genera una risposta testuale strutturata da Gemini.
+- `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` → Generates a structured text response from Gemini.
 
 ---
 
 ## Binance
 
-- `GET https://api.binance.com/api/v3/order` → Mostra i dettagli di un ordine specifico.
-- `GET https://api.binance.com/api/v3/exchangeInfo` → Restituisce le informazioni generali dell'exchange e le regole dei simboli.
-- `GET https://api.binance.com/api/v3/time` → Restituisce l'ora del server Binance.
-- `GET https://api.binance.com/api/v3/account` → Mostra il saldo dell'account Binance.
-- `GET https://api.binance.com/api/v3/myTrades?symbol=BTCUSDC` → Mostra lo storico dei trade.
-- `GET https://api.binance.com/api/v3/openOrders?symbol=BTCUSDC` → Mostra gli ordini aperti.
-- `GET https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDC` → Prezzo attuale del simbolo.
-- `GET https://api.binance.com/api/v3/depth?symbol=BTCUSDC&limit=100` → Mostra il livello degli ordini (bid/ask).
-- `GET https://api.binance.com/api/v3/trades?symbol=BTCUSDC&limit=50` → Mostra le ultime transazioni avvenute sul mercato.
-- `GET https://api.binance.com/api/v3/avgPrice?symbol=BTCUSDC` → Prezzo medio degli ultimi minuti.
-- `GET https://api.binance.com/api/v3/klines?symbol=BTCUSDC&interval=1h` → Klines / Candlestick (dati storici).
-- `GET https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDC` → Statistiche ultime 24h.
+- `GET https://api.binance.com/api/v3/order` → Shows the details of a specific order.
+- `GET https://api.binance.com/api/v3/exchangeInfo` → Returns general exchange information and symbol rules.
+- `GET https://api.binance.com/api/v3/time` → Returns the Binance server time.
+- `GET https://api.binance.com/api/v3/account` → Shows the Binance account balance.
+- `GET https://api.binance.com/api/v3/myTrades?symbol=BTCUSDC` → Shows the trade history.
+- `GET https://api.binance.com/api/v3/openOrders?symbol=BTCUSDC` → Shows open orders.
+- `GET https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDC` → Current price of the symbol.
+- `GET https://api.binance.com/api/v3/depth?symbol=BTCUSDC&limit=100` → Shows the order book depth (bid/ask).
+- `GET https://api.binance.com/api/v3/trades?symbol=BTCUSDC&limit=50` → Shows the latest market trades.
+- `GET https://api.binance.com/api/v3/avgPrice?symbol=BTCUSDC` → Average price over the last few minutes.
+- `GET https://api.binance.com/api/v3/klines?symbol=BTCUSDC&interval=1h` → Klines / Candlestick (historical data).
+- `GET https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDC` → Last 24h statistics.
 
-- `POST https://api.binance.com/api/v3/order` → Crea un ordine.
-- `POST https://api.binance.com/api/v3/order` (x2) → Per `CANCEL_AND_REPLACE_ORDER`: prima `DELETE /order` per cancellare l'ordine esistente, poi `POST /order` per piazzare il nuovo ordine limit.
-- `POST https://api.binance.com/api/v3/orderList/oco` → Piazza un ordine OCO SELL (`SELL_OCO`): Take Profit LIMIT_MAKER + Stop Loss STOP_LOSS_LIMIT abbinati sulla stessa quantità. Quando uno scatta, l'altro viene cancellato automaticamente da Binance.
+- `POST https://api.binance.com/api/v3/order` → Creates an order.
+- `POST https://api.binance.com/api/v3/order` (x2) → For `CANCEL_AND_REPLACE_ORDER`: first `DELETE /order` to cancel the existing order, then `POST /order` to place the new limit order.
+- `POST https://api.binance.com/api/v3/orderList/oco` → Places a SELL OCO order (`SELL_OCO`): Take Profit LIMIT_MAKER + Stop Loss STOP_LOSS_LIMIT paired on the same quantity. When one triggers, the other is automatically cancelled by Binance.
 
-- `DELETE https://api.binance.com/api/v3/order` → Cancella un ordine già piazzato.
+- `DELETE https://api.binance.com/api/v3/order` → Cancels an already placed order.
 
 ---
 
 ## Alpha Vantage
 
-- `GET https://www.alphavantage.co/query?function=NEWS_SENTIMENT` → Scarica notizie crypto con sentiment score. Usato da `AlphaVantageClient` con parametri `topics`, `tickers`, `time_from`, `limit`, `sort`. La risposta `200` può contenere un campo `Information`, `Note` o `Error Message` in caso di rate limit o chiave non valida: questi casi vengono rilevati e sollevati come `NewsError`.
+- `GET https://www.alphavantage.co/query?function=NEWS_SENTIMENT` → Downloads crypto news with sentiment score. Used by `AlphaVantageClient` with `topics`, `tickers`, `time_from`, `limit`, `sort` parameters. The `200` response may contain an `Information`, `Note` or `Error Message` field in case of rate limiting or an invalid key: these cases are detected and raised as `NewsError`.
 
 ---
 
-## 📚 Riferimenti
+## 📚 References
 
-- **Codice**:
+- **Code**:
   - `src/integrations/llm_interfaces/anthropic_interface.py`
   - `src/integrations/llm_interfaces/openai_interface.py`
   - `src/integrations/llm_interfaces/gemini_interface.py`
   - `src/integrations/exchange/binance_client.py`
   - `src/integrations/news/alpha_vantage_client.py`
-- **Doc correlati**: `docs/architecture.md`, `docs/config.md`
-- **Risorse esterne**:
+- **Related docs**: `docs/architecture.md`, `docs/config.md`
+- **External resources**:
   - [Anthropic API](https://docs.anthropic.com/en/api)
   - [OpenAI API](https://platform.openai.com/docs/api-reference)
   - [Gemini API](https://ai.google.dev/api)
