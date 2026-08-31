@@ -43,8 +43,7 @@
  │    ├── 📄 hierarchy_and_roles.md                          # Hierarchy and roles of the 4 agents.
  │    ├── 📄 kpi.md                                          # Official definition of the 6 KPIs, limits and benchmarks.
  │    ├── 📄 observability.md                                # Logging system: text log and JSON event log.
- │    ├── 📄 repo_structure.md                               # Repo structure and explanation.
- │    └── 📄 TEMPLATE.md                                     # Standard documentation template (structure, emoji, rules).
+ │    └── 📄 repo_structure.md                               # Repo structure and explanation.
  │
  ├── 📁 logs/                                                # Operational logs (ignored by git).
  │    ├── 📁 events/                                         # Structured JSON logs per operational cycle.
