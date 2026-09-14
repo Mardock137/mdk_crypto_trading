@@ -8,13 +8,13 @@ requests==2.34.2
 
 # Data
 pandas==3.0.5
-numpy==2.5.2
+numpy==2.5.3
 pyyaml==6.0.3
 
 # LLM / AI
-anthropic==1.0.0
-google-genai==2.19.0
-openai==3.3.1
+anthropic==1.5.0
+google-genai==2.23.0
+openai==3.13.0
 
 # Exchanges / Crypto
 python-binance==1.0.37
